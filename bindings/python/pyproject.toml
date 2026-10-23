@@ -1,0 +1,20 @@
+[build-system]
+requires = ["maturin>=1.5,<2"]
+build-backend = "maturin"
+
+[project]
+name = "polyg2p"
+version = "0.1.0"
+description = "Fast multilingual grapheme-to-phoneme for TTS (en, es, it, de in Rust; he, ru, yi routed), espeak-compatible output, Apache-2.0"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.9"
+classifiers = ["License :: OSI Approved :: Apache Software License", "Programming Language :: Rust"]
+
+[project.optional-dependencies]
+he = ["renikud-onnx"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "polyg2p._polyg2p"
+features = []
+include = [{ path = "python/polyg2p/data/*", format = "wheel" }]

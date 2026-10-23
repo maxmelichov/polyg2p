@@ -1,0 +1,14 @@
+/target
+/dist
+/data-out
+/sources
+/build-data
+/models
+/.venv
+bindings/python/target
+bindings/python/python/polyg2p/data/
+*.so
+__pycache__/
+*.whl
+*.tar.gz
+*.zip

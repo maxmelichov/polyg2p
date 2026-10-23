@@ -1,0 +1,285 @@
+diff --git a/Dockerfile b/Dockerfile
+index c0f1616..663d424 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -18,9 +18,9 @@ FROM python:3.12-slim
+ 
+ WORKDIR /app
+ 
+-# System deps: soundfile (libsndfile), phonemizer / espeak-ng-loader (espeak-ng)
++# System deps: soundfile (libsndfile). G2P is polyg2p (pure wheel, no espeak-ng).
+ RUN apt-get update && apt-get install -y --no-install-recommends \
+-    libsndfile1 curl espeak-ng \
++    libsndfile1 curl \
+     && rm -rf /var/lib/apt/lists/*
+ 
+ # Pin uv for reproducible image builds (bump when upgrading uv in CI/local)
+diff --git a/pyproject.toml b/pyproject.toml
+index f9b4cc0..2af4694 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -13,8 +13,7 @@ dependencies = [
+     "soundfile",
+     "huggingface-hub>=0.26.0",
+     "renikud-plus",
+-    "phonemizer-fork>=3.3.2",
+-    "espeakng-loader>=0.2.4",
++    "polyg2p>=0.1.0",
+     "onnx>=1.20.1",
+     "onnxslim>=0.1.90",
+ ]
+diff --git a/src/blue_onnx/__init__.py b/src/blue_onnx/__init__.py
+index f9107e7..d768237 100644
+--- a/src/blue_onnx/__init__.py
++++ b/src/blue_onnx/__init__.py
+@@ -62,11 +62,6 @@ def blend_duration_pace(
+     return (dpt2 * n).astype(np.float32)
+ 
+ 
+-_ESPEAK_MAP = {
+-    "en": "en-us", "en-us": "en-us",
+-    "de": "de", "ge": "de",
+-    "it": "it", "es": "es",
+-}
+ _TEXT_TO_INDICES_PROCESSOR: Optional["UnicodeProcessor"] = None
+ 
+ _INLINE_LANG_PAIR = re.compile(r"<(\w+)>(.*?)</\1>", re.DOTALL)
+@@ -86,7 +81,7 @@ def strip_lang_tags_from_phoneme_string(s: str) -> str:
+ 
+ 
+ class TextProcessor:
+-    """Renikud for Hebrew; espeak for everything else. Preserves ``<lang>…</lang>`` spans.
++    """Renikud for Hebrew; polyg2p for everything else. Preserves ``<lang>…</lang>`` spans.
+ 
+     Output is phonemized text re-wrapped in ``<lang>…</lang>`` tags so that
+     :class:`UnicodeProcessor` can route segments by language downstream.
+@@ -127,51 +122,24 @@ class TextProcessor:
+             )
+         return self.renikud
+ 
+-    # Cache EspeakBackend instances per language: the espeak-ng ctypes binding
+-    # leaks per backend construction and each init costs ~600 ms, so reuse them.
+-    _ESPEAK_BACKENDS: dict = {}
++    # polyg2p handles every non-Hebrew language (en/es/it/de in Rust; ru and yi
++    # through their engines). One Phonemizer per process: it loads lazily.
++    _POLYG2P = None
+ 
+-    def _espeak(self, text: str, lang: str) -> str:
+-        espeak_lang = _ESPEAK_MAP.get(lang)
+-        if espeak_lang is None:
+-            return text
+-        try:
+-            Separator = import_module("phonemizer.separator").Separator
+-            backend = TextProcessor._ESPEAK_BACKENDS.get(espeak_lang)
+-            if backend is None:
+-                import espeakng_loader
+-                EspeakBackend = import_module("phonemizer.backend").EspeakBackend
+-                EspeakWrapper = import_module("phonemizer.backend.espeak.wrapper").EspeakWrapper
+-                EspeakWrapper.set_library(espeakng_loader.get_library_path())
+-                if hasattr(EspeakWrapper, "set_data_path"):
+-                    EspeakWrapper.set_data_path(espeakng_loader.get_data_path())
+-                backend = EspeakBackend(
+-                    espeak_lang, preserve_punctuation=True,
+-                    with_stress=True, language_switch="remove-flags",
+-                )
+-                TextProcessor._ESPEAK_BACKENDS[espeak_lang] = backend
+-            raw = backend.phonemize(
+-                [text], separator=Separator(phone="", word=" ", syllable="")
+-            )[0]
+-            return re.sub(r"\s+", " ", raw).strip()
+-        except Exception as e:
+-            print(f"[WARN] Phonemizer backend failed for lang={lang}: {e}")
+-        try:
+-            r = subprocess.run(
+-                ["espeak-ng", "-q", "--ipa=1", "-v", espeak_lang, text],
+-                check=True, capture_output=True, text=True,
+-            )
+-            return re.sub(r"\s+", " ", r.stdout.replace("\n", " ")).strip()
+-        except Exception as e:
+-            print(f"[WARN] espeak-ng fallback failed for lang={lang}: {e}")
+-            return text
++    def _polyg2p(self):
++        if TextProcessor._POLYG2P is None:
++            try:
++                from polyg2p import Phonemizer
++            except ImportError as e:
++                raise RuntimeError("Non-Hebrew G2P needs `polyg2p`. Install: `uv sync`.") from e
++            TextProcessor._POLYG2P = Phonemizer()
++        return TextProcessor._POLYG2P
+ 
+     def _phonemize_segment(self, content: str, lang: str) -> str:
+         # Guard against malformed/unmatched tags leaking into phonemizer input.
+         content = _LANG_TAG_RE.sub("", content).strip()
+-        # Before phonemizing, not after: espeak reads emoji aloud ("Nice 🎉 party"
+-        # → "nice party popper party"), so the tokenizer's own emoji filter never
+-        # gets to see them. Applies whether or not the caller normalized first.
++        # Before phonemizing, not after, so no G2P ever tries to read emoji.
++        # Applies whether or not the caller normalized first.
+         content = strip_emoji(content)
+         if not content:
+             return ""
+@@ -182,7 +150,11 @@ class TextProcessor:
+             return self._load_renikud().phonemize(
+                 content, speaker=self.speaker, target_speaker=self.target_speaker
+             )
+-        return self._espeak(content, lang)
++        try:
++            return self._polyg2p().phonemize_segment(content, lang)
++        except ValueError as e:  # unsupported language: pass text through as before
++            print(f"[WARN] {e}")
++            return content
+ 
+     def phonemize(self, text: str, lang: str = "he") -> str:
+         """Phonemize ``text``; inline ``<xx>…</xx>`` spans are phonemized per-lang.
+@@ -546,7 +518,7 @@ class TextToSpeech:
+ 
+         If ``text_is_phonemes=False`` and a :class:`TextProcessor` was wired in via
+         :func:`load_text_to_speech`, text is phonemized first (renikud for Hebrew,
+-        espeak for Latin langs), preserving inline ``<lang>…</lang>`` spans.
++        polyg2p for the other langs), preserving inline ``<lang>…</lang>`` spans.
+ 
+         Set ``text_is_phonemes=True`` when ``text`` already contains phonemes to skip
+         G2P while keeping the normal tokenizer/chunking path.
+diff --git a/training/combine_datasets.py b/training/combine_datasets.py
+index 5234e74..0384b53 100644
+--- a/training/combine_datasets.py
++++ b/training/combine_datasets.py
+@@ -180,12 +180,12 @@ def clean(input_file, output_file):
+ 
+ 
+ def phonemize(input_file, espeak_map=None):
+-    from phonemizer.backend import EspeakBackend
+-    from phonemizer.separator import Separator
++    """Phonemize non-Hebrew rows with polyg2p. ``espeak_map`` is accepted for
++    backwards compatibility and ignored (polyg2p takes plain language codes)."""
++    from polyg2p import Phonemizer
+     from data.text_vocab import normalize_text
+     from tqdm import tqdm
+ 
+-    espeak_map = espeak_map or DEFAULT_ESPEAK_LANG_MAP
+     df = pd.read_csv(input_file)
+ 
+     todo = df["lang"] != "he"
+@@ -195,16 +195,13 @@ def phonemize(input_file, espeak_map=None):
+         print("[Phonemize] nothing to do")
+         return
+ 
+-    sep = Separator(phone="", word=" ", syllable="")
++    g2p = Phonemizer()
+     for lang in df.loc[todo, "lang"].unique():
+         mask = todo & (df["lang"] == lang)
+         texts = df.loc[mask, "whisper_phonemes"].str.replace(r'["\u201c\u201d]', "", regex=True).tolist()
+-        espeak_lang = str(espeak_map.get(lang, lang))
+-        backend = EspeakBackend(espeak_lang, preserve_punctuation=True,
+-                                with_stress=True, language_switch="remove-flags")
+         ipa = []
+-        for i in tqdm(range(0, len(texts), 1000), desc=f"espeak ({lang})"):
+-            ipa.extend(backend.phonemize(texts[i:i+1000], separator=sep, njobs=os.cpu_count() or 1))
++        for i in tqdm(range(0, len(texts), 10000), desc=f"polyg2p ({lang})"):
++            ipa.extend(g2p.phonemize_batch(texts[i:i + 10000], str(lang)))
+         df.loc[mask, "whisper_phonemes"] = [normalize_text(t) for t in ipa]
+         df.loc[mask, "phonemized"] = True
+ 
+diff --git a/training/data/text2latent_dataset.py b/training/data/text2latent_dataset.py
+index 6ef842e..90a6432 100644
+--- a/training/data/text2latent_dataset.py
++++ b/training/data/text2latent_dataset.py
+@@ -12,11 +12,6 @@ import string
+ from data.text_vocab import text_to_indices, VOCAB_LIST, normalize_text
+ from data.audio_utils import ensure_sr
+ 
+-# espeak language codes for non-Hebrew languages
+-_ESPEAK_LANG = {
+-    "en": "en-us",
+-    "es": "es",
+-}
+ 
+ class Text2LatentDataset(Dataset):
+     """
+@@ -116,7 +111,7 @@ class Text2LatentDataset(Dataset):
+                 lambda row: normalize_text(row["text"], apply_hebrew_fixes=False), axis=1
+             )
+         elif non_he_mask.any():
+-            print(f"[Dataset] Skipping espeak — {non_he_mask.sum()} non-Hebrew rows already phonemized.")
++            print(f"[Dataset] Skipping G2P — {non_he_mask.sum()} non-Hebrew rows already phonemized.")
+             # Still apply normalization to already phonemized text
+             self.df.loc[non_he_mask, "text"] = self.df[non_he_mask].apply(
+                 lambda row: normalize_text(row["text"], apply_hebrew_fixes=False), axis=1
+@@ -165,36 +160,17 @@ class Text2LatentDataset(Dataset):
+         print(f"[Dataset] Loaded {len(self.df)} samples across {len(self.speaker_to_indices)} speakers.")
+ 
+     def _phonemize_with_espeak(self, mask):
+-        """Batch-phonemize non-Hebrew rows using espeak-ng via the phonemizer library."""
++        """Batch-phonemize non-Hebrew rows with polyg2p (espeak-compatible symbols)."""
+         try:
+-            from phonemizer.backend import EspeakBackend
+-            from phonemizer.separator import Separator
++            from polyg2p import Phonemizer
+         except ImportError:
+-            raise ImportError(
+-                "phonemizer is required for non-Hebrew TTS data. "
+-                "Install it with: pip install phonemizer"
+-            )
+-
+-        sep = Separator(phone='', word=' ', syllable='')
+-
++            raise ImportError("polyg2p is required for non-Hebrew TTS data: pip install polyg2p")
++        g2p = Phonemizer()
+         for lang_code in self.df.loc[mask, 'lang'].unique():
+             lang_mask = mask & (self.df['lang'] == lang_code)
+-            espeak_lang = str(_ESPEAK_LANG.get(lang_code, lang_code))
+             texts = self.df.loc[lang_mask, 'text'].tolist()
+-
+-            print(f"[Dataset] Batch phonemizing {len(texts)} '{lang_code}' samples with espeak ({espeak_lang})...")
+-            backend = EspeakBackend(
+-                espeak_lang,
+-                preserve_punctuation=True,
+-                with_stress=True,
+-                language_switch='remove-flags',
+-            )
+-            ipa_texts = backend.phonemize(
+-                texts, 
+-                separator=sep, 
+-                njobs=os.cpu_count() or 1,
+-            )
+-            self.df.loc[lang_mask, 'text'] = ipa_texts
++            print(f"[Dataset] Batch phonemizing {len(texts)} '{lang_code}' samples with polyg2p...")
++            self.df.loc[lang_mask, 'text'] = g2p.phonemize_batch(texts, str(lang_code))
+ 
+     @property
+     def speaker_ids(self):
+diff --git a/training/t2l/train_loop.py b/training/t2l/train_loop.py
+index a04cf6f..cb5a167 100644
+--- a/training/t2l/train_loop.py
++++ b/training/t2l/train_loop.py
+@@ -31,7 +31,7 @@ from training.t2l.cfg_utils import (
+ from training.t2l.sampling import build_reference_only, build_reference_from_latents, sample_audio
+ from training.t2l.spfm import spfm_forward_mask
+ 
+-# --- periodic checkpoint log phrases (Hebrew IPA + espeak for other langs) ---
++# --- periodic checkpoint log phrases (Hebrew IPA + polyg2p for other langs) ---
+ 
+ _PHRASE_ROWS: list[tuple[str, str | None, str, list[str]]] = [
+     (
+@@ -78,17 +78,11 @@ _PHRASE_ROWS: list[tuple[str, str | None, str, list[str]]] = [
+ 
+ 
+ def _phonemize_eval_with_espeak(espeak_lang: str, label: str, lines: list[str]) -> list[str]:
++    """Kept under its old name; phonemizes with polyg2p (``espeak_lang`` -> language code)."""
+     try:
+-        from phonemizer.backend import EspeakBackend
+-        from phonemizer.separator import Separator
+-        sep = Separator(phone="", word=" ", syllable="")
+-        backend = EspeakBackend(
+-            espeak_lang,
+-            preserve_punctuation=True,
+-            with_stress=True,
+-            language_switch="remove-flags",
+-        )
+-        return [normalize_text(s) for s in backend.phonemize(lines, separator=sep)]
++        from polyg2p import Phonemizer
++        lang = {"en-us": "en"}.get(espeak_lang, espeak_lang)
++        return [normalize_text(s) for s in Phonemizer().phonemize_batch(lines, lang)]
+     except Exception as e:  # noqa: BLE001
+         print(f"[Inference] {label} phonemization failed: {e}")
+         return []

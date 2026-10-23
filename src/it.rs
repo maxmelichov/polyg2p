@@ -1,0 +1,462 @@
+//! Italian grapheme-to-phoneme rules, espeak-style notation.
+//!
+//! Italian spelling fixes almost everything except stress and the open/closed
+//! quality of stressed e/o. Those come from, in order: a written accent, the
+//! optional lexicon (`it.lex`), and ending-based statistics (`data/it_*.tsv`).
+
+use std::collections::HashMap;
+use std::path::Path;
+
+use crate::lexicon::Lexicon;
+use crate::Out;
+
+const SUFFIX_TSV: &str = include_str!("../data/it_suffix.tsv");
+const OPEN_TSV: &str = include_str!("../data/it_open.tsv");
+
+const UNSTRESSED: &[&str] = &[
+    "il", "lo", "la", "i", "gli", "le", "un", "di", "a", "da", "in", "con", "su", "per", "tra", "fra", "e",
+    "ed", "o", "od", "ma", "che", "non", "mi", "ti", "si", "ci", "vi", "ne", "del", "al", "dal", "nel", "sul",
+    "col", "se", "è", "ha", "ho", "hai", "hanno", "dei", "ai", "dai", "nei", "sui", "coi", "me", "te", "ce", "ve",
+];
+const SECONDARY: &[&str] = &[
+    "della", "dello", "delle", "degli", "dalla", "dallo", "dalle", "dagli", "nella", "nello", "nelle", "negli",
+    "sulla", "sullo", "sulle", "sugli", "alla", "allo", "alle", "agli",
+];
+
+/// Endings with fixed antepenultimate stress (Italian morphology; hand-written).
+const SDRUCCIOLE: &[&str] = &[
+    "abile", "abili", "ibile", "ibili", "evole", "evoli", "issimo", "issima", "issimi", "issime", "esimo",
+    "esima", "esimi", "esime", "agine", "agini", "igine", "igini", "udine", "udini", "logo", "loga", "logi",
+    "loghe", "grafo", "grafa", "grafi", "grafe", "fono", "fona", "foni", "metro", "metri", "ico", "ica",
+    "ici", "iche", "fugo", "fuga", "colo", "cola", "coli", "cole", "avano", "evano", "ivano", "ebbero",
+    "arono", "erono", "irono", "assero", "essero", "issero",
+];
+/// Common proparoxytone words not covered by an ending rule (hand-written).
+const SDRUCCIOLE_WORDS: &[&str] = &[
+    "ultimo", "ultima", "ultimi", "ultime", "utile", "utili", "facile", "facili", "difficile", "difficili",
+    "simile", "simili", "debole", "deboli", "nobile", "nobili", "mobile", "mobili", "stupido", "stupida",
+    "rapido", "rapida", "solido", "timido", "lucido", "umido", "valido", "valida", "pallido", "tiepido",
+    "limpido", "splendido", "splendida", "candido", "morbido", "morbida", "tavolo", "tavoli", "popolo",
+    "popoli", "secolo", "secoli", "titolo", "titoli", "angolo", "angoli", "numero", "numeri", "camera",
+    "camere", "opera", "opere", "epoca", "epoche", "pagina", "pagine", "macchina", "macchine", "monaco",
+    "napoli", "genova", "padova", "modena", "taranto", "brindisi", "essere", "prendere", "vendere", "credere",
+    "scrivere", "leggere", "chiudere", "perdere", "vivere", "ridere", "decidere", "chiedere", "rispondere",
+    "correre", "muovere", "nascere", "piangere", "scegliere", "cogliere", "togliere", "spegnere", "mettere",
+    "battere", "permettere", "promettere", "conoscere", "crescere", "piovere", "rompere", "scendere",
+    "spendere", "accendere", "attendere", "difendere", "dipendere", "offendere", "pretendere", "rendere",
+    "sorridere", "uccidere", "dividere", "giungere", "aggiungere", "raggiungere", "spingere", "dipingere",
+    "fingere", "vincere", "convincere", "torcere", "cuocere", "nuocere", "tessere", "mungere", "ungere",
+    "parlano", "mangiano", "lavorano", "abitano", "amano", "cantano", "giocano", "pensano", "guardano",
+    "aspettano", "cercano", "trovano", "portano", "chiamano", "lasciano", "prendono", "vendono", "credono",
+    "scrivono", "leggono", "vivono", "dormono", "partono", "sentono", "aprono", "offrono", "seguono",
+    "vengono", "tengono", "dicono", "fanno", "vanno", "sanno", "conoscono", "mettono", "chiedono", "perdono",
+    "erano", "furono", "ebbero", "dissero", "fecero", "vennero", "presero", "misero", "videro", "vollero",
+    "sabato", "domenica", "lunedì", "medico", "medici", "tecnico", "tecnici", "subito", "abito", "abiti",
+    "merito", "debito", "spirito", "limite", "limiti", "ospite", "ospiti", "giovane", "giovani", "ordine",
+    "ordini", "immagine", "immagini", "origine", "margine", "termine", "termini", "polvere", "cenere",
+    "lettera", "lettere", "regola", "regole", "favola", "isola", "isole", "nuvola", "parola", "tavola",
+    "fragola", "pentola", "scatola", "vipera", "zucchero", "albero", "alberi", "fegato", "orfano", "sindaco",
+    "stomaco", "cronaca", "dialogo", "catalogo", "monologo", "prologo", "piccolo", "piccola", "piccoli",
+    "piccole", "povero", "povera", "poveri", "libero", "libera", "liberi", "tenero", "tenera", "celebre",
+    "lacrima", "lacrime", "anima", "anime", "musica", "musiche", "fabbrica", "fabbriche", "replica",
+    "unico", "unica", "pubblico", "pubblica", "politico", "politica", "economico", "economica", "storico",
+    "storica", "pratico", "pratica", "classico", "classica", "magico", "magica", "tragico", "comico",
+    "critico", "critica", "fisico", "fisica", "chimico", "chimica", "logico", "logica",
+];
+/// Words that look like they take an antepenultimate ending but are paroxytone.
+const PIANE: &[&str] = &[
+    "amico", "amica", "amici", "amiche", "nemico", "nemica", "nemici", "nemiche", "antico", "antica", "antichi",
+    "antiche", "fico", "fichi", "pudico", "mendico", "lombrico", "formica", "formiche", "vescica", "ortica",
+    "fatica", "fatiche", "lettica", "barbabietola", "colui", "ciascuno", "pacifica",
+];
+
+pub struct Italian {
+    lex: Option<Lexicon>,
+    suffix: HashMap<String, u8>,
+    open: HashMap<String, f32>,
+}
+
+fn is_v(c: char) -> bool {
+    matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'à' | 'è' | 'é' | 'ì' | 'ò' | 'ó' | 'ù' | 'í' | 'ú')
+}
+fn base(c: char) -> char {
+    match c {
+        'à' => 'a',
+        'è' | 'é' => 'e',
+        'ì' | 'í' => 'i',
+        'ò' | 'ó' => 'o',
+        'ù' | 'ú' => 'u',
+        _ => c,
+    }
+}
+fn accented(c: char) -> bool {
+    matches!(c, 'à' | 'è' | 'é' | 'ì' | 'ò' | 'ó' | 'ù' | 'í' | 'ú')
+}
+
+impl Italian {
+    pub fn load(lex: Option<&Path>) -> Self {
+        let mut suffix = HashMap::new();
+        for line in SUFFIX_TSV.lines() {
+            let f: Vec<&str> = line.split('\t').collect();
+            if f.len() >= 2 {
+                if let Ok(st) = f[1].parse() {
+                    suffix.insert(f[0].to_string(), st);
+                }
+            }
+        }
+        let mut open = HashMap::new();
+        for line in OPEN_TSV.lines() {
+            let f: Vec<&str> = line.split('\t').collect();
+            if f.len() >= 2 {
+                if let Ok(p) = f[1].parse() {
+                    open.insert(f[0].to_string(), p);
+                }
+            }
+        }
+        Italian { lex: lex.and_then(|p| Lexicon::open(p).ok()), suffix, open }
+    }
+
+    pub fn word(&self, w: &str) -> String {
+        let lw: String = w.to_lowercase().chars().filter(|c| c.is_alphabetic()).collect();
+        if lw.is_empty() {
+            return String::new();
+        }
+        let level = if UNSTRESSED.contains(&lw.as_str()) {
+            0
+        } else if SECONDARY.contains(&lw.as_str()) {
+            1
+        } else {
+            2
+        };
+        // l'uomo, dell'anno: apostrophe-joined words come in as one token
+        if let Some((a, b)) = w.split_once('\'') {
+            if !a.is_empty() && !b.is_empty() {
+                let left = self.realize(&a.to_lowercase(), 0);
+                return format!("{left}{}", self.word(b));
+            }
+        }
+        self.realize(&lw, level)
+    }
+
+    fn lex_info(&self, lw: &str) -> (Option<u8>, Option<bool>) {
+        let Some(l) = &self.lex else { return (None, None) };
+        let Some(v) = l.get(lw) else { return (None, None) };
+        let mut it = v.split('|');
+        let st = it.next().and_then(|s| s.parse().ok());
+        let op = match it.next() {
+            Some("o") => Some(true),
+            Some("c") => Some(false),
+            _ => None,
+        };
+        (st, op)
+    }
+
+    /// Index (into `c`) of the stressed vowel letter.
+    fn stress_pos(&self, c: &[char], lw: &str, vp: &[usize], lex_st: Option<u8>, lex_closed: bool) -> usize {
+        let nv = vp.len();
+        if let Some(&p) = vp.iter().rev().find(|&&p| accented(c[p])) {
+            return p;
+        }
+        if nv == 1 {
+            return vp[0];
+        }
+        if let Some(st) = lex_st {
+            if (st as usize) < nv {
+                return vp[nv - 1 - st as usize];
+            }
+        }
+        let n = c.len();
+        if PIANE.contains(&lw) {
+            let syl: Vec<usize> = vp.iter().copied().filter(|&p| syllabic(c, p)).collect();
+            return if syl.len() >= 2 { syl[syl.len() - 2] } else { vp[nv - 1] };
+        }
+        if nv >= 3 && SDRUCCIOLE_WORDS.contains(&lw) {
+            return vp[nv - 3];
+        }
+        if !PIANE.contains(&lw) && nv >= 3 && SDRUCCIOLE.iter().any(|e| lw.len() > e.len() + 1 && lw.ends_with(e)) {
+            return vp[nv - 3];
+        }
+        for k in (2..=7).rev() {
+            if n > k {
+                let start = lw.char_indices().nth(n - k).map(|(b, _)| b).unwrap_or(0);
+                if let Some(&st) = self.suffix.get(&lw[start..]) {
+                    if (st as usize) < nv {
+                        let p = vp[nv - 1 - st as usize];
+                        // ending statistics come from open-vowel words; a word known to have
+                        // no open vowel can't be stressed on an e/o there by that evidence
+                        if st >= 2 && lex_closed && matches!(c[p], 'e' | 'o') {
+                            break;
+                        }
+                        return p;
+                    }
+                }
+            }
+        }
+        // default: penultimate syllabic vowel (skip glide / silent letters)
+        let syl: Vec<usize> = vp.iter().copied().filter(|&p| syllabic(c, p)).collect();
+        if syl.len() >= 2 {
+            syl[syl.len() - 2]
+        } else {
+            *syl.last().unwrap_or(&vp[nv - 1])
+        }
+    }
+
+    fn is_open(&self, c: &[char], sp: usize, lex_op: Option<bool>) -> bool {
+        match c[sp] {
+            'è' | 'ò' => return true,
+            'é' | 'ó' => return false,
+            _ => {}
+        }
+        if let Some(o) = lex_op {
+            return o;
+        }
+        let tail: String = c[sp..].iter().collect();
+        let full = format!("{tail}#");
+        if let Some(&p) = self.open.get(&full) {
+            return p >= 0.5;
+        }
+        let tc: Vec<char> = tail.chars().collect();
+        for k in (2..tc.len()).rev() {
+            let key: String = tc[..k].iter().collect();
+            if let Some(&p) = self.open.get(&key) {
+                return p >= 0.5;
+            }
+        }
+        let key = format!("{}*", base(c[sp]));
+        self.open.get(&key).map_or(false, |&p| p >= 0.5)
+    }
+
+    fn realize(&self, lw: &str, level: u8) -> String {
+        let c: Vec<char> = lw.chars().collect();
+        let n = c.len();
+        let vp: Vec<usize> = (0..n).filter(|&i| is_v(c[i])).collect();
+        if vp.is_empty() {
+            return spell(lw);
+        }
+        let (lex_st, lex_op) = self.lex_info(lw);
+        let sp = self.stress_pos(&c, lw, &vp, lex_st, lex_op == Some(false));
+        let open = level > 0 && matches!(base(c[sp]), 'e' | 'o') && self.is_open(&c, sp, lex_op);
+        let at = |i: isize| -> char { if i < 0 || i as usize >= n { '#' } else { c[i as usize] } };
+        let mut out = String::with_capacity(n * 2);
+        let mut i = 0usize;
+        while i < n {
+            let ch = c[i];
+            let nx = at(i as isize + 1);
+            let pv = at(i as isize - 1);
+            let front = matches!(base(nx), 'e' | 'i');
+            if is_v(ch) {
+                let stressed = i == sp;
+                if stressed && level > 0 {
+                    out.push(if level == 2 { 'ˈ' } else { 'ˌ' });
+                }
+                let b = base(ch);
+                match b {
+                    'a' => out.push('a'),
+                    'e' => out.push(if stressed && open { 'ɛ' } else { 'e' }),
+                    'o' => out.push(if stressed && open { 'ɔ' } else { 'o' }),
+                    'i' => {
+                        if !stressed && is_v(nx) {
+                            let silent = matches!(pv, 'c' | 'g') || (pv == 'l' && at(i as isize - 2) == 'g')
+                                || (pv == 'c' && at(i as isize - 2) == 's');
+                            if !silent {
+                                // espeak: a glide before the stress, a full vowel after it;
+                                // reversed after z (violazione / grazie); ri- prefix keeps i
+                                let before = i < sp;
+                                let zion = pv == 'z' && base(nx) == 'o' && at(i as isize + 2) == 'n';
+                                let glide = if before {
+                                    !matches!(pv, 'r' | 'l') && !zion
+                                } else {
+                                    pv == 'z'
+                                };
+                                out.push(if glide { 'j' } else { 'i' });
+                            }
+                        } else if !stressed && i + 1 == n && vp.len() > 1 {
+                            out.push('ɪ');
+                        } else if !stressed && i + 1 == n && level == 0 {
+                            out.push('ɪ');
+                        } else {
+                            out.push('i');
+                        }
+                    }
+                    _ => {
+                        // u
+                        if pv == 'q' || (pv == 'g' && is_v(nx) && !stressed) {
+                            out.push('w');
+                        } else if !stressed && is_v(nx) && i == 0 {
+                            out.push('w');
+                        } else if !stressed && !(i + 1 == n && vp.len() == 1) {
+                            out.push('ʊ');
+                        } else {
+                            out.push('u');
+                        }
+                    }
+                }
+                i += 1;
+                continue;
+            }
+            let double = nx == ch && ch != 'h';
+            match ch {
+                'c' => {
+                    if nx == 'h' {
+                        out.push('k');
+                        i += 2;
+                        continue;
+                    }
+                    if nx == 'q' {
+                        out.push_str("kː");
+                        i += 2;
+                        continue;
+                    }
+                    if double {
+                        let f = matches!(base(at(i as isize + 2)), 'e' | 'i');
+                        out.push_str(if f { "ʧː" } else { "kː" });
+                        if at(i as isize + 2) == 'h' {
+                            i += 1;
+                        }
+                        i += 2;
+                        continue;
+                    }
+                    if front {
+                        out.push('ʧ');
+                    } else {
+                        out.push('k');
+                    }
+                }
+                'g' => {
+                    if nx == 'h' {
+                        out.push('ɡ');
+                        i += 2;
+                        continue;
+                    }
+                    if nx == 'n' {
+                        // espeak writes intervocalic gn long
+                        out.push_str(if i > 0 && i == sp + 1 { "ɲɲ" } else { "ɲ" });
+                        i += 2;
+                        continue;
+                    }
+                    if nx == 'l' && base(at(i as isize + 2)) == 'i' {
+                        out.push('ʎ');
+                        // "gli" + vowel: the i is silent; "gli" alone keeps it
+                        i += 2;
+                        continue;
+                    }
+                    if double {
+                        let f = matches!(base(at(i as isize + 2)), 'e' | 'i');
+                        out.push_str(if f { "ʤː" } else { "ɡː" });
+                        if at(i as isize + 2) == 'h' {
+                            i += 1;
+                        }
+                        i += 2;
+                        continue;
+                    }
+                    out.push(if front { 'ʤ' } else { 'ɡ' });
+                }
+                's' => {
+                    if nx == 'c' && matches!(base(at(i as isize + 2)), 'e' | 'i') {
+                        out.push('ʃ');
+                        i += 2;
+                        continue;
+                    }
+                    if nx == 's' {
+                        out.push_str("ss");
+                        i += 2;
+                        continue;
+                    }
+                    let voiced_next = matches!(nx, 'b' | 'd' | 'g' | 'l' | 'm' | 'n' | 'r' | 'v');
+                    let intervocalic = is_v(pv) && is_v(nx);
+                    out.push(if voiced_next || intervocalic { 'z' } else { 's' });
+                }
+                'z' => {
+                    if double {
+                        // -izzare verbs are voiced in espeak
+                        let vowels_before = c[..i].iter().filter(|&&x| is_v(x)).count();
+                        out.push_str(if pv == 'i' && vowels_before >= 2 { "ʣː" } else { "tsː" });
+                        i += 2;
+                        continue;
+                    }
+                    let before_iv = base(nx) == 'i' && is_v(at(i as isize + 2));
+                    let voiced = i == 0 || (is_v(pv) && is_v(nx) && !before_iv);
+                    out.push_str(if voiced { "ʣ" } else { "ts" });
+                }
+                'h' => {}
+                'q' => out.push('k'),
+                'x' => out.push_str("ks"),
+                'j' | 'y' => out.push(if is_v(nx) { 'j' } else { 'i' }),
+                'k' => out.push('k'),
+                'w' => out.push('w'),
+                'p' | 't' | 'b' | 'd' => {
+                    if double {
+                        out.push(ch);
+                        out.push('ː');
+                        i += 2;
+                        continue;
+                    }
+                    out.push(ch);
+                }
+                'n' => out.push(if nx == 'g' && !front_after(&c, i + 1) && at(i as isize + 2) != 'n' { 'ŋ' } else { 'n' }),
+                'r' => {
+                    if nx == 'r' {
+                        out.push_str("rɾ");
+                        i += 2;
+                        continue;
+                    }
+                    out.push('r');
+                }
+                'f' | 'l' | 'm' | 'v' => out.push(ch),
+                _ => {}
+            }
+            i += 1;
+        }
+        out
+    }
+}
+
+/// Is the c/g at `p` soft (followed by e/i)?
+fn front_after(c: &[char], p: usize) -> bool {
+    c.get(p + 1).map_or(false, |&x| matches!(base(x), 'e' | 'i'))
+}
+
+/// Can vowel letter at p carry stress by default (not a glide / silent letter)?
+fn syllabic(c: &[char], p: usize) -> bool {
+    let b = base(c[p]);
+    let next_v = c.get(p + 1).map_or(false, |&x| is_v(x));
+    if !next_v || accented(c[p]) {
+        return true;
+    }
+    match b {
+        'i' | 'u' => false,
+        _ => true,
+    }
+}
+
+fn spell(w: &str) -> String {
+    w.to_string()
+}
+
+pub fn join(_w: &mut [Out]) {}
+
+#[cfg(test)]
+mod tests {
+    use super::Italian;
+    #[test]
+    fn basics() {
+        let it = Italian::load(None);
+        for (w, p) in [
+            ("casa", "kˈaza"),
+            ("pizza", "pˈitsːa"),
+            ("città", "ʧitːˈa"),
+            ("gnocchi", "ɲˈɔkːɪ"),
+            ("figlio", "fˈiʎo"),
+            ("ciao", "ʧˈao"),
+            ("chiave", "kjˈave"),
+            ("quando", "kwˈando"),
+            ("acqua", "ˈakːwa"),
+            ("università", "ʊniversitˈa"), ("amici", "amˈiʧɪ"), ("telefono", "telˈɛfono"),
+            ("perché", "perkˈe"),
+            ("sbaglio", "zbˈaʎo"),
+            ("bello", "bˈɛllo"),
+        ] {
+            assert_eq!(it.word(w), p, "{w}");
+        }
+    }
+}

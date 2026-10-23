@@ -1,0 +1,19 @@
+[package]
+name = "polyg2p-python"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "_polyg2p"
+crate-type = ["cdylib"]
+
+[dependencies]
+polyg2p = { path = "../.." }
+pyo3 = { version = "0.25", features = ["extension-module", "abi3-py39"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
