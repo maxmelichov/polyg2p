@@ -123,6 +123,32 @@ def encode(text, vocab, max_len):
     return [vocab.get(c, UNK) for c in text[:max_len]]
 
 
+def pack_rows(rows, max_len, prob, rnd):
+    """Augmentation: concatenate 2-3 random sentences (space-joined, <= max_len
+    chars) so the student also sees multi-sentence windows like the ones the
+    Rust side builds for long inputs. Labels are per character, so they just
+    concatenate (the separator space gets '-')."""
+    out = []
+    i = 0
+    n = len(rows)
+    while i < n:
+        if rnd.random() < prob and i + 1 < n:
+            k = rnd.choice((2, 3))
+            grp = [rows[i]]
+            j = i + 1
+            while j < n and len(grp) < k and sum(len(r[0]) for r in grp) + 1 + len(rows[j][0]) <= max_len:
+                grp.append(rows[j])
+                j += 1
+            if len(grp) > 1:
+                out.append((" ".join(r[0] for r in grp), "-".join(r[1] for r in grp),
+                            "-".join(r[2] for r in grp), "-".join(r[3] for r in grp), " ".join(r[4] for r in grp)))
+                i = j
+                continue
+        out.append(rows[i])
+        i += 1
+    return out
+
+
 def batches(rows, vocab, max_len, tokens_per_batch, shuffle=True):
     idx = list(range(len(rows)))
     if shuffle:
@@ -286,6 +312,7 @@ def main():
     ap.add_argument("--eval-every", type=int, default=2000, help="steps")
     ap.add_argument("--resume", default=None, help="state dict to continue from")
     ap.add_argument("--int8", action="store_true", help="also write he-int8.g2p")
+    ap.add_argument("--pack", type=float, default=0.25, help="prob. of packing 2-3 sentences into one window")
     a = ap.parse_args()
     random.seed(0)
     torch.manual_seed(0)
@@ -337,7 +364,10 @@ def main():
 
     for ep in range(a.epochs):
         tot, n = 0.0, 0
-        for _ch, ids, yc, yv, ys in batches(train, vocab, a.max_len, a.tokens):
+        ep_rows = train[:]
+        random.shuffle(ep_rows)
+        ep_rows = pack_rows(ep_rows, a.max_len, a.pack, random.Random(ep)) if a.pack > 0 else ep_rows
+        for _ch, ids, yc, yv, ys in batches(ep_rows, vocab, a.max_len, a.tokens):
             ids, yc, yv, ys = ids.to(dev), yc.to(dev), yv.to(dev), ys.to(dev)
             lc, lv, ls = model(ids)
             loss = (F.cross_entropy(lc.reshape(-1, N_CONS), yc.reshape(-1), ignore_index=-100, label_smoothing=0.05)

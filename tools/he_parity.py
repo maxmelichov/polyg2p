@@ -22,6 +22,9 @@ from train_he import Tagger, decode_labels, encode  # noqa: E402
 from he_distill import render  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CARGO = os.environ.get("CARGO", os.path.expanduser("~/.cargo/bin/cargo"))
+if not os.path.exists(CARGO):
+    CARGO = "cargo"
 
 
 def main():
@@ -49,7 +52,7 @@ def main():
     sents = [l.rstrip("\n") for l in open(a.sentences, encoding="utf8")][: a.n]
     # the Rust side normalizes (numbers, graphemes, NFD, niqqud) itself; feed it raw text
     exe = os.path.join(ROOT, "target", "release", "he_check")
-    subprocess.run(["cargo", "build", "--release", "--bin", "he_check"], cwd=ROOT, check=True,
+    subprocess.run([CARGO, "build", "--release", "--bin", "he_check"], cwd=ROOT, check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     res = subprocess.run([exe, a.g2p, "--time"], input="\n".join(sents) + "\n", capture_output=True,
                          text=True, check=True)
