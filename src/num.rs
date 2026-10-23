@@ -142,7 +142,7 @@ fn expand_plain(tok: &str, lang: Lang, _prev: &str, next: &str, out: &mut Vec<St
                 match lang {
                     Lang::En if m < 10 => out.push("oh".into()),
                     Lang::Es => out.push("y".into()),
-                    Lang::It => out.push("e".into()),
+                    Lang::It | Lang::Pt => out.push("e".into()),
                     Lang::De => out.push("Uhr".into()),
                     _ => {}
                 }
