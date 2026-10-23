@@ -12,7 +12,7 @@ retraining. It contains no espeak code or data.
 | Italian (it) | Rust | Rules + stress and open/closed-vowel statistics, optional lexicon |
 | German (de) | Rust | Lexicon (optional pack) + compound splitting + rules |
 | Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons; Latin words go to the English engine. RUAccent's two ONNX context models plug in through `Russian::phonemize_with` |
-| Hebrew (he) | renikud-onnx | Routed to [ReNikud](https://github.com/renikud/renikud) |
+| Hebrew (he) | Rust | Sentence-level character tagger (4.9M-param transformer encoder, `he.g2p`) distilled from [RenikudPlus](https://github.com/maxmelichov/RenikudPlus), same IPA notation; number front end ported from hebrew-num2words. See [docs/hebrew.md](docs/hebrew.md). Falls back to renikud-onnx in Python when `he.g2p` is absent |
 | Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
 
 ## Results
