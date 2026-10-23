@@ -8,6 +8,7 @@ pub mod de;
 pub mod en;
 pub mod es;
 pub mod fold;
+pub mod he;
 pub mod it;
 pub mod lexicon;
 pub mod nn;
@@ -15,6 +16,22 @@ pub mod num;
 pub mod ru;
 pub mod spell;
 pub mod text;
+pub mod fr;
+pub mod pt;
+pub mod pl;
+pub mod uk;
+pub mod tr;
+pub mod nl;
+pub mod cs;
+pub mod el;
+pub mod ro;
+pub mod hu;
+pub mod fi;
+pub mod sv;
+pub mod id;
+pub mod ca;
+pub mod ar;
+
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -28,6 +45,22 @@ pub enum Lang {
     It,
     De,
     Ru,
+    He,
+    Fr,
+    Pt,
+    Pl,
+    Uk,
+    Tr,
+    Nl,
+    Cs,
+    El,
+    Ro,
+    Hu,
+    Fi,
+    Sv,
+    Id,
+    Ca,
+    Ar,
 }
 
 impl Lang {
@@ -38,7 +71,77 @@ impl Lang {
             "it" | "it-it" | "ita" => Some(Lang::It),
             "de" | "ge" | "de-de" | "deu" | "ger" => Some(Lang::De),
             "ru" | "ru-ru" | "rus" => Some(Lang::Ru),
+            "he" | "heb" | "iw" | "he-il" => Some(Lang::He),
+            "fr" | "fr-fr" | "fra" | "fre" => Some(Lang::Fr),
+            "pt" | "pt-br" | "por" => Some(Lang::Pt),
+            "pl" | "pol" => Some(Lang::Pl),
+            "uk" | "ukr" => Some(Lang::Uk),
+            "tr" | "tur" => Some(Lang::Tr),
+            "nl" | "nld" | "dut" => Some(Lang::Nl),
+            "cs" | "ces" | "cze" => Some(Lang::Cs),
+            "el" | "ell" | "gre" => Some(Lang::El),
+            "ro" | "ron" | "rum" => Some(Lang::Ro),
+            "hu" | "hun" => Some(Lang::Hu),
+            "fi" | "fin" => Some(Lang::Fi),
+            "sv" | "swe" => Some(Lang::Sv),
+            "id" | "ind" => Some(Lang::Id),
+            "ca" | "cat" => Some(Lang::Ca),
+            "ar" | "ara" => Some(Lang::Ar),
             _ => None,
+        }
+    }
+}
+
+impl Lang {
+    /// Every language code the crate knows, in a stable order.
+    pub const ALL: &[Lang] = &[Lang::En, Lang::Es, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar];
+
+    pub fn code(self) -> &'static str {
+        match self {
+            Lang::En => "en",
+            Lang::Es => "es",
+            Lang::It => "it",
+            Lang::De => "de",
+            Lang::Ru => "ru",
+            Lang::He => "he",
+            Lang::Fr => "fr",
+            Lang::Pt => "pt",
+            Lang::Pl => "pl",
+            Lang::Uk => "uk",
+            Lang::Tr => "tr",
+            Lang::Nl => "nl",
+            Lang::Cs => "cs",
+            Lang::El => "el",
+            Lang::Ro => "ro",
+            Lang::Hu => "hu",
+            Lang::Fi => "fi",
+            Lang::Sv => "sv",
+            Lang::Id => "id",
+            Lang::Ca => "ca",
+            Lang::Ar => "ar",
+        }
+    }
+
+    /// Does this build have a working engine for the language (stubs return false)?
+    pub fn implemented(self) -> bool {
+        match self {
+            Lang::En | Lang::Es | Lang::It | Lang::De | Lang::Ru => true,
+            Lang::He => he::IMPLEMENTED,
+            Lang::Fr => fr::IMPLEMENTED,
+            Lang::Pt => pt::IMPLEMENTED,
+            Lang::Pl => pl::IMPLEMENTED,
+            Lang::Uk => uk::IMPLEMENTED,
+            Lang::Tr => tr::IMPLEMENTED,
+            Lang::Nl => nl::IMPLEMENTED,
+            Lang::Cs => cs::IMPLEMENTED,
+            Lang::El => el::IMPLEMENTED,
+            Lang::Ro => ro::IMPLEMENTED,
+            Lang::Hu => hu::IMPLEMENTED,
+            Lang::Fi => fi::IMPLEMENTED,
+            Lang::Sv => sv::IMPLEMENTED,
+            Lang::Id => id::IMPLEMENTED,
+            Lang::Ca => ca::IMPLEMENTED,
+            Lang::Ar => ar::IMPLEMENTED,
         }
     }
 }
@@ -61,13 +164,14 @@ pub struct G2p {
     de: OnceLock<de::German>,
     it: OnceLock<it::Italian>,
     ru: OnceLock<ru::Russian>,
+    he: OnceLock<he::Hebrew>,
 }
 
 impl G2p {
     /// `data_dir` holds optional lexicon/model files (`en.lex`, `en.g2p`, `de.lex`, ...).
     /// Without it, each language falls back to its built-in resources and rules.
     pub fn new(data_dir: Option<&Path>) -> Self {
-        G2p { data_dir: data_dir.map(|p| p.to_path_buf()), en: OnceLock::new(), de: OnceLock::new(), it: OnceLock::new(), ru: OnceLock::new() }
+        G2p { data_dir: data_dir.map(|p| p.to_path_buf()), en: OnceLock::new(), de: OnceLock::new(), it: OnceLock::new(), ru: OnceLock::new(), he: OnceLock::new() }
     }
 
     fn file(&self, name: &str) -> Option<PathBuf> {
@@ -103,10 +207,17 @@ impl G2p {
         })
     }
 
+    pub fn hebrew(&self) -> &he::Hebrew {
+        self.he.get_or_init(|| he::Hebrew::load(self.data_dir.as_deref()))
+    }
+
     /// Phonemize running text.
     pub fn phonemize(&self, text: &str, lang: Lang) -> String {
         if lang == Lang::Ru {
             return self.russian().phonemize(text);
+        }
+        if lang == Lang::He {
+            return self.hebrew().phonemize(text);
         }
         let toks = text::tokenize(text);
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
@@ -152,7 +263,22 @@ impl G2p {
             Lang::Es => es::join(&mut outs),
             Lang::En => self.english().join(&mut outs),
             Lang::It => it::join(&mut outs),
-            Lang::De | Lang::Ru => {}
+            Lang::De | Lang::Ru | Lang::He => {}
+            Lang::Fr => fr::join(&mut outs),
+            Lang::Pt => pt::join(&mut outs),
+            Lang::Pl => pl::join(&mut outs),
+            Lang::Uk => uk::join(&mut outs),
+            Lang::Tr => tr::join(&mut outs),
+            Lang::Nl => nl::join(&mut outs),
+            Lang::Cs => cs::join(&mut outs),
+            Lang::El => el::join(&mut outs),
+            Lang::Ro => ro::join(&mut outs),
+            Lang::Hu => hu::join(&mut outs),
+            Lang::Fi => fi::join(&mut outs),
+            Lang::Sv => sv::join(&mut outs),
+            Lang::Id => id::join(&mut outs),
+            Lang::Ca => ca::join(&mut outs),
+            Lang::Ar => ar::join(&mut outs),
         }
         let mut s = String::with_capacity(text.len() * 2);
         for o in &outs {
@@ -205,6 +331,22 @@ impl G2p {
             Lang::It => self.italian().word(&lw),
             Lang::De => self.german().word(w),
             Lang::Ru => self.russian().phonemize(w),
+            Lang::He => self.hebrew().phonemize(w),
+            Lang::Fr => fr::word(&lw),
+            Lang::Pt => pt::word(&lw),
+            Lang::Pl => pl::word(&lw),
+            Lang::Uk => uk::word(&lw),
+            Lang::Tr => tr::word(&lw),
+            Lang::Nl => nl::word(&lw),
+            Lang::Cs => cs::word(&lw),
+            Lang::El => el::word(&lw),
+            Lang::Ro => ro::word(&lw),
+            Lang::Hu => hu::word(&lw),
+            Lang::Fi => fi::word(&lw),
+            Lang::Sv => sv::word(&lw),
+            Lang::Id => id::word(&lw),
+            Lang::Ca => ca::word(&lw),
+            Lang::Ar => ar::word(&lw),
         };
         outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
     }

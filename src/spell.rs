@@ -1,6 +1,7 @@
 //! Letter-name spelling for acronyms (es, it, de; English has its own in en.rs).
 
 use crate::Lang;
+use crate::{fr, pt, pl, uk, tr, nl, cs, el, ro, hu, fi, sv, id, ca, ar};
 
 fn names(lang: Lang) -> Option<&'static [&'static str; 26]> {
     const ES: [&str; 26] = [
@@ -19,7 +20,22 @@ fn names(lang: Lang) -> Option<&'static [&'static str; 26]> {
         Lang::Es => Some(&ES),
         Lang::It => Some(&IT),
         Lang::De => Some(&DE),
-        Lang::En | Lang::Ru => None,
+        Lang::En | Lang::Ru | Lang::He => None,
+        Lang::Fr => fr::LETTERS,
+        Lang::Pt => pt::LETTERS,
+        Lang::Pl => pl::LETTERS,
+        Lang::Uk => uk::LETTERS,
+        Lang::Tr => tr::LETTERS,
+        Lang::Nl => nl::LETTERS,
+        Lang::Cs => cs::LETTERS,
+        Lang::El => el::LETTERS,
+        Lang::Ro => ro::LETTERS,
+        Lang::Hu => hu::LETTERS,
+        Lang::Fi => fi::LETTERS,
+        Lang::Sv => sv::LETTERS,
+        Lang::Id => id::LETTERS,
+        Lang::Ca => ca::LETTERS,
+        Lang::Ar => ar::LETTERS,
     }
 }
 

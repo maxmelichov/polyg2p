@@ -25,12 +25,12 @@ import threading
 from pathlib import Path
 from typing import Callable, Optional
 
-from ._polyg2p import CORE_LANGS, Engine
+from ._polyg2p import ALL_LANGS, CORE_LANGS, Engine
 from .vocab import unknown_symbols, VOCAB
 
 __all__ = ["Phonemizer", "Engine", "unknown_symbols", "VOCAB", "SUPPORTED_LANGS", "default_data_dir"]
 
-SUPPORTED_LANGS = ("en", "es", "it", "de", "ru", "he", "yi")
+SUPPORTED_LANGS = tuple(dict.fromkeys(list(CORE_LANGS) + ["he", "yi"]))
 _ALIASES = {"ge": "de", "en-us": "en", "eng": "en", "heb": "he", "iw": "he", "rus": "ru", "yid": "yi", "ji": "yi"}
 _INLINE = re.compile(r"<(\w+)>(.*?)</\1>", re.DOTALL)
 _TAG = re.compile(r"</?\w+>")
@@ -124,6 +124,9 @@ class Phonemizer:
         if not text:
             return ""
         if lang == "he" or (lang not in ("yi",) and _HEBREW.search(text) and lang not in CORE_LANGS):
+            # the native Hebrew core wins when this build has it and no override was passed
+            if self._he is None and "he" in CORE_LANGS:
+                return self.engine.phonemize(text, "he")
             return self._hebrew(text)
         if lang == "yi":
             return self._yiddish(text)

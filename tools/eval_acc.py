@@ -18,8 +18,23 @@ from phonemizer.backend import EspeakBackend
 from phonemizer.separator import Separator
 from wordfreq import word_frequency, top_n_list
 
-GOLD = {"en": "eng_latn_us_broad.tsv", "es": "spa_latn_ca_broad.tsv", "it": "ita_latn_broad.tsv", "de": "deu_latn_broad.tsv"}
-ESPEAK = {"en": "en-us", "es": "es", "it": "it", "de": "de"}
+GOLD = {"en": "eng_latn_us_broad.tsv", "es": "spa_latn_ca_broad.tsv", "it": "ita_latn_broad.tsv", "de": "deu_latn_broad.tsv",
+        "fr": "fra_latn_broad.tsv", "pt": "por_latn_bz_broad.tsv", "pl": "pol_latn_broad.tsv", "uk": "ukr_cyrl_narrow.tsv",
+        "tr": "tur_latn_broad.tsv", "nl": "nld_latn_broad.tsv", "cs": "ces_latn_broad.tsv", "el": "ell_grek_broad.tsv",
+        "ro": "ron_latn_broad.tsv", "hu": "hun_latn_broad.tsv", "fi": "fin_latn_broad.tsv", "sv": "swe_latn_broad.tsv",
+        "id": "ind_latn_broad.tsv", "ca": "cat_latn_broad.tsv", "ar": "ara_arab_broad.tsv", "he": "heb_hebr_broad.tsv"}
+ESPEAK = {"en": "en-us", "es": "es", "it": "it", "de": "de", "fr": "fr-fr", "pt": "pt-br", "pl": "pl", "uk": "uk", "tr": "tr",
+          "nl": "nl", "cs": "cs", "el": "el", "ro": "ro", "hu": "hu", "fi": "fi", "sv": "sv", "id": "id", "ca": "ca", "ar": "ar", "he": "he"}
+# languages beyond the original four plug their collapse rules in as tools/collapse_<lang>.py (def collapse(s) -> s)
+import importlib
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+
+def _plugin(lang):
+    try:
+        return importlib.import_module(f"collapse_{lang}").collapse
+    except ImportError:
+        return None
 CLI = os.path.join(ROOT, "target", "release", "g2p")
 
 COMMON = [("t͡s", "ts"), ("t͡ʃ", "tʃ"), ("d͡ʒ", "dʒ"), ("d͡z", "dz"), ("ʦ", "ts"), ("ʧ", "tʃ"), ("ʤ", "dʒ"), ("ʣ", "dz"),
@@ -79,6 +94,10 @@ def collapse(s, lang):
         s = re.sub(r"ɪ(?=[aeiouyøɛʊʏœɔə])", "i", s)  # espeak writes ɪ before a vowel
         s = re.sub(r"[eɛ]r(?=[^aeiouyøɛɪʊʏœɔə]|$)", "ər", s)  # vocalized r after e/ɛ
         s = s.replace("ən", "n").replace("əl", "l").replace("əm", "m")
+    else:
+        f = _plugin(lang)
+        if f:
+            s = f(s)
     return s
 
 

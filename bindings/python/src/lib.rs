@@ -39,6 +39,9 @@ impl Engine {
 #[pymodule]
 fn _polyg2p(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Engine>()?;
-    m.add("CORE_LANGS", vec!["en", "es", "it", "de", "ru"])?;
+    let core: Vec<&str> = polyg2p::Lang::ALL.iter().filter(|l| l.implemented()).map(|l| l.code()).collect();
+    m.add("CORE_LANGS", core)?;
+    let all: Vec<&str> = polyg2p::Lang::ALL.iter().map(|l| l.code()).collect();
+    m.add("ALL_LANGS", all)?;
     Ok(())
 }

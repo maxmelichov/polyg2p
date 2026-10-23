@@ -4,13 +4,14 @@
 //! (`ein+und+zwanzig`) so the German module can stress them as one compound.
 
 use crate::Lang;
+use crate::{fr, pt, pl, uk, tr, nl, cs, el, ro, hu, fi, sv, id, ca, ar};
 
 /// Parse a digit string with separators into (integer part, fractional digits).
 /// en uses `,` for thousands and `.` for decimals; es/it/de the reverse. A single
 /// separator followed by exactly three digits is read as a thousands separator.
 fn parse(s: &str, lang: Lang) -> Option<(u128, Option<String>)> {
     let (thou, dec) = match lang {
-        Lang::En => (',', '.'),
+        Lang::En | Lang::He | Lang::Ar => (',', '.'),
         _ => ('.', ','),
     };
     let mut int_part = String::new();
@@ -109,6 +110,22 @@ pub fn expand(tok: &str, lang: Lang, _prev: &str, next: &str, out: &mut Vec<Stri
             Lang::It => "virgola",
             Lang::De => "Komma",
             Lang::Ru => "запятая",
+            Lang::He => "נקודה",
+            Lang::Fr => fr::DECIMAL,
+            Lang::Pt => pt::DECIMAL,
+            Lang::Pl => pl::DECIMAL,
+            Lang::Uk => uk::DECIMAL,
+            Lang::Tr => tr::DECIMAL,
+            Lang::Nl => nl::DECIMAL,
+            Lang::Cs => cs::DECIMAL,
+            Lang::El => el::DECIMAL,
+            Lang::Ro => ro::DECIMAL,
+            Lang::Hu => hu::DECIMAL,
+            Lang::Fi => fi::DECIMAL,
+            Lang::Sv => sv::DECIMAL,
+            Lang::Id => id::DECIMAL,
+            Lang::Ca => ca::DECIMAL,
+            Lang::Ar => ar::DECIMAL,
         }
         .to_string());
         if f.len() <= 2 && !f.starts_with('0') && lang != Lang::En {
@@ -161,6 +178,21 @@ pub fn symbol(c: char, lang: Lang) -> Option<&'static str> {
         (Lang::De, '$') => "Dollar",
         (Lang::De, '€') => "Euro",
         (Lang::De, '£') => "Pfund",
+        (Lang::Fr, _) => return fr::symbol(c),
+        (Lang::Pt, _) => return pt::symbol(c),
+        (Lang::Pl, _) => return pl::symbol(c),
+        (Lang::Uk, _) => return uk::symbol(c),
+        (Lang::Tr, _) => return tr::symbol(c),
+        (Lang::Nl, _) => return nl::symbol(c),
+        (Lang::Cs, _) => return cs::symbol(c),
+        (Lang::El, _) => return el::symbol(c),
+        (Lang::Ro, _) => return ro::symbol(c),
+        (Lang::Hu, _) => return hu::symbol(c),
+        (Lang::Fi, _) => return fi::symbol(c),
+        (Lang::Sv, _) => return sv::symbol(c),
+        (Lang::Id, _) => return id::symbol(c),
+        (Lang::Ca, _) => return ca::symbol(c),
+        (Lang::Ar, _) => return ar::symbol(c),
         _ => return None,
     })
 }
@@ -207,7 +239,22 @@ pub fn cardinal(n: u128, lang: Lang) -> Vec<String> {
         Lang::It => it_card(n),
         Lang::De => de_card(n),
         // Russian text never reaches this module (ru.rs normalizes its own numbers)
-        Lang::Ru => en_card(n),
+        Lang::Ru | Lang::He => en_card(n),
+        Lang::Fr => fr::cardinal(n),
+        Lang::Pt => pt::cardinal(n),
+        Lang::Pl => pl::cardinal(n),
+        Lang::Uk => uk::cardinal(n),
+        Lang::Tr => tr::cardinal(n),
+        Lang::Nl => nl::cardinal(n),
+        Lang::Cs => cs::cardinal(n),
+        Lang::El => el::cardinal(n),
+        Lang::Ro => ro::cardinal(n),
+        Lang::Hu => hu::cardinal(n),
+        Lang::Fi => fi::cardinal(n),
+        Lang::Sv => sv::cardinal(n),
+        Lang::Id => id::cardinal(n),
+        Lang::Ca => ca::cardinal(n),
+        Lang::Ar => ar::cardinal(n),
     }
 }
 
