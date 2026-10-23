@@ -171,6 +171,7 @@ impl G2p {
     /// `data_dir` holds optional lexicon/model files (`en.lex`, `en.g2p`, `de.lex`, ...).
     /// Without it, each language falls back to its built-in resources and rules.
     pub fn new(data_dir: Option<&Path>) -> Self {
+        let _ = DATA_DIR.set(data_dir.map(|p| p.to_path_buf()));
         G2p { data_dir: data_dir.map(|p| p.to_path_buf()), en: OnceLock::new(), de: OnceLock::new(), it: OnceLock::new(), ru: OnceLock::new(), he: OnceLock::new() }
     }
 
@@ -368,6 +369,15 @@ impl G2p {
         };
         outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
     }
+}
+
+static DATA_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+/// The data directory of the first engine created in this process (or
+/// `POLYG2P_DATA`). Language modules without their own slot on `G2p` (uk, …)
+/// find their optional packs here.
+pub fn data_dir() -> Option<PathBuf> {
+    DATA_DIR.get().cloned().flatten().or_else(|| std::env::var_os("POLYG2P_DATA").map(PathBuf::from))
 }
 
 /// Process-wide default engine (no external data directory).

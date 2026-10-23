@@ -17,7 +17,6 @@
 //! before voiceless consonants or word-finally, and в never becomes `f`.
 
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::OnceLock;
 
 use crate::lexicon::Lexicon;
@@ -219,8 +218,8 @@ fn res() -> &'static Res {
         let suffix = load_table(SUFFIX_TSV);
         let stem = load_table(STEM_TSV);
         // the optional stress lexicon lives in the data pack next to it.lex etc.
-        let lex = std::env::var_os("POLYG2P_DATA")
-            .map(|d| Path::new(&d).join("uk.lex"))
+        let lex = crate::data_dir()
+            .map(|d| d.join("uk.lex"))
             .filter(|p| p.exists())
             .and_then(|p| Lexicon::open(&p).ok());
         Res { suffix, stem, lex }
