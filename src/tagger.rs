@@ -7,8 +7,9 @@
 //! Tensors are little-endian f32, or int8 with a per-output-row f32 scale
 //! (`"dtype": "i8"`, scale tensor `<name>.scale`) which is dequantized at load.
 //!
-//! The matmul kernel works on the whole sequence at once (4 input rows × 2
-//! weight rows per tile) so one sentence costs a few milliseconds.
+//! All matrix products go through one cache-blocked `A·Bᵀ` kernel (4×4 register
+//! tile, NEON on aarch64, portable fallback elsewhere), including attention, so
+//! one sentence costs a few milliseconds single-threaded.
 
 use std::collections::HashMap;
 use std::io;
@@ -44,6 +45,160 @@ struct Header {
     tensors: Vec<TensorMeta>,
 }
 
+// ---------------------------------------------------------------- kernels
+
+#[inline(always)]
+fn dot_tail(a: &[f32], b: &[f32]) -> f32 {
+    a.iter().zip(b).map(|(x, y)| x * y).sum()
+}
+
+#[inline(always)]
+fn dot(a: &[f32], b: &[f32]) -> f32 {
+    let n = a.len() - a.len() % 4;
+    let mut acc = [0f32; 4];
+    let mut k = 0;
+    while k < n {
+        for j in 0..4 {
+            acc[j] += a[k + j] * b[k + j];
+        }
+        k += 4;
+    }
+    acc.iter().sum::<f32>() + dot_tail(&a[n..], &b[n..])
+}
+
+/// 4 rows of A × 4 rows of B over `k` elements (k % 4 == 0): `out[r * 4 + c] = a[r] · b[c]`.
+#[inline(always)]
+fn tile4x4(a: [&[f32]; 4], b: [&[f32]; 4], k: usize) -> [f32; 16] {
+    #[cfg(target_arch = "aarch64")]
+    // SAFETY: NEON is baseline on aarch64; every slice holds at least `k`
+    // elements (k is a multiple of 4) and is only read.
+    unsafe {
+        tile4x4_neon(a, b, k)
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    tile4x4_generic(a, b, k)
+}
+
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+unsafe fn tile4x4_neon(x: [&[f32]; 4], w: [&[f32]; 4], k: usize) -> [f32; 16] {
+    use std::arch::aarch64::*;
+    debug_assert!(k % 4 == 0 && x.iter().all(|s| s.len() >= k) && w.iter().all(|s| s.len() >= k));
+    unsafe {
+        let (mut a0, mut a1, mut a2, mut a3) = (vdupq_n_f32(0.0), vdupq_n_f32(0.0), vdupq_n_f32(0.0), vdupq_n_f32(0.0));
+        let (mut a4, mut a5, mut a6, mut a7) = (vdupq_n_f32(0.0), vdupq_n_f32(0.0), vdupq_n_f32(0.0), vdupq_n_f32(0.0));
+        let (mut a8, mut a9, mut a10, mut a11) = (vdupq_n_f32(0.0), vdupq_n_f32(0.0), vdupq_n_f32(0.0), vdupq_n_f32(0.0));
+        let (mut a12, mut a13, mut a14, mut a15) = (vdupq_n_f32(0.0), vdupq_n_f32(0.0), vdupq_n_f32(0.0), vdupq_n_f32(0.0));
+        let (x0, x1, x2, x3) = (x[0].as_ptr(), x[1].as_ptr(), x[2].as_ptr(), x[3].as_ptr());
+        let (w0, w1, w2, w3) = (w[0].as_ptr(), w[1].as_ptr(), w[2].as_ptr(), w[3].as_ptr());
+        let mut i = 0;
+        while i < k {
+            let p0 = vld1q_f32(x0.add(i));
+            let p1 = vld1q_f32(x1.add(i));
+            let p2 = vld1q_f32(x2.add(i));
+            let p3 = vld1q_f32(x3.add(i));
+            let q0 = vld1q_f32(w0.add(i));
+            let q1 = vld1q_f32(w1.add(i));
+            let q2 = vld1q_f32(w2.add(i));
+            let q3 = vld1q_f32(w3.add(i));
+            a0 = vfmaq_f32(a0, p0, q0);
+            a1 = vfmaq_f32(a1, p0, q1);
+            a2 = vfmaq_f32(a2, p0, q2);
+            a3 = vfmaq_f32(a3, p0, q3);
+            a4 = vfmaq_f32(a4, p1, q0);
+            a5 = vfmaq_f32(a5, p1, q1);
+            a6 = vfmaq_f32(a6, p1, q2);
+            a7 = vfmaq_f32(a7, p1, q3);
+            a8 = vfmaq_f32(a8, p2, q0);
+            a9 = vfmaq_f32(a9, p2, q1);
+            a10 = vfmaq_f32(a10, p2, q2);
+            a11 = vfmaq_f32(a11, p2, q3);
+            a12 = vfmaq_f32(a12, p3, q0);
+            a13 = vfmaq_f32(a13, p3, q1);
+            a14 = vfmaq_f32(a14, p3, q2);
+            a15 = vfmaq_f32(a15, p3, q3);
+            i += 4;
+        }
+        [
+            vaddvq_f32(a0), vaddvq_f32(a1), vaddvq_f32(a2), vaddvq_f32(a3),
+            vaddvq_f32(a4), vaddvq_f32(a5), vaddvq_f32(a6), vaddvq_f32(a7),
+            vaddvq_f32(a8), vaddvq_f32(a9), vaddvq_f32(a10), vaddvq_f32(a11),
+            vaddvq_f32(a12), vaddvq_f32(a13), vaddvq_f32(a14), vaddvq_f32(a15),
+        ]
+    }
+}
+
+#[cfg(not(target_arch = "aarch64"))]
+#[inline(always)]
+fn tile4x4_generic(x: [&[f32]; 4], w: [&[f32]; 4], k: usize) -> [f32; 16] {
+    let mut a = [[0f32; 4]; 16];
+    let mut i = 0;
+    while i < k {
+        for j in 0..4 {
+            for r in 0..4 {
+                for c in 0..4 {
+                    a[r * 4 + c][j] += x[r][i + j] * w[c][i + j];
+                }
+            }
+        }
+        i += 4;
+    }
+    let mut out = [0f32; 16];
+    for j in 0..16 {
+        out[j] = a[j].iter().sum();
+    }
+    out
+}
+
+/// Rows of B kept hot in L1 per pass over A (16 rows × k ≤ 1024 × 4 B = 64 KB).
+const NB: usize = 16;
+
+/// `out[i, j] = a[i] · b[j] + bias[j]` for `m` rows of A and `n` rows of B of
+/// length `k`, with arbitrary row strides (`a[i]` starts at `i * sa`, etc.).
+#[allow(clippy::too_many_arguments)]
+fn matmul_abt(a: &[f32], sa: usize, b: &[f32], sb: usize, m: usize, n: usize, k: usize, bias: Option<&[f32]>, out: &mut [f32], so: usize) {
+    let kmain = k - k % 4;
+    let row_a = |i: usize| &a[i * sa..i * sa + k];
+    let row_b = |j: usize| &b[j * sb..j * sb + k];
+    let bias_at = |j: usize| bias.map_or(0.0, |bb| bb[j]);
+    let mut c0 = 0;
+    while c0 < n {
+        let c1 = (c0 + NB).min(n);
+        let mut r = 0;
+        while r + 4 <= m {
+            let xs = [row_a(r), row_a(r + 1), row_a(r + 2), row_a(r + 3)];
+            let mut c = c0;
+            while c + 4 <= c1 {
+                let ws = [row_b(c), row_b(c + 1), row_b(c + 2), row_b(c + 3)];
+                let s = tile4x4(xs, ws, kmain);
+                for rr in 0..4 {
+                    for cc in 0..4 {
+                        out[(r + rr) * so + c + cc] =
+                            s[rr * 4 + cc] + dot_tail(&xs[rr][kmain..], &ws[cc][kmain..]) + bias_at(c + cc);
+                    }
+                }
+                c += 4;
+            }
+            while c < c1 {
+                let w = row_b(c);
+                for rr in 0..4 {
+                    out[(r + rr) * so + c] = dot(xs[rr], w) + bias_at(c);
+                }
+                c += 1;
+            }
+            r += 4;
+        }
+        while r < m {
+            let x = row_a(r);
+            for c in c0..c1 {
+                out[r * so + c] = dot(x, row_b(c)) + bias_at(c);
+            }
+            r += 1;
+        }
+        c0 = c1;
+    }
+}
+
 /// Linear layer, weight in PyTorch layout `[out, in]`.
 struct Lin {
     w: Vec<f32>,
@@ -52,87 +207,13 @@ struct Lin {
     o: usize,
 }
 
-const LANES: usize = 8;
-
-#[inline(always)]
-fn dot_tail(a: &[f32], b: &[f32]) -> f32 {
-    a.iter().zip(b).map(|(x, y)| x * y).sum()
-}
-
 impl Lin {
     /// `y[l, o] = x[l, i] · Wᵀ + b` for `l` rows.
     fn apply(&self, x: &[f32], l: usize, y: &mut [f32]) {
-        let (ni, no) = (self.i, self.o);
-        debug_assert_eq!(x.len(), l * ni);
-        debug_assert_eq!(y.len(), l * no);
-        let kmain = ni - ni % LANES;
-        let mut r = 0;
-        while r + 4 <= l {
-            let x0 = &x[r * ni..(r + 1) * ni];
-            let x1 = &x[(r + 1) * ni..(r + 2) * ni];
-            let x2 = &x[(r + 2) * ni..(r + 3) * ni];
-            let x3 = &x[(r + 3) * ni..(r + 4) * ni];
-            let mut c = 0;
-            while c + 2 <= no {
-                let w0 = &self.w[c * ni..(c + 1) * ni];
-                let w1 = &self.w[(c + 1) * ni..(c + 2) * ni];
-                let mut a = [[0f32; LANES]; 8];
-                let mut k = 0;
-                while k < kmain {
-                    let (p0, p1, p2, p3) = (&x0[k..k + LANES], &x1[k..k + LANES], &x2[k..k + LANES], &x3[k..k + LANES]);
-                    let (q0, q1) = (&w0[k..k + LANES], &w1[k..k + LANES]);
-                    for j in 0..LANES {
-                        a[0][j] += p0[j] * q0[j];
-                        a[1][j] += p0[j] * q1[j];
-                        a[2][j] += p1[j] * q0[j];
-                        a[3][j] += p1[j] * q1[j];
-                        a[4][j] += p2[j] * q0[j];
-                        a[5][j] += p2[j] * q1[j];
-                        a[6][j] += p3[j] * q0[j];
-                        a[7][j] += p3[j] * q1[j];
-                    }
-                    k += LANES;
-                }
-                let s: Vec<f32> = a.iter().map(|v| v.iter().sum::<f32>()).collect();
-                let (t0, t1) = (&w0[kmain..], &w1[kmain..]);
-                y[r * no + c] = s[0] + dot_tail(&x0[kmain..], t0) + self.b[c];
-                y[r * no + c + 1] = s[1] + dot_tail(&x0[kmain..], t1) + self.b[c + 1];
-                y[(r + 1) * no + c] = s[2] + dot_tail(&x1[kmain..], t0) + self.b[c];
-                y[(r + 1) * no + c + 1] = s[3] + dot_tail(&x1[kmain..], t1) + self.b[c + 1];
-                y[(r + 2) * no + c] = s[4] + dot_tail(&x2[kmain..], t0) + self.b[c];
-                y[(r + 2) * no + c + 1] = s[5] + dot_tail(&x2[kmain..], t1) + self.b[c + 1];
-                y[(r + 3) * no + c] = s[6] + dot_tail(&x3[kmain..], t0) + self.b[c];
-                y[(r + 3) * no + c + 1] = s[7] + dot_tail(&x3[kmain..], t1) + self.b[c + 1];
-                c += 2;
-            }
-            if c < no {
-                for rr in r..r + 4 {
-                    y[rr * no + c] = dot(&x[rr * ni..(rr + 1) * ni], &self.w[c * ni..(c + 1) * ni]) + self.b[c];
-                }
-            }
-            r += 4;
-        }
-        for rr in r..l {
-            let xr = &x[rr * ni..(rr + 1) * ni];
-            for c in 0..no {
-                y[rr * no + c] = dot(xr, &self.w[c * ni..(c + 1) * ni]) + self.b[c];
-            }
-        }
+        debug_assert_eq!(x.len(), l * self.i);
+        debug_assert_eq!(y.len(), l * self.o);
+        matmul_abt(x, self.i, &self.w, self.i, l, self.o, self.i, Some(&self.b), y, self.o);
     }
-}
-
-#[inline(always)]
-fn dot(a: &[f32], b: &[f32]) -> f32 {
-    let n = a.len() - a.len() % LANES;
-    let mut acc = [0f32; LANES];
-    let mut k = 0;
-    while k < n {
-        for j in 0..LANES {
-            acc[j] += a[k + j] * b[k + j];
-        }
-        k += LANES;
-    }
-    acc.iter().sum::<f32>() + dot_tail(&a[n..], &b[n..])
 }
 
 struct Ln {
@@ -290,10 +371,11 @@ impl Tagger {
         let mut q = vec![0f32; l * d];
         let mut k = vec![0f32; l * d];
         let mut v = vec![0f32; l * d];
+        let mut vt = vec![0f32; hd * l];
+        let mut sc = vec![0f32; l * l];
         let mut att = vec![0f32; l * d];
         let mut o = vec![0f32; l * d];
         let mut f1 = vec![0f32; l * self.cfg.ff];
-        let mut w = vec![0f32; l];
         for b in &self.blocks {
             b.ln1.apply(&x, l, d, &mut h);
             b.q.apply(&h, l, &mut q);
@@ -301,30 +383,30 @@ impl Tagger {
             b.v.apply(&h, l, &mut v);
             for hh in 0..heads {
                 let hs = hh * hd;
+                // scores = Q_h · K_hᵀ, softmax per row
+                matmul_abt(&q[hs..], d, &k[hs..], d, l, l, hd, None, &mut sc, l);
                 for p in 0..l {
-                    let qs = &q[p * d + hs..p * d + hs + hd];
+                    let row = &mut sc[p * l..(p + 1) * l];
                     let mut mx = f32::MIN;
-                    for t in 0..l {
-                        let s = dot(qs, &k[t * d + hs..t * d + hs + hd]) * scale;
-                        w[t] = s;
-                        mx = mx.max(s);
+                    for s in row.iter_mut() {
+                        *s *= scale;
+                        mx = mx.max(*s);
                     }
                     let mut sum = 0.0;
-                    for s in w.iter_mut() {
+                    for s in row.iter_mut() {
                         *s = (*s - mx).exp();
                         sum += *s;
                     }
                     let inv = 1.0 / sum;
-                    let os = &mut att[p * d + hs..p * d + hs + hd];
-                    os.iter_mut().for_each(|z| *z = 0.0);
-                    for t in 0..l {
-                        let a = w[t] * inv;
-                        let vs = &v[t * d + hs..t * d + hs + hd];
-                        for (oz, &vv) in os.iter_mut().zip(vs) {
-                            *oz += a * vv;
-                        }
+                    row.iter_mut().for_each(|s| *s *= inv);
+                }
+                // att_h = P · V_h  (V_h transposed to [hd, l] so it is a second A·Bᵀ)
+                for t in 0..l {
+                    for j in 0..hd {
+                        vt[j * l + t] = v[t * d + hs + j];
                     }
                 }
+                matmul_abt(&sc, l, &vt, l, l, hd, l, None, &mut att[hs..], d);
             }
             b.o.apply(&att, l, &mut o);
             for (xi, oi) in x.iter_mut().zip(&o) {
@@ -356,19 +438,54 @@ mod tests {
     use super::*;
 
     #[test]
-    fn tiled_matmul_matches_naive() {
-        let (i, o, l) = (19, 7, 11);
-        let w: Vec<f32> = (0..i * o).map(|k| ((k * 7919) % 97) as f32 / 50.0 - 1.0).collect();
-        let b: Vec<f32> = (0..o).map(|k| k as f32 / 10.0).collect();
-        let x: Vec<f32> = (0..i * l).map(|k| ((k * 31) % 53) as f32 / 20.0 - 1.0).collect();
-        let lin = Lin { w: w.clone(), b: b.clone(), i, o };
-        let mut y = vec![0f32; l * o];
-        lin.apply(&x, l, &mut y);
-        for r in 0..l {
-            for c in 0..o {
-                let want: f32 = (0..i).map(|k| x[r * i + k] * w[c * i + k]).sum::<f32>() + b[c];
-                assert!((y[r * o + c] - want).abs() < 1e-4, "{r},{c}: {} vs {want}", y[r * o + c]);
+    fn blocked_matmul_matches_naive() {
+        for &(i, o, l) in &[(19usize, 7usize, 11usize), (64, 37, 9), (256, 40, 4), (5, 3, 1)] {
+            let w: Vec<f32> = (0..i * o).map(|k| ((k * 7919) % 97) as f32 / 50.0 - 1.0).collect();
+            let b: Vec<f32> = (0..o).map(|k| k as f32 / 10.0).collect();
+            let x: Vec<f32> = (0..i * l).map(|k| ((k * 31) % 53) as f32 / 20.0 - 1.0).collect();
+            let lin = Lin { w: w.clone(), b: b.clone(), i, o };
+            let mut y = vec![0f32; l * o];
+            lin.apply(&x, l, &mut y);
+            for r in 0..l {
+                for c in 0..o {
+                    let want: f32 = (0..i).map(|k| x[r * i + k] * w[c * i + k]).sum::<f32>() + b[c];
+                    assert!((y[r * o + c] - want).abs() < 1e-3, "{i},{o},{l} @ {r},{c}: {} vs {want}", y[r * o + c]);
+                }
             }
+        }
+        // strided (attention-style) use: rows of length 8 inside stride-16 buffers, output offset
+        let a: Vec<f32> = (0..5 * 16).map(|k| (k % 7) as f32 - 3.0).collect();
+        let bm: Vec<f32> = (0..6 * 16).map(|k| (k % 5) as f32 - 2.0).collect();
+        let mut out = vec![0f32; 5 * 10];
+        matmul_abt(&a[4..], 16, &bm[2..], 16, 5, 6, 8, None, &mut out[3..], 10);
+        for r in 0..5 {
+            for c in 0..6 {
+                let want: f32 = (0..8).map(|k| a[r * 16 + 4 + k] * bm[c * 16 + 2 + k]).sum();
+                assert!((out[r * 10 + 3 + c] - want).abs() < 1e-4);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn kernel_gflops() {
+        for &(l, i, o) in &[(135usize, 256usize, 256usize), (135, 256, 1024), (135, 1024, 256), (135, 64, 135)] {
+            let w: Vec<f32> = (0..i * o).map(|k| ((k * 7919) % 97) as f32 / 50.0 - 1.0).collect();
+            let b = vec![0f32; o];
+            let x: Vec<f32> = (0..i * l).map(|k| ((k * 31) % 53) as f32 / 20.0 - 1.0).collect();
+            let lin = Lin { w, b, i, o };
+            let mut y = vec![0f32; l * o];
+            let reps = 50;
+            let t0 = std::time::Instant::now();
+            for _ in 0..reps {
+                lin.apply(&x, l, &mut y);
+            }
+            let dt = t0.elapsed().as_secs_f64() / reps as f64;
+            eprintln!("{l}x{i}x{o}: {:.3} ms  {:.1} GFLOP/s", dt * 1e3, 2.0 * (l * i * o) as f64 / dt / 1e9);
         }
     }
 }
