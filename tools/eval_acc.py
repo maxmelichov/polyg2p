@@ -172,7 +172,8 @@ def main():
         words = []
         for w in cand:
             # WikiPron keys are case-sensitive (German nouns); try both
-            for k in (w, w.capitalize()):
+            # single capital letters are letter names in WikiPron ("A" = aː), not the word
+            for k in ((w, w.capitalize()) if len(w) > 1 else (w,)):
                 if k in gold:
                     words.append(k)
                     break
