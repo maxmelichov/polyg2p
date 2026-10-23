@@ -331,7 +331,12 @@ impl G2p {
     }
 
     fn push_word(&self, outs: &mut Vec<Out>, w: &str, lang: Lang) {
-        let lw = w.to_lowercase();
+        // Turkish has dotted and dotless i: I -> ı, İ -> i
+        let lw = if lang == Lang::Tr {
+            w.chars().map(|c| match c { 'I' => 'ı', 'İ' => 'i', c => c }).collect::<String>().to_lowercase()
+        } else {
+            w.to_lowercase()
+        };
         if lang != Lang::En && spell::is_acronym(w) {
             if let Some(ph) = spell::spell(w, lang) {
                 outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
