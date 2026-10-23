@@ -12,3 +12,4 @@ __pycache__/
 *.whl
 *.tar.gz
 *.zip
+/.claude/

@@ -47,8 +47,88 @@ fn parse(s: &str, lang: Lang) -> Option<(u128, Option<String>)> {
     Some((int_part.parse().ok()?, frac))
 }
 
+/// English ordinal of a cardinal word sequence (twenty one -> twenty first).
+fn en_ordinal(words: &mut Vec<String>) {
+    let Some(last) = words.last_mut() else { return };
+    let o = match last.as_str() {
+        "one" => "first".to_string(),
+        "two" => "second".to_string(),
+        "three" => "third".to_string(),
+        "five" => "fifth".to_string(),
+        "eight" => "eighth".to_string(),
+        "nine" => "ninth".to_string(),
+        "twelve" => "twelfth".to_string(),
+        w if w.ends_with('y') => format!("{}ieth", &w[..w.len() - 1]),
+        w => format!("{w}th"),
+    };
+    *last = o;
+}
+
 /// Expand a numeric token into words, appended to `out`.
-pub fn expand(tok: &str, lang: Lang, _prev: &str, next: &str, out: &mut Vec<String>) {
+pub fn expand(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<String>) {
+    let lower = tok.to_ascii_lowercase();
+    for suf in ["st", "nd", "rd", "th"] {
+        if let Some(digits) = lower.strip_suffix(suf) {
+            if digits.chars().all(|c| c.is_ascii_digit()) {
+                if let Ok(n) = digits.parse::<u128>() {
+                    let mut words = cardinal(n, lang);
+                    if lang == Lang::En {
+                        en_ordinal(&mut words);
+                    }
+                    out.extend(words);
+                    return;
+                }
+            }
+            let _ = prev;
+        }
+    }
+    expand_plain(tok, lang, prev, next, out)
+}
+
+/// `$5.50`, `€1`, `£20`: the amount, then the unit (singular for one), then cents.
+pub fn currency(sym: char, tok: &str, lang: Lang, out: &mut Vec<String>) {
+    let Some((n, frac)) = parse(tok, lang) else {
+        if let Some(w) = symbol(sym, lang) {
+            out.extend(w.split(' ').map(String::from));
+        }
+        expand(tok, lang, "", "", out);
+        return;
+    };
+    if lang != Lang::En {
+        expand(tok, lang, "", "", out);
+        if let Some(w) = symbol(sym, lang) {
+            out.extend(w.split(' ').map(String::from));
+        }
+        return;
+    }
+    let (one, many, cents) = match sym {
+        '$' => ("dollar", "dollars", "cents"),
+        '€' => ("euro", "euros", "cents"),
+        '£' => ("pound", "pounds", "pence"),
+        '₪' => ("shekel", "shekels", "agorot"),
+        '¥' => ("yen", "yen", "sen"),
+        '₽' => ("ruble", "rubles", "kopecks"),
+        _ => ("", "", "cents"),
+    };
+    let c: u128 = frac.as_deref().and_then(|f| {
+        let f: String = f.chars().take(2).collect();
+        let v: u128 = f.parse().ok()?;
+        Some(if f.len() == 1 { v * 10 } else { v })
+    }).unwrap_or(0);
+    if n > 0 || c == 0 {
+        out.extend(cardinal(n, lang));
+        out.push(if n == 1 { one } else { many }.into());
+    }
+    if c > 0 {
+        if n > 0 {
+            out.push("and".into());
+        }
+        out.extend(cardinal(c, lang));
+        out.push(if c == 1 && cents == "cents" { "cent".into() } else { cents.into() });
+    }
+}
+
+fn expand_plain(tok: &str, lang: Lang, _prev: &str, next: &str, out: &mut Vec<String>) {
     if let Some((h, m)) = tok.split_once(':') {
         if let (Ok(h), Ok(m)) = (h.parse::<u128>(), m.parse::<u128>()) {
             out.extend(cardinal(h, lang));

@@ -388,6 +388,51 @@ impl English {
     /// Sentence pass: homographs, function-word linking and espeak's word joining.
     pub fn join(&self, outs: &mut [Out]) {
         let n = outs.len();
+        // title / unit abbreviations: "Dr. Smith" reads "doctor smith" without a pause
+        for k in 0..n {
+            let src = outs[k].src.as_str();
+            let has_next = k + 1 < n && !outs[k + 1].src.is_empty();
+            let expanded = match src {
+                "dr" => "doctor",
+                "mr" => "mister",
+                "mrs" => "missus",
+                "ms" => "miz",
+                "jr" => "junior",
+                "sr" => "senior",
+                "prof" => "professor",
+                "mt" => "mount",
+                "rev" => "reverend",
+                "capt" => "captain",
+                "lt" => "lieutenant",
+                "sgt" => "sergeant",
+                "gov" => "governor",
+                "sen" => "senator",
+                "vs" => "versus",
+                "etc" => "etcetera",
+                "inc" => "incorporated",
+                "ltd" => "limited",
+                "st" if outs[k].punct == "." || has_next => {
+                    if has_next && outs[k].punct.is_empty() || outs[k].punct == "." && has_next { "saint" } else { "street" }
+                }
+                _ => continue,
+            };
+            // a plain lowercase word in running text ("the st") is more likely not an abbreviation
+            let abbreviated = outs[k].punct.starts_with('.') || matches!(src, "mr" | "mrs" | "dr" | "ms" | "vs" | "etc" | "jr" | "sr");
+            if !abbreviated {
+                continue;
+            }
+            let ph = match expanded {
+                "miz" => Some("mˈɪz".to_string()),
+                w => self.lookup(w).map(|p| p.to_string()),
+            };
+            if let Some(p) = ph {
+                outs[k].ph = p;
+                if outs[k].punct == "." && has_next && expanded != "etcetera" {
+                    outs[k].punct.clear();
+                    outs[k].pause_after = false;
+                }
+            }
+        }
         for k in 0..n {
             let src = outs[k].src.clone();
             let prev = if k > 0 && !outs[k - 1].pause_after { outs[k - 1].src.clone() } else { String::new() };

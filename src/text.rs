@@ -74,6 +74,14 @@ pub fn tokenize(text: &str) -> Vec<Tok> {
                     break;
                 }
             }
+            // ordinal suffix glued to the digits: 5th, 21st, 2nd, 3rd
+            if i + 1 < chars.len() {
+                let suf: String = chars[i..(i + 2).min(chars.len())].iter().collect::<String>().to_ascii_lowercase();
+                let after_ok = chars.get(i + 2).map_or(true, |c| !c.is_alphanumeric());
+                if matches!(suf.as_str(), "st" | "nd" | "rd" | "th") && after_ok {
+                    i += 2;
+                }
+            }
             out.push(Tok::Num(chars[start..i].iter().collect()));
         } else if KEPT_PUNCT.contains(&c) {
             out.push(Tok::Punct(c));

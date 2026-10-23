@@ -222,9 +222,22 @@ impl G2p {
         let toks = text::tokenize(text);
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
         let mut words: Vec<String> = Vec::new();
+        let mut skip = usize::MAX;
         for (ti, t) in toks.iter().enumerate() {
+            if ti == skip {
+                continue;
+            }
             match t {
                 Tok::Word(w) => self.push_word(&mut outs, w, lang),
+                Tok::Sym(c) if num::is_currency(*c) && matches!(toks.get(ti + 1), Some(Tok::Num(_))) => {
+                    let Some(Tok::Num(n)) = toks.get(ti + 1) else { unreachable!() };
+                    words.clear();
+                    num::currency(*c, n, lang, &mut words);
+                    for w in words.drain(..) {
+                        self.push_word(&mut outs, &w, lang);
+                    }
+                    skip = ti + 1;
+                }
                 Tok::Num(n) => {
                     // look at the next word for context (years, units, currency suffixes)
                     let next = toks[ti + 1..].iter().find_map(|t| match t {
