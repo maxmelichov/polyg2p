@@ -214,7 +214,7 @@ def main():
     ap.add_argument("--test", type=float, default=0.05)
     ap.add_argument("--hours", type=float, default=99)
     a = ap.parse_args()
-    torch.set_num_threads(2)
+    torch.set_num_threads(int(os.environ.get("THREADS", "2")))
     random.seed(0)
     torch.manual_seed(0)
     os.makedirs(a.outdir, exist_ok=True)

@@ -46,6 +46,7 @@ CASES = [
 
 
 def norm(s):
+    s = s.replace("ᵻ", "ɪ")
     s = unicodedata.normalize("NFC", s).replace("ˈ", "").replace("ˌ", "")
     return s.replace("ʤ", "dʒ").replace("ʧ", "tʃ")
 
