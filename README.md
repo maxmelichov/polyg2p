@@ -7,13 +7,23 @@ retraining. It contains no espeak code or data.
 
 | Language | Engine | What it does |
 |---|---|---|
-| English (en) | Rust | CMUdict lexicon in espeak notation, context rules for homographs (read/read, record/record, live/live, tear/tear, …), espeak-style weak forms and word joining, affix/compound decomposition, tiny transformer for unknown words |
+| English (en) | Rust | CMUdict lexicon in espeak notation (spelling-aware reduced vowels), context rules for homographs (read/read, record/record, live/live, …), weak forms and word joining, affix/compound decomposition, title abbreviations, ordinals, currency, tiny transformer for unknown words |
 | Spanish (es) | Rust | Rules only: syllabification, orthographic stress, β/ð/ɣ allophones and cross-word effects |
 | Italian (it) | Rust | Rules + stress and open/closed-vowel statistics, optional lexicon |
 | German (de) | Rust | Lexicon (optional pack) + compound splitting + rules |
-| Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons; Latin words go to the English engine. RUAccent's two ONNX context models plug in through `Russian::phonemize_with` |
-| Hebrew (he) | renikud-onnx | Routed to [ReNikud](https://github.com/renikud/renikud) |
+| Portuguese, Brazil (pt) | Rust | Rules + open/closed-vowel ending statistics, palatalization, epenthesis, sandhi |
+| Polish (pl) | Rust | Rules: soft series, nasal vowels by context, voicing assimilation, stress exceptions, loan respellings |
+| Czech (cs) | Rust | Rules: palatalization, ř, assimilation, preposition merging, loanword stems |
+| Ukrainian (uk) | Rust | Rules + stress statistics (stem/ending tables), optional `uk.lex` stress pack |
+| Hungarian (hu) | Rust | Rules: assimilation, long consonants, `egy` rules, compounds |
+| Greek (el) | Rust | Rules: palatals, synizesis, final-ν sandhi, σ-voicing |
+| Turkish (tr) | Rust | Rules: vowel allophones, ğ, pre-stressing suffixes, lexical stress list |
+| Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons; Latin words go to the English engine |
+| Hebrew (he) | renikud-onnx | Routed to [ReNikud](https://github.com/renikud/renikud); a native context model is in progress |
 | Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
+
+More languages (fr, nl, ro, fi, sv, id, ca, ar) are scaffolded in `src/` and
+being filled in; see `docs/adding-a-language.md` and `docs/results/`.
 
 ## Results
 
@@ -22,18 +32,25 @@ All numbers on 2 CPU cores, single-threaded, against espeak-ng 1.52 through
 
 **Accuracy vs Wiktionary** (WikiPron; 20k most frequent words, frequency-weighted;
 both outputs collapsed to a shared broad phone set so only real pronunciation
-differences count, not notation):
+differences count, not notation; per-language collapse rules in `tools/collapse_*.py`):
 
 | | polyg2p | espeak-ng |
 |---|---|---|
+| English, strict | **97.7%** | 96.7% |
+| English, unstressed ɪ = ə ² | **98.6%** | 97.6% |
 | Spanish | **99.5%** | 99.3% |
 | Italian (rules + tables, no lexicon) | **97.0%** | 85.4% |
 | German, with `de.lex` ¹ | **98.4%** | 96.4% |
 | German, rules only | 92.1% | 96.4% |
-| English, strict | 96.2% | **96.7%** |
-| English, unstressed ɪ = ə ² | **98.6%** | 97.6% |
+| Portuguese (BR) | **99.6%** | 96.9% |
+| Polish | **99.9%** | 91.5% |
+| Czech | **99.9%** | 96.4% |
+| Ukrainian (segments / with stress, `uk.lex`) ¹ | **99.3%** / **98.8%** | 79.7% / 69.1% |
+| Hungarian | **99.8%** | 95.2% |
+| Greek | **99.3%** | 80.8% |
+| Turkish | 99.7% | 99.7% |
 
-¹ `de.lex` comes from Wiktionary too, so this number is optimistic.
+¹ These lexicons come from Wiktionary too, so the numbers are optimistic.
 ² CMUdict and Wiktionary disagree mostly on how reduced vowels are written.
 
 **English words not in the dictionary** (3,000 CMUdict words held out of model
@@ -41,13 +58,13 @@ training; mostly names):
 
 | | exact | phoneme error rate |
 |---|---|---|
-| polyg2p, default model (`en.g2p`, 0.6M params) | **68.4%** | **7.7%** |
+| polyg2p, default model (`en.g2p`, 0.6M params) | **70.4%** | **7.3%** |
 | polyg2p, `POLYG2P_EN_MODEL=large` (1.2M params) | **72.9%** | **6.6%** |
-| espeak-ng | 61.5% | 9.2% |
+| espeak-ng | 64.2% | 8.7% |
 
 **English homographs in context** (40 sentences: read, record, live, close,
 tear, lead, use, wind, present, object, estimate, separate, …; written by the
-authors, so indicative only): polyg2p 40/40, espeak-ng 30/40.
+authors, so indicative only): polyg2p 40/40, espeak-ng 32/40.
 
 **Russian:** exact port of Russian-G2P. Identical output to the Python
 version on 845 gold words, 555k synthetic words and 28.8k sentences. It's about
