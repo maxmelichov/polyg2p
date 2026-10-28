@@ -81,6 +81,10 @@ times, dates, phone numbers, thousands separators, gender agreement with the
 following noun); Latin-script words pass through unchanged like the teacher, or
 go to a callback (`Hebrew::with_latin`, like `ru.rs`). Punctuation passes through.
 
+A smaller variant (`he-small.g2p`: d = 192, 4 layers, 1.9 M params, 2.5× faster,
+~2 points lower agreement) is trained with
+`--d 192 --layers 4 --ff 768`.
+
 Model file: `he.g2p` in the data directory (`G2p::new(Some(dir))`,
 `$POLYG2P_DATA` in Python, or `$POLYG2P_HE_MODEL` to point at a file). Without
 it `phonemize` returns an empty string and warns once.

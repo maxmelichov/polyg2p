@@ -61,9 +61,18 @@ sentences; see the small model below and *Open issues*.
 | `he-int8.g2p` | 5 435 024 |
 | RenikudPlus `model.onnx` | ~310 MB |
 
-## Small model (d = 192, 4 layers, FFN 768, 1.9 M params)
+## Small model `he-small.g2p` (d = 192, 4 layers, FFN 768, 1.89 M params)
 
-_(filled in below when its run finishes)_
+3 epochs on the same 1 M rows from scratch. Select it with
+`POLYG2P_HE_MODEL=/path/to/he-small.g2p`.
+
+| | small | default |
+|---|---:|---:|
+| held-out word agreement with the teacher | 95.59 % | 97.43 % |
+| held-out sentence byte-identical | 63.4 % | 75.5 % |
+| gold word accuracy vs human | 84.77 % | 86.63 % |
+| per sentence (68 chars) / per char | **3.3 ms / 49 µs** | 8.3 ms / 122 µs |
+| f32 / int8 file | 7.6 MB / 2.3 MB | 19.6 MB / 5.4 MB |
 
 ## Open issues
 
