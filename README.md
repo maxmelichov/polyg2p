@@ -19,12 +19,13 @@ retraining. It contains no espeak code or data.
 | Hungarian (hu) | Rust | Rules: assimilation, long consonants, `egy` rules, compounds |
 | Greek (el) | Rust | Rules: palatals, synizesis, final-ν sandhi, σ-voicing |
 | Turkish (tr) | Rust | Rules: vowel allophones, ğ, pre-stressing suffixes, lexical stress list |
+| Finnish (fi) | Rust | Rules: weight-sensitive secondary stress, compound splitting, boundary gemination in `join` |
 | Indonesian (id) | Rust | Rules + e/ə stem table, prefix peeling, stress |
 | Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons; Latin words go to the English engine |
 | Hebrew (he) | renikud-onnx | Routed to [ReNikud](https://github.com/renikud/renikud); a native context model is in progress |
 | Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
 
-More languages (nl, ro, fi, sv, ca, ar) are scaffolded in `src/` and
+More languages (nl, ro, sv, ca, ar) are scaffolded in `src/` and
 being filled in; see `docs/adding-a-language.md` and `docs/results/`.
 
 ## Results
@@ -53,6 +54,7 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | Greek | **99.3%** | 80.8% |
 | Turkish | 99.7% | 99.7% |
 | Indonesian | **99.6%** | 88.4% |
+| Finnish | 99.5% | 99.5% |
 
 ¹ These lexicons come from Wiktionary too, so the numbers are optimistic.
 ² CMUdict and Wiktionary disagree mostly on how reduced vowels are written.
