@@ -30,6 +30,13 @@ import importlib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
+def _plugin_raw(lang):
+    try:
+        return getattr(importlib.import_module(f"collapse_{lang}"), "collapse_raw", None)
+    except ImportError:
+        return None
+
+
 def _plugin(lang):
     try:
         return importlib.import_module(f"collapse_{lang}").collapse
@@ -47,6 +54,11 @@ LENIENT = False
 
 def collapse(s, lang):
     s = unicodedata.normalize("NFC", s.strip())
+    # a plugin may define collapse_raw(s) to see the string before the common
+    # stripping (nasal tildes, stress) removes detail the language needs
+    f0 = _plugin_raw(lang)
+    if f0:
+        s = f0(s)
     for a, b in [("ʤː", "ddʒ"), ("ʧː", "ttʃ"), ("ʦː", "tts"), ("ʣː", "ddz"), ("t͡sː", "tts"), ("d͡zː", "ddz"),
                  ("t͡ʃː", "ttʃ"), ("d͡ʒː", "ddʒ"), ("tsː", "tts"), ("dzː", "ddz"), ("tʃː", "ttʃ"), ("dʒː", "ddʒ")]:
         s = s.replace(a, b)

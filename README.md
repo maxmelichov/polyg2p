@@ -11,6 +11,7 @@ retraining. It contains no espeak code or data.
 | Spanish (es) | Rust | Rules only: syllabification, orthographic stress, β/ð/ɣ allophones and cross-word effects |
 | Italian (it) | Rust | Rules + stress and open/closed-vowel statistics, optional lexicon |
 | German (de) | Rust | Lexicon (optional pack) + compound splitting + rules |
+| French (fr) | Rust | Rules + ~900-entry exception lexicon: silent finals, e-caduc, nasal vowels, liaison and sandhi in `join` |
 | Portuguese, Brazil (pt) | Rust | Rules + open/closed-vowel ending statistics, palatalization, epenthesis, sandhi |
 | Polish (pl) | Rust | Rules: soft series, nasal vowels by context, voicing assimilation, stress exceptions, loan respellings |
 | Czech (cs) | Rust | Rules: palatalization, ř, assimilation, preposition merging, loanword stems |
@@ -18,11 +19,12 @@ retraining. It contains no espeak code or data.
 | Hungarian (hu) | Rust | Rules: assimilation, long consonants, `egy` rules, compounds |
 | Greek (el) | Rust | Rules: palatals, synizesis, final-ν sandhi, σ-voicing |
 | Turkish (tr) | Rust | Rules: vowel allophones, ğ, pre-stressing suffixes, lexical stress list |
+| Indonesian (id) | Rust | Rules + e/ə stem table, prefix peeling, stress |
 | Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons; Latin words go to the English engine |
 | Hebrew (he) | renikud-onnx | Routed to [ReNikud](https://github.com/renikud/renikud); a native context model is in progress |
 | Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
 
-More languages (fr, nl, ro, fi, sv, id, ca, ar) are scaffolded in `src/` and
+More languages (nl, ro, fi, sv, ca, ar) are scaffolded in `src/` and
 being filled in; see `docs/adding-a-language.md` and `docs/results/`.
 
 ## Results
@@ -42,6 +44,7 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | Italian (rules + tables, no lexicon) | **97.0%** | 85.4% |
 | German, with `de.lex` ¹ | **98.4%** | 96.4% |
 | German, rules only | 92.1% | 96.4% |
+| French (nasals scored) | **98.9%** | 97.7% |
 | Portuguese (BR) | **99.6%** | 96.9% |
 | Polish | **99.9%** | 91.5% |
 | Czech | **99.9%** | 96.4% |
@@ -49,6 +52,7 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | Hungarian | **99.8%** | 95.2% |
 | Greek | **99.3%** | 80.8% |
 | Turkish | 99.7% | 99.7% |
+| Indonesian | **99.6%** | 88.4% |
 
 ¹ These lexicons come from Wiktionary too, so the numbers are optimistic.
 ² CMUdict and Wiktionary disagree mostly on how reduced vowels are written.

@@ -35,3 +35,14 @@ def collapse(s):
         head = head.replace("ɛ", "e").replace("ɔ", "o").replace("œ", "ø")
         s = head + tail
     return s
+
+
+def collapse_raw(s):
+    """Runs before eval_acc's common stripping: keep nasal vowels distinct from
+    their oral counterparts by rewriting them to capital letters (ɛ̃/œ̃ -> E,
+    ɑ̃ -> A, ɔ̃ -> O) before the tilde is removed."""
+    import unicodedata
+    s = unicodedata.normalize("NFD", s)
+    for a, b in [("ɛ̃", "E"), ("œ̃", "E"), ("ɑ̃", "A"), ("ã", "A"), ("ɔ̃", "O"), ("õ", "O")]:
+        s = s.replace(a, b)
+    return unicodedata.normalize("NFC", s)

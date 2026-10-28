@@ -87,3 +87,8 @@ o pe ky ɛʁ ɛs te y ve dubləve iks iɡʁɛk zɛd`.
   and the espeak diff cover them instead.
 * `RATP`-style acronyms with a vowel in second position are read as words by
   `spell::is_acronym` (`ʁatp`); that is in `spell.rs`, not in this module.
+
+## Strict nasal scoring
+
+With `collapse_raw` (nasal vowels kept distinct from oral ones, added after the
+main evaluation): polyg2p 98.9% / PER 0.7%, espeak-ng 97.7% / PER 1.9%.
