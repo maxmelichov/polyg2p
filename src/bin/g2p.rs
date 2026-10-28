@@ -5,7 +5,7 @@ use std::io::{self, BufRead, BufWriter, Write};
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let lang = args.get(1).and_then(|l| polyg2p::Lang::parse(l)).unwrap_or_else(|| {
-        eprintln!("usage: g2p <en|es|it|de> [--data DIR] [--words]");
+        eprintln!("usage: g2p <en|es|it|de|ru|he|...> [--data DIR] [--words]");
         std::process::exit(2)
     });
     let data = args.iter().position(|a| a == "--data").and_then(|i| args.get(i + 1)).map(std::path::PathBuf::from);

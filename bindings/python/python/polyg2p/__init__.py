@@ -1,10 +1,10 @@
 """polyg2p: fast grapheme-to-phoneme for TTS, espeak-compatible IPA, Apache-2.0.
 
-English, Spanish, Italian and German (and Russian, when built with it) run in the
-Rust core. Hebrew and Yiddish are routed to their dedicated engines when those
-packages are installed:
+English, Spanish, Italian, German, Russian and Hebrew run in the Rust core
+(Hebrew needs the ``he.g2p`` tagger in the data folder). Yiddish, and Hebrew
+when ``he.g2p`` is missing, are routed to their Python engines when installed:
 
-* he -> renikud-onnx (``pip install renikud-onnx``)
+* he -> renikud-onnx (``pip install renikud-onnx``), only without ``he.g2p``
 * yi -> phonikud-yi (the ``yiddish_phonikud`` package from phonikud-yi-blue-tts)
 
     >>> from polyg2p import Phonemizer
@@ -126,7 +126,9 @@ class Phonemizer:
         if lang == "he" or (lang not in ("yi",) and _HEBREW.search(text) and lang not in CORE_LANGS):
             # the native Hebrew core wins when this build has it and no override was passed
             if self._he is None and "he" in CORE_LANGS:
-                return self.engine.phonemize(text, "he")
+                out = self.engine.phonemize(text, "he")
+                if out:  # empty = the Rust core has no he.g2p in its data dir
+                    return out
             return self._hebrew(text)
         if lang == "yi":
             return self._yiddish(text)

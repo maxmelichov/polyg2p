@@ -9,6 +9,7 @@ pub mod en;
 pub mod es;
 pub mod fold;
 pub mod he;
+pub mod tagger;
 pub mod it;
 pub mod lexicon;
 pub mod nn;

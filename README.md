@@ -26,7 +26,7 @@ retraining. It contains no espeak code or data.
 | Indonesian (id) | Rust | Rules + e/ə stem table, prefix peeling, stress |
 | Swedish (sv) | Rust | Rules + ~1,400-entry table, loan-suffix stress, compound splitter; optional `sv.lex` |
 | Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons; Latin words go to the English engine |
-| Hebrew (he) | renikud-onnx | Routed to [ReNikud](https://github.com/renikud/renikud); a native context model is in progress |
+| Hebrew (he) | Rust | Sentence-level character tagger (4.9M-param transformer encoder, `he.g2p`) distilled from [RenikudPlus](https://github.com/maxmelichov/RenikudPlus), same IPA notation; number front end ported from hebrew-num2words. See [docs/hebrew.md](docs/hebrew.md). Falls back to renikud-onnx in Python when `he.g2p` is absent |
 | Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
 
 Arabic (ar) is scaffolded in `src/` and pending a context model like Hebrew's; see `docs/adding-a-language.md` and `docs/results/`.
