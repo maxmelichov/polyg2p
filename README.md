@@ -152,6 +152,8 @@ CLI: `cargo build --release && echo "La città è bella." | target/release/g2p i
 | `it.lex` | WikiPron (Wiktionary) | CC BY-SA | Italian uses rules + statistics |
 | `de.lex` | ipa-dict / german-ipa-dict (Wiktionary) | CC BY-SA | German uses rules |
 | `ru_*.lex` | RUAccent dictionaries (`tools/ru_build_lex.py ru_lexicon/ out/`) | Apache-2.0 | Russian uses its suffix fallback (stress often wrong) |
+| `he.g2p` (`he-int8.g2p`, `he-small.g2p`) | distilled from RenikudPlus on 1M Knesset sentences (`tools/he_distill.py`, `tools/train_he.py`) | Apache-2.0 | Hebrew falls back to renikud-onnx in Python |
+| `uk.lex`, `nl.lex`, `sv.lex` | WikiPron (Wiktionary) | CC BY-SA | rules only |
 
 Rebuild everything from the public sources:
 
