@@ -13,6 +13,7 @@ retraining. It contains no espeak code or data.
 | German (de) | Rust | Lexicon (optional pack) + compound splitting + rules |
 | French (fr) | Rust | Rules + ~900-entry exception lexicon: silent finals, e-caduc, nasal vowels, liaison and sandhi in `join` |
 | Portuguese, Brazil (pt) | Rust | Rules + open/closed-vowel ending statistics, palatalization, epenthesis, sandhi |
+| Catalan, Central (ca) | Rust | Rules + open/closed ending statistics, vowel reduction, sandhi in `join` |
 | Romanian (ro) | Rust | Rules: glides vs hiatus, morphological stress overrides, exception list |
 | Polish (pl) | Rust | Rules: soft series, nasal vowels by context, voicing assimilation, stress exceptions, loan respellings |
 | Czech (cs) | Rust | Rules: palatalization, ř, assimilation, preposition merging, loanword stems |
@@ -27,7 +28,7 @@ retraining. It contains no espeak code or data.
 | Hebrew (he) | renikud-onnx | Routed to [ReNikud](https://github.com/renikud/renikud); a native context model is in progress |
 | Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
 
-More languages (sv, ca, ar) are scaffolded in `src/` and
+More languages (sv, ar) are scaffolded in `src/` and
 being filled in; see `docs/adding-a-language.md` and `docs/results/`.
 
 ## Results
@@ -51,7 +52,8 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | Dutch, rules only | **99.1%** | 96.8% |
 | Portuguese (BR) | **99.6%** | 96.9% |
 | Polish | **99.9%** | 91.5% |
-| Romanian | **98.2%** | 97.9% |
+| Romanian | **98.0%** | 97.8% |
+| Catalan (Central gold from `tools/ca_gold.py`) | **93.9%** | 93.2% |
 | Czech | **99.9%** | 96.4% |
 | Ukrainian (segments / with stress, `uk.lex`) ¹ | **99.3%** / **98.8%** | 79.7% / 69.1% |
 | Hungarian | **99.8%** | 95.2% |

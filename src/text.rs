@@ -41,7 +41,7 @@ pub fn tokenize(text: &str) -> Vec<Tok> {
                 let d = chars[i];
                 if is_word_char(d) {
                     i += 1;
-                } else if matches!(d, '\'' | '’' | '-' | '‐') && i + 1 < chars.len() && is_word_char(chars[i + 1]) {
+                } else if matches!(d, '\'' | '’' | '-' | '‐' | '·') && i + 1 < chars.len() && is_word_char(chars[i + 1]) {
                     i += 1;
                 } else {
                     break;

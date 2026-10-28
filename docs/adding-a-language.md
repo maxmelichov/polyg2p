@@ -42,7 +42,8 @@ end, don't do it yourself). The *symbol conventions* must be espeak's; the
    several thousand words (`tools/cmp_ours.py` / `tools/diffstat.py`) and sort
    the differences into "notation" (fix ours) vs "espeak is wrong" (keep ours).
 3. Measure against Wiktionary with `tools/eval_acc.py <lang> --show 40`. The
-   gold files live in `sources/` (WikiPron). Add `tools/collapse_<lang>.py`
+   gold files live in `sources/` (WikiPron; for Catalan run `tools/ca_gold.py` to
+   derive `cat_latn_central.tsv` from the narrow file). Add `tools/collapse_<lang>.py`
    with a `collapse(s)` that maps both outputs to a shared broad phone set so
    only real pronunciation differences count. The target: beat espeak's
    word accuracy on the 20k most frequent words, and never be far below it.
