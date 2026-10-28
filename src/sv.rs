@@ -16,7 +16,6 @@
 //! `ŋ`, unstressed e `ə` after the stress, `ˈ` right before the stressed
 //! vowel, `ˌ` on the other parts of a compound. Tone accents are not marked.
 
-use std::path::Path;
 use std::sync::OnceLock;
 
 use crate::lexicon::Lexicon;
@@ -31,8 +30,7 @@ fn data_lex() -> Option<&'static Lexicon> {
     static LEX_FILE: OnceLock<Option<Lexicon>> = OnceLock::new();
     LEX_FILE
         .get_or_init(|| {
-            let dir = std::env::var_os("POLYG2P_DATA")?;
-            Lexicon::open(&Path::new(&dir).join("sv.lex")).ok()
+            Lexicon::open(&crate::data_dir()?.join("sv.lex")).ok()
         })
         .as_ref()
 }

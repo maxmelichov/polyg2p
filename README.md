@@ -24,12 +24,12 @@ retraining. It contains no espeak code or data.
 | Dutch (nl) | Rust | Rules: syllable-openness vowel length, schwa morphology, prefix layering, assimilation; optional `nl.lex` |
 | Finnish (fi) | Rust | Rules: weight-sensitive secondary stress, compound splitting, boundary gemination in `join` |
 | Indonesian (id) | Rust | Rules + e/ə stem table, prefix peeling, stress |
+| Swedish (sv) | Rust | Rules + ~1,400-entry table, loan-suffix stress, compound splitter; optional `sv.lex` |
 | Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons; Latin words go to the English engine |
 | Hebrew (he) | renikud-onnx | Routed to [ReNikud](https://github.com/renikud/renikud); a native context model is in progress |
 | Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
 
-More languages (sv, ar) are scaffolded in `src/` and
-being filled in; see `docs/adding-a-language.md` and `docs/results/`.
+Arabic (ar) is scaffolded in `src/` and pending a context model like Hebrew's; see `docs/adding-a-language.md` and `docs/results/`.
 
 ## Results
 
@@ -61,6 +61,7 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | Turkish | 99.7% | 99.7% |
 | Indonesian | **99.6%** | 88.4% |
 | Finnish | 99.5% | 99.5% |
+| Swedish (3.4k gold words) | **97.9%** | 95.6% |
 
 ¹ These lexicons come from Wiktionary too, so the numbers are optimistic.
 ² CMUdict and Wiktionary disagree mostly on how reduced vowels are written.
