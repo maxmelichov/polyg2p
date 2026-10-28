@@ -59,7 +59,7 @@ training; mostly names):
 | | exact | phoneme error rate |
 |---|---|---|
 | polyg2p, default model (`en.g2p`, 0.6M params) | **70.4%** | **7.3%** |
-| polyg2p, `POLYG2P_EN_MODEL=large` (1.2M params) | **72.9%** | **6.6%** |
+| polyg2p, `POLYG2P_EN_MODEL=large` (1.2M params) | **74.6%** | **6.2%** |
 | espeak-ng | 64.2% | 8.7% |
 
 **English homographs in context** (40 sentences: read, record, live, close,
