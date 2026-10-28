@@ -12,7 +12,6 @@
 //! w = ʋ, g = ɣ (x when voiceless), stress `ˈ` directly before the vowel.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use crate::lexicon::Lexicon;
@@ -280,8 +279,7 @@ fn exc() -> &'static HashMap<&'static str, &'static str> {
 fn lexicon() -> Option<&'static Lexicon> {
     static L: OnceLock<Option<Lexicon>> = OnceLock::new();
     L.get_or_init(|| {
-        let dir = std::env::var_os("POLYG2P_DATA")?;
-        let p = PathBuf::from(dir).join("nl.lex");
+        let p = crate::data_dir()?.join("nl.lex");
         Lexicon::open(&p).ok()
     })
     .as_ref()
