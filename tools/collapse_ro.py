@@ -7,7 +7,8 @@ whispered final i (Cʲ, Cʲʲ, iʲ → i), hiatus vs glide for i/u (j → i, w �
 gold itself is inconsistent here), tap vs trill, ŋ, palatal k/g, length, and
 espeak's `y` for â/î (a notation bug of its `ro` voice, not a pronunciation),
 ɡz/ks for `x` (the gold has both for `ex-` words), and e̯a after tʃ/dʒ, where the
-gold writes both `t͡ʃe̯a` and `t͡ʃa` (`aceasta` / `această`).
+gold writes both `t͡ʃe̯a` and `t͡ʃa` (`aceasta` / `această`), and an i-glide after tʃ/dʒ
+(`t͡ʃoban` / `t͡ʃioban`).
 """
 import re
 import unicodedata
@@ -33,4 +34,6 @@ def collapse(s):
     s = re.sub(r"i{3,}", "ii", s)
     # the gold's epenthetic j in an -ie/-ia hiatus (iunie → juniје): ii + vowel → i + vowel
     s = re.sub(rf"ii(?=[{V}])", "i", s)
+    # an i-glide after tʃ/dʒ is not distinctive (gold: t͡ʃoban / t͡ʃioban, pit͡ʃor / pit͡ʃior)
+    s = re.sub(r"(tʃ|dʒ)i(?=[aou])", r"\1", s)
     return s

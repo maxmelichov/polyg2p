@@ -94,7 +94,10 @@ const FIXED: &[(&str, &str)] = &[
     ("dnei", "dˈɔamneɪ"), ("km", "kilomˈetri"), ("kg", "kiloɡrˈame"), ("art", "artˈikolul"), ("tel", "telefˈon"),
     ("ok", "okˈeɪ"), ("ora", "ˈoɾa"),
     ("sunt", "sˈunt"), ("sînt", "sˈɨnt"), ("suntem", "sˈuntem"), ("sunteți", "sˈuntetsʲʲ"), ("aici", "aˈitʃʲ"),
-    ("aidoma", "aˈidoma"), ("niciun", "nitʃiˈun"), ("nicio", "nˈitʃio"), ("niciuna", "nitʃiˈuna"),
+    ("aidoma", "aˈidoma"), ("ioana", "iˈɔana"), ("ioan", "iˈɔan"), ("ion", "iˈon"), ("ionuț", "ionˈuts"),
+    ("ionescu", "ionˈesku"), ("ionel", "ionˈel"), ("iov", "iˈov"), ("înainte", "ˌɨnaˈinte"), ("înaintea", "ˌɨnaˈintea"), ("uita", "uɪtˈa"), ("uită", "ˈuɪtə"),
+    ("uitat", "uɪtˈat"), ("uitată", "uɪtˈatə"), ("uitați", "uɪtˈatsʲʲ"), ("uit", "ˈuɪt"), ("uiți", "ˈuɪtsʲʲ"),
+    ("uitare", "uɪtˈaɾe"), ("uite", "ˈuɪte"), ("cuib", "kˈuɪb"), ("cuiburi", "kˈuɪbuɾʲʲ"), ("niciun", "nitʃiˈun"), ("nicio", "nˈitʃio"), ("niciuna", "nitʃiˈuna"),
     ("niciunul", "nitʃiˈunul"), ("niciunei", "nitʃiˈuneɪ"), ("niciunui", "nitʃiˈunuɪ"), ("aievea", "aˈjevea"), ("iie", "ˈije"),
 ];
 
@@ -109,7 +112,24 @@ const STRESS: &[&str] = &[
     "mânEcă", "adevĂr", "arĂt", "Iunie", "Iulie", "August", "polItică", "polItica", "polItici", "polItice",
     "Ultimul", "Ultima", "Ultimii", "Ultime", "Ultim", "Ultimă", "Ultimei", "Altfel", "Astfel", "Astăzi",
     "dejA", "tOtuși", "Orice", "cevA", "cinevA", "altcevA", "cumvA", "cândvA", "undevA", "câtevA", "câțivA",
-    "Ăștia", "acEștia", "desIgur", "Aur", "Aurul", "Aurului", "sIngur", "sIngură", "sIngure", "sIngurul", "sIgur", "sIgură", "sIguri", "sIgure", "Ungur", "Unguri", "priEten", "priEteni", "priEtenă", "priEtene", "alĂturi", "asEmenea", "nImeni", "dIncolo", "dOctor", "dOctori", "Ordin",
+    "Ăștia", "acEștia", "desIgur", "aurIe", "aurIi", "argintIe", "cenușIe", "cafenIe", "luA", "vIzită", "vIzita", "vIzite", "bUcur", "lIder", "lIderi", "lIderul",
+    "lIderii", "Insula", "Insulă", "Insule", "modEle", "modElele", "gAlben", "gAlbenă", "gAlbeni", "gAlbene",
+    "tErmină", "tErmin", "tErmini", "prEot", "prEotul", "prEoți", "prImei", "femEi", "idEi", "evrEi", "Isus",
+    "Epocă", "Epoca", "Epoci", "tEnis", "asIgură", "asIgur", "asIguri", "asIgure", "descrIe", "înscrIe",
+    "prescrIe", "descrIere", "descrIu", "grAtis", "cÂntec", "cÂntece", "cÂntecul", "detErmină", "detErmin",
+    "detErmini", "considerA", "spIrit", "spIritul", "spIrite", "epIscop", "epIscopul", "opEră", "opEre",
+    "Ieri", "sUflă", "mĂnâncă", "mĂnânc", "mĂnânci", "lUcrează", "cUmpără", "cUmpăr", "cUmperi", "cUmpere", "obicEi", "obicEiul", "obicEiuri", "cĂrei", "cElei", "mErită", "mErit",
+    "mEriți", "pAgina", "servIcii", "mUreș", "sprIjin", "sprIjinul", "sprIjină", "sUper", "tUdor", "rObert",
+    "dAvid", "mAximă", "mAxim", "mAxime", "mInimă", "mInim", "mInime", "rEgulă", "rEgula", "rEguli", "ilIe",
+    "mOscova", "nEutru", "nEutră", "Euro", "împreUnă", "Opt", "cOntra", "Împotrivă", "vasIle", "zIlei", "cAsei", "fEtei", "mAmei", "destUl", "destUlă",
+    "destUle", "destUi", "acEstei", "acEstuia", "acEstora", "acEsteia", "acEstor", "acElei", "acEluia", "acElora",
+    "acEleia", "acElor", "ghEorghe", "gEorge", "vIdeo", "rAdio", "stUdio", "aUdio", "lIber", "lIberă", "lIberi",
+    "lIbere", "cAncer", "acOper", "descOper", "Inimă", "Inima", "Inimi", "consIderă", "consIder", "consIderi",
+    "mIjloc", "mIjlocul", "mIjloace", "artIcol", "artIcole", "profEsor", "profEsori", "profEsoară", "profEsoare",
+    "tErmen", "tErmene", "Aer", "Aerul", "sIngura", "sIngurii", "sIngurele", "sIngurei", "actOr", "actOri",
+    "ridicA", "aplicA", "explicA", "indicA", "implicA", "complicA", "comunicA", "dedicA", "predicA", "ridicAt",
+    "pOate", "trEbuie", "lUmii", "lUnii", "țĂrii", "pÂinii", "mÂinii", "cĂrții", "vIeții", "mOrții", "nOpții",
+    "pĂrții", "fEței", "cUrții", "gUrii", "dUpă", "cÂnd", "fIindcă", "orIcât", "cÂt", "atÂt", "Aur", "Aurul", "Aurului", "sIngur", "sIngură", "sIngure", "sIngurul", "sIgur", "sIgură", "sIguri", "sIgure", "Ungur", "Unguri", "priEten", "priEteni", "priEtenă", "priEtene", "alĂturi", "asEmenea", "nImeni", "dIncolo", "dOctor", "dOctori", "Ordin",
     "Ordine", "Ordinea", "sUflet", "sUflete", "Înger", "Îngeri", "Umeri", "Umerii", "nUmere", "tIneri",
     "tInerii", "tInere", "sUferă", "zgOmot", "zgOmote", "lIngură", "mĂtură", "pĂcură", "pUlbere", "pUlberea",
     "pUlberi", "Aripă", "Aripa", "Aripi", "mObilă", "mObila", "mObile", "sIlabă", "sIlaba", "sIlabe",
@@ -141,9 +161,38 @@ const STEM_STRESS_EM: &[&str] = &[
     "plâng", "cunoașt", "nașt", "rămân", "pierd", "râd", "prind", "cuprind", "deschid", "închid", "aprind",
     "trimit", "permit", "promit", "admit", "înțeleg", "aleg", "culeg", "strâng", "ating", "împing", "cresc",
     "cunosc", "rup", "umpl", "împart", "ard", "întrec", "petrec", "frâng", "înving", "sting", "ling", "mulg",
-    "ucid", "decid", "ofer", "acoper", "descoper", "sufer", "întoarc", "convinc", "trag", "distrug", "ajung",
+    "ucid", "decid", "creșt", "făc", "ofer", "acoper", "descoper", "sufer", "întoarc", "convinc", "trag", "distrug", "ajung",
     "încep", "concep", "pricep", "încap", "desprind", "surprind", "întind", "vând", "pătrund", "răspund",
     "ascund", "întrerup", "corup", "fierb", "scad", "zbat", "străbat", "dezbat", "combat", "abat",
+];
+
+/// Frequent 4th-conjugation infinitives (present in -esc, so the form is unambiguous):
+/// their final i is a full stressed vowel (vorbˈi), not the whispered offglide.
+const INFINITIVES_I: &[&str] = &[
+    "vorbi", "citi", "iubi", "găsi", "privi", "muri", "dori", "opri", "porni", "sosi", "gândi", "reuși", "sfârși",
+    "folosi", "veni", "deveni", "reveni", "primi", "mulțumi", "plăti", "stabili", "împlini", "ghici", "trăi",
+    "lovi", "hotărî", "clădi", "zidi", "munci", "izbuti", "sfătui", "povesti", "pregăti", "pricepe",
+    "trezi", "sosi", "greși", "glumi", "grăbi", "rosti", "umili", "goli", "mări", "mâhni", "lipi", "topi",
+    "orbi", "robi", "slăbi", "înțepeni", "pomeni", "amăgi", "părăsi", "pedepsi", "răni", "zări", "jigni",
+    "ocoli", "cuceri", "zdrobi", "hrăni", "ferici", "deosebi", "vesti", "cinsti", "pândi", "sorbi",
+    "dobândi", "înmulți", "împărți", "numi", "potrivi", "lipsi", "înlocui", "locui", "construi", "contribui",
+    "constitui", "atribui", "bănui", "chinui", "alcătui", "prăbuși", "obosi", "osteni",
+    "nimeri", "împărtăși", "înfăptui", "zugrăvi", "ucenici", "roși", "albi", "învechi", "îmbogăți",
+    "îmbătrâni", "întineri", "înnoi", "înflori", "înveli", "închipui", "înghiți", "înlesni",
+    "înnebuni", "însoți", "însuși", "întări", "întâlni", "întocmi", "întregi", "înțelepți",
+    "învălui", "învârti", "lămuri", "liniști", "mărturisi", "mântui", "mistui", "năpusti",
+    "necăji", "nenoroci", "obișnui", "ocroti", "odihni", "oglindi", "orândui", "osândi", "pârî", "plictisi",
+    "potoli", "prăpădi", "prelungi", "pricinui", "prigoni", "răsplăti", "răzbuni", "rătăci", "regăsi", "risipi",
+    "sili", "smeri", "socoti", "stărui", "străluci", "stăpâni", "tăinui", "tâlcui", "tocmi", "tulbura",
+    "urmări", "urzi", "vrăji", "zăbovi", "citi", "clipi", "coji", "dărui", "dobori", "domoli",
+    "dospi", "dumiri", "făgădui", "găzdui", "gâtui", "hăitui", "hăpăi", "hoinări", "ieftini", "iscăli", "iscodi",
+    "isprăvi", "împodobi", "împotrivi", "împuternici", "înăbuși", "înălți", "încălzi", "încălți", "înfiora",
+    "îngriji", "îngrozi", "înjosi", "înrăi", "înveseli",
+    "învinui", "învinovăți", "mângâi", "mâzgăli", "mocni", "moțăi", "mucezi", "murdări", "obloji", "pălmui",
+    "păzi", "pipăi", "plesni", "pomeni", "porunci", "poticni", "preamări", "prețui", "prihăni",
+    "scrânti", "sfinți", "slobozi", "sluji", "smuci", "sprijini", "stabilì",
+    "strivi", "suci", "șovăi", "tămădui", "tânji", "trebui", "trudi", "zgâlțâi", "zori",
+    "zvârli",
 ];
 
 /// A fused clitic group (`s-a`, `într-o`) when one side is this short.
@@ -267,20 +316,21 @@ struct Seg {
     nucleus: bool,
     /// letter index this segment came from
     letter: usize,
-    /// a glide j/w/ɪ/ʊ or the palatal offglide
-    glide: bool,
     /// hiatus `i` before a word-final `u`: resolved by stress
     iu: bool,
 }
 
+/// consonant
 fn c(ph: &'static str, letter: usize) -> Seg {
-    Seg { ph, nucleus: false, letter, glide: false, iu: false }
+    Seg { ph, nucleus: false, letter, iu: false }
 }
+/// glide (j w ɪ ʊ) or the palatal offglide
 fn g(ph: &'static str, letter: usize) -> Seg {
-    Seg { ph, nucleus: false, letter, glide: true, iu: false }
+    c(ph, letter)
 }
+/// nucleus
 fn v(ph: &'static str, letter: usize) -> Seg {
-    Seg { ph, nucleus: true, letter, glide: false, iu: false }
+    Seg { ph, nucleus: true, letter, iu: false }
 }
 
 /// Index of the nucleus containing letter `letter` (or the last one before it).
@@ -301,9 +351,18 @@ fn segment(ch: &[char]) -> Vec<Seg> {
     let n = ch.len();
     let at = |i: usize| -> char { if i < n { ch[i] } else { '#' } };
     let mut segs: Vec<Seg> = Vec::with_capacity(n + 4);
+    let word: String = ch.iter().collect();
+    // 4th-conjugation infinitives (-esc verbs): the final i is a full stressed vowel
+    let inf_i = INFINITIVES_I.contains(&word.as_str());
     let mut i = 0usize;
     while i < n {
         let c0 = ch[i];
+        let nx = at(i + 1);
+        // doubled consonant letters (înnoda, Bill): one phone; cc/gg before e/i differ (accent)
+        if i > 0 && ch[i - 1] == c0 && !is_v(c0) && !(matches!(c0, 'c' | 'g') && matches!(nx, 'e' | 'i')) {
+            i += 1;
+            continue;
+        }
         if is_v(c0) {
             let start = i;
             let mut j = i;
@@ -313,11 +372,19 @@ fn segment(ch: &[char]) -> Vec<Seg> {
             // consonant + liquid cluster right before the run (membri, patrie)
             let cluster = start >= 2 && matches!(ch[start - 1], 'r' | 'l') && !is_v(ch[start - 2]) && ch[start - 2] != 'h';
             let prev_letter = if start > 0 { ch[start - 1] } else { '#' };
-            vowel_run(&ch[start..j], start, j == n, prev_letter, cluster, &mut segs);
+            // real, creat, ideal, teatru, ocean: e-a in hiatus, not the diphthong
+            let ea_hiatus = (start == 1 && (word.starts_with("rea") || word.starts_with("teatr")))
+                || (start == 2 && (word.starts_with("crea") || word.starts_with("idea") || word.starts_with("ocean")));
+            if ea_hiatus && ch[start] == 'e' && at(start + 1) == 'a' {
+                segs.push(v("e", start));
+                vowel_run(&ch[start + 1..j], start + 1, j == n, 'e', false, &mut segs);
+                i = j;
+                continue;
+            }
+            vowel_run(&ch[start..j], start, j == n, prev_letter, cluster || (j == n && inf_i), &mut segs);
             i = j;
             continue;
         }
-        let nx = at(i + 1);
         match c0 {
             'c' | 'g' => {
                 let hard: &'static str = if c0 == 'c' { "k" } else { "ɡ" };
@@ -337,7 +404,7 @@ fn segment(ch: &[char]) -> Vec<Seg> {
                     // non-final ci/gi + vowel (the gold's majority readings): ciu/cio → tʃu tʃo
                     // (tʃudˈat, pitʃˈor), gia/gio/giu → dʒjV, cia → tʃia (hiatus, by the vowel run)
                     if nx == 'i' && matches!(at(i + 2), 'a' | 'o' | 'u') && i + 3 != n {
-                        if c0 == 'c' {
+                        if c0 == 'c' && at(i + 2) != 'a' {
                             i += 2;
                             continue;
                         }
@@ -450,17 +517,20 @@ fn vowel_run(v_: &[char], start: usize, final_: bool, prev: char, cluster: bool,
                     }
                     if k + 1 == m && final_ {
                         segs.push(g("ɪ", li + 1));
-                        k += 1;
-                        continue;
+                    } else {
+                        segs.push(v("i", li + 1)); // fiind, știință: hiatus
                     }
-                    continue; // second i handled next round
+                    k += 1;
+                    continue;
                 } else if k > 0 {
                     // after a vowel: offglide, or hiatus in -ui/-ăi verbs
                     let pv = v_[k - 1];
                     let last = final_ && k + 1 == m;
                     let nuclei_before = segs.iter().filter(|s| s.nucleus).count();
                     let verb_hiatus = last && nuclei_before >= 2 && (pv == 'u' && prev != 'l' || pv == 'ă');
-                    if verb_hiatus {
+                    // trăit, construit, ruină: ă/u + i + consonant is a hiatus
+                    let medial_hiatus = !last && matches!(pv, 'ă' | 'u') && !(pv == 'u' && nuclei_before == 0);
+                    if verb_hiatus || medial_hiatus {
                         segs.push(v("i", li));
                     } else if let Some(&Seg { ph: "ea", .. }) = segs.last() {
                         segs.push(g("ɪ", li));
@@ -532,7 +602,7 @@ fn stress_letter(w: &[char], segs: &[Seg]) -> usize {
     };
     let count_v = |cut: usize| w[..n.saturating_sub(cut)].iter().filter(|&&c| is_v(c)).count();
     // definite article / plural suffixes keep the stem's stress
-    if ends("ului") {
+    if ends("ului") && n > 4 && !is_v(w[n - 5]) {
         if let Some(p) = stem(4) {
             return p;
         }
@@ -542,8 +612,9 @@ fn stress_letter(w: &[char], segs: &[Seg]) -> usize {
             return p;
         }
     }
-    if ends("ul") {
-        if let Some(p) = stem(2) {
+    if ends("ul") && n > 2 {
+        // muzeul, fiul, noul: the u belongs to the stem
+        if let Some(p) = stem(if is_v(w[n - 3]) { 1 } else { 2 }) {
             return p;
         }
     }
@@ -568,7 +639,11 @@ fn stress_letter(w: &[char], segs: &[Seg]) -> usize {
             return p;
         }
     }
-    if ends("ii") && n > 2 && !is_v(w[n - 3]) {
+    if ends("ii") && n > 2 && (!is_v(w[n - 3]) || w[n - 3] == 'o') {
+        // apărării, dezvoltării: genitive of an -are noun; fotografii: plural of an -ie noun
+        if ends("ării") || ie_suffix_stressed(&s[..s.len() - 2]) {
+            return nuc[nuc.len() - 2];
+        }
         if let Some(p) = stem(2) {
             return p;
         }
@@ -583,15 +658,44 @@ fn stress_letter(w: &[char], segs: &[Seg]) -> usize {
     if ends("sprezece") {
         return nuc[0];
     }
+    if INFINITIVES_I.contains(&s.as_str()) {
+        return nuc[nuc.len() - 1];
+    }
     if ends("î") {
         return nuc[nuc.len() - 1];
     }
     // -ic adjectives: penultimate; -ică/-ice/-ici: antepenultimate
-    if ends("ic") {
+    if ends("ic") || ends("bil") || ends("ctor") || (ends("col") && !ends("tocol")) {
         return nuc[nuc.len() - 2];
     }
-    if (ends("ică") || ends("ice") || ends("ici")) && nuc.len() >= 3 {
+    if ends("gine") && nuc.len() >= 3 {
         return nuc[nuc.len() - 3];
+    }
+    if ends("ifica") {
+        return nuc[nuc.len() - 1];
+    }
+    if ends("ica") && nuc.len() >= 3 {
+        return nuc[nuc.len() - 3];
+    }
+    // -ere nouns of 3rd-conjugation verbs: kondˈutʃere, krˈeʃterea, trˈetʃeri
+    if ends("ere") || ends("erea") || ends("eri") {
+        let cut = if ends("erea") { 4 } else { 3 };
+        let st: String = w[..n - cut].iter().collect();
+        if STEM_STRESS_EM.iter().any(|v| st.ends_with(v)) {
+            if let Some(p) = stem(cut) {
+                return p;
+            }
+        }
+    }
+    // feminine genitive -ei (ekˈipei, eurˈopei); two-syllable words are plurals (femˈei, idˈei)
+    if ends("ei") && !ends("iei") && nuc.len() >= 2 && !is_v(w[n - 3]) {
+        return nuc[nuc.len() - 2];
+    }
+    if (ends("ică") || ends("ice") || ends("cole")) && nuc.len() >= 3 {
+        return nuc[nuc.len() - 3];
+    }
+    if ends("ici") && nuc.len() >= 2 {
+        return nuc[nuc.len() - 2];
     }
     // hiatus -ie -ia -io -iu after a consonant
     if n >= 3 && w[n - 2] == 'i' && matches!(w[n - 1], 'e' | 'a' | 'o' | 'u') && !is_v(w[n - 3]) && nuc.len() >= 3 {
@@ -600,6 +704,10 @@ fn stress_letter(w: &[char], segs: &[Seg]) -> usize {
     }
     // -ea: verbs and a few nouns on the ending, articulated nouns before it
     if ends("ea") && nuc.len() >= 2 {
+        // articulated noun whose base is in the lexicon (drˈaɡostea, mˈardʒinea)
+        if let Some(&p) = lexicon().get(&s[..s.len() - 1]) {
+            return p;
+        }
         let st = &s[..s.len() - 2];
         if STEM_STRESS_EM.iter().any(|v| st.ends_with(v) && v.len() >= 3) {
             return nuc[nuc.len() - 1];
@@ -611,7 +719,7 @@ fn stress_letter(w: &[char], segs: &[Seg]) -> usize {
         return nuc[nuc.len() - 2];
     }
     // final syllable with ă is unstressed (nˈumər, ˈumər)
-    if n >= 3 && w[n - 2] == 'ă' && matches!(w[n - 1], 'r' | 'n' | 't') && !is_v(w[n - 3]) {
+    if n >= 3 && w[n - 2] == 'ă' && matches!(w[n - 1], 'r' | 'n' | 't' | 'l') && !is_v(w[n - 3]) {
         return nuc[nuc.len() - 2];
     }
     // 2nd/3rd conjugation -em/-eți keep the stem stress
@@ -630,6 +738,14 @@ fn stress_letter(w: &[char], segs: &[Seg]) -> usize {
         let mut k = nuc.len() - 2;
         // ă is not stressed in the penult of a longer word (pˈasəɾe, sˈɨmbətə) except -ăște
         if w[nuc[k]] == 'ă' && nuc.len() >= 3 && !ends("ăște") && !ends("ăsc") && !ends("ăsem") && !ends("ăseși") {
+            // ɨnvətsˈa, kumpəɾˈa: ă before a final -a marks an infinitive
+            if w[n - 1] == 'a' {
+                return nuc[nuc.len() - 1];
+            }
+            k -= 1;
+        }
+        // kˈauzə, lˈaudə, nˈeutru: the u of a hiatus au/eu/ou is not stressed
+        if nuc.len() >= 3 && w[nuc[k]] == 'u' && nuc[k] > 0 && matches!(w[nuc[k] - 1], 'a' | 'o') && (nuc[k] == 1 || !is_v(w[nuc[k] - 2])) {
             k -= 1;
         }
         nuc[k]
@@ -638,16 +754,19 @@ fn stress_letter(w: &[char], segs: &[Seg]) -> usize {
     }
 }
 
+/// Greek/Romance suffixes whose -ie noun is stressed on the i (biolodʒˈie, bukətəɾˈie).
+fn ie_suffix_stressed(st: &str) -> bool {
+    ["ăr", "log", "graf", "craț", "nom", "sof", "metr", "ped", "pat", "fon", "tom", "terap", "arh", "urg", "erg",
+     "dem", "nol", "scop", "fob", "fil"]
+        .iter()
+        .any(|suf| st.ends_with(suf))
+}
+
 /// Is the `i` of a final -ie/-ia/-io stressed? (prostˈie vs famˈilie)
 fn ie_stressed(s: &str) -> bool {
     let st = &s[..s.len() - 2]; // before the i + vowel
     let last = st.chars().last().unwrap_or('#');
-    if st.ends_with("ăr") || st.ends_with("log") || st.ends_with("graf") || st.ends_with("craț")
-        || st.ends_with("nom") || st.ends_with("sof") || st.ends_with("metr") || st.ends_with("ped")
-        || st.ends_with("pat") || st.ends_with("fon") || st.ends_with("tom") || st.ends_with("terap")
-        || st.ends_with("arh") || st.ends_with("urg") || st.ends_with("erg") || st.ends_with("dem")
-        || st.ends_with("nol") || st.ends_with("scop") || st.ends_with("fob") || st.ends_with("fil")
-    {
+    if ie_suffix_stressed(st) {
         return true;
     }
     // ț s z l r (and st): before the i; m f g d t n h p b: on the i
@@ -904,18 +1023,21 @@ mod tests {
             ("anii", "ˈaniɪ"),
             ("copiii", "kopˈiji"),
             ("aur", "ˈaur"),
-            ("cauză", "kˈauzə"),
+            ("cauză", "kˈauzˌə"),
+            ("fiind", "fiˈind"),
+            ("construit", "kˌonstruˈit"),
+            ("muzeul", "muzˈeul"),
             ("european", "ˌeuɾopˈean"),
             ("lua", "luˈa"),
-            ("bănui", "bənuˈi"),
+            ("bănui", "bˌənuˈi"),
             ("ciudat", "tʃudˈat"),
             ("cioban", "tʃobˈan"),
-            ("social", "sotʃiˈal"),
+            ("social", "sˌotʃiˈal"),
             ("serviciu", "servˈitʃju"),
             ("membri", "mˈembri"),
             ("mergeau", "merdʒˈeaw"),
-            ("aceea", "atʃˈeja"),
-            ("României", "romɨnˈieɪ"),
+            ("aceea", "atʃˈeea"),
+            ("României", "rˌomɨnˈieɪ"),
         ] {
             assert_eq!(word(&w.to_lowercase()), p, "{w}");
         }
@@ -950,8 +1072,13 @@ mod tests {
             ("într-o", "ˈɨntro"),
             ("s-a", "sa"),
             ("nord-vest", "nˈord vˈest"),
-            ("douăzeci", "dowəzˈetʃʲ"),
-            ("unsprezece", "ˈunsprezetʃe"),
+            ("douăzeci", "dˌowəzˈetʃʲ"),
+            ("probabil", "probˈabil"),
+            ("biserica", "bisˈeɾikˌa"),
+            ("conducerea", "kondˈutʃeɾˌea"),
+            ("echipei", "ekˈipeɪ"),
+            ("veni", "venˈi"),
+            ("unsprezece", "ˈunsprezˌetʃe"),
         ] {
             assert_eq!(word(w), p, "{w}");
         }
