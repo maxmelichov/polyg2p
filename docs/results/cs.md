@@ -104,3 +104,7 @@ of the remainder is deliberate (see below).
 - `eval_acc.py` maps `cs` to `ces_latn_broad.tsv`; the gold shipped in
   `sources/` is `ces_latn_narrow.tsv` (the evaluation above used a symlink
   with the broad name).
+
+
+Note (2026-10-29): the voiceless ř is written `r̝̥` (U+0325, ring below). espeak-ng
+uses U+030A (ring above), which is outside BlueTTS's vocabulary and would be PAD.

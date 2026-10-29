@@ -45,19 +45,19 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | English, strict | **97.7%** | 96.7% |
 | English, unstressed ɪ = ə ² | **98.6%** | 97.6% |
 | Spanish | **99.5%** | 99.3% |
-| Italian (rules + tables, no lexicon) | **97.0%** | 85.4% |
+| Italian (rules + tables, no lexicon) | **97.2%** | 87.1% |
 | German, with `de.lex` ¹ | **98.4%** | 96.4% |
 | German, rules only | 92.1% | 96.4% |
 | French (nasals scored) | **98.9%** | 97.7% |
 | Dutch, rules only | **99.1%** | 96.8% |
 | Portuguese (BR) | **99.6%** | 96.9% |
-| Polish | **99.9%** | 91.5% |
+| Polish | **99.8%** | 91.5% |
 | Romanian | **98.0%** | 97.8% |
 | Catalan (Central gold from `tools/ca_gold.py`) | **93.9%** | 93.2% |
 | Czech | **99.9%** | 96.4% |
-| Ukrainian (segments / with stress, `uk.lex`) ¹ | **99.3%** / **98.8%** | 79.7% / 69.1% |
+| Ukrainian (segments / with stress, `uk.lex`) ¹ | **99.3%** / **98.8%** | 79.5% / 69.1% |
 | Hungarian | **99.8%** | 95.2% |
-| Greek | **99.3%** | 80.8% |
+| Greek | **99.3%** | 81.0% |
 | Turkish | 99.7% | 99.7% |
 | Indonesian | **99.6%** | 88.4% |
 | Finnish | 99.5% | 99.5% |
@@ -190,7 +190,10 @@ Spanish secondary stress on even syllables before the primary, `ŋ` only
 before g/x; Italian `Cː` for long stops and affricates but doubled letters for
 continuants, `rɾ` for rr, `ɲɲ` after the stress; German `ɾ` after plosives and
 before consonants, `ɜ` for -er, long unstressed tense vowels. Output is NFD
-with `ʧ ʤ ʦ ʣ` ligatures, exactly what BlueTTS's `normalize_text` produces.
+with `ʧ ʤ ʦ ʣ` ligatures, exactly what BlueTTS's `normalize_text` produces, and
+every symbol is inside BlueTTS's 256-token vocabulary (`fold.rs` maps the two
+espeak diacritics that are not: ring above → ring below, vertical line above →
+syllabic mark).
 
 Agreement with espeak's notation on 30k random words: Spanish 98.6% identical,
 Italian 78%, German 42%, English 45%. The rest are mostly words where espeak

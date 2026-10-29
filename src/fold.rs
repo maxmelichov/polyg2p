@@ -6,7 +6,9 @@ use unicode_normalization::UnicodeNormalization;
 
 /// Fold one finished phoneme string.
 pub fn fold(s: &str) -> String {
-    let s: String = s.nfd().collect();
+    // diacritics outside BlueTTS's vocabulary -> their in-vocabulary IPA equivalents:
+    // ring above (espeak's voiceless mark) -> ring below; vertical line above -> syllabic
+    let s: String = s.nfd().map(|c| match c { '\u{030A}' => '\u{0325}', '\u{030D}' => '\u{0329}', c => c }).collect();
     let chars: Vec<char> = s.chars().collect();
     let mut out = String::with_capacity(s.len());
     let mut i = 0;

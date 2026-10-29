@@ -9,7 +9,7 @@
 //! as espeak does) and voices word-final obstruents before a voiced one.
 //!
 //! Notation follows espeak's `cs` voice: `h` for the voiced glottal
-//! fricative (Wiktionary writes ɦ), `x` for ch, `r̝`/`r̝̊` for ř, `oʊ aʊ eʊ`
+//! fricative (Wiktionary writes ɦ), `x` for ch, `r̝`/`r̝̥` for ř (voiceless mark U+0325; espeak writes U+030A, which is outside the BlueTTS vocabulary), `oʊ aʊ eʊ`
 //! for the diphthongs, `eɪ` for ej, `ts tʃ` for c č (folded to ligatures at
 //! the end by `fold.rs`), `r̩ l̩ m̩` for syllabic consonants.
 
@@ -105,7 +105,7 @@ fn voiced_of(ph: &str) -> &'static str {
         "x" => "h",
         "ts" => "dz",
         "tʃ" => "dʒ",
-        "r̝̊" => "r̝",
+        "r̝̥" => "r̝",
         "b" => "b",
         "d" => "d",
         "ɟ" => "ɟ",
@@ -132,7 +132,7 @@ fn voiceless_of(ph: &str) -> &'static str {
         "h" => "x",
         "dz" => "ts",
         "dʒ" => "tʃ",
-        "r̝" => "r̝̊",
+        "r̝" => "r̝̥",
         "p" => "p",
         "t" => "t",
         "c" => "c",
@@ -143,7 +143,7 @@ fn voiceless_of(ph: &str) -> &'static str {
         "x" => "x",
         "ts" => "ts",
         "tʃ" => "tʃ",
-        "r̝̊" => "r̝̊",
+        "r̝̥" => "r̝̥",
         _ => "",
     }
 }
@@ -337,7 +337,7 @@ fn letter_name(c: char) -> &'static str {
         'č' => "tʃeː",
         'š' => "eʃ",
         'ž' => "ʒet",
-        'ř' => "er̝̊",
+        'ř' => "er̝̥",
         'ď' => "ɟeː",
         'ť' => "ceː",
         'ň' => "eɲ",
@@ -960,9 +960,9 @@ mod tests {
             ("něco", "ɲˈetso"),
             ("chléb", "xlˈeːp"),
             ("bůh", "bˈuːx"),
-            ("tři", "tr̝̊ˈi"),
+            ("tři", "tr̝̥ˈi"),
             ("řeka", "r̝ˈeka"),
-            ("keř", "kˈer̝̊"),
+            ("keř", "kˈer̝̥"),
             ("hřbet", "hr̝bˈet"),
             ("kdo", "ɡdˈo"),
             ("vstup", "fstˈup"),
