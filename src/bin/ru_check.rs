@@ -13,6 +13,8 @@ use std::time::Instant;
 
 #[allow(unused_imports)]
 use polyg2p::lexicon;
+#[allow(unused_imports)]
+use polyg2p::tagger;
 
 #[allow(dead_code)]
 #[path = "../ru.rs"]

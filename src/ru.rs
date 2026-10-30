@@ -6,11 +6,15 @@
 //! stress tiers, `data/text_vocab.normalize_text`). Output is byte-identical to the
 //! Python reference; `src/bin/ru_check.rs` + `work/ru_parity.py` check that.
 //!
-//! What is not ported: RUAccent's two ONNX context models (homograph classifier and
-//! ё-tagger). Their decisions can be injected through [`ContextModels`]
-//! ([`Russian::phonemize_with`]), called at exactly the points where Python calls
-//! them. Without them the pipeline behaves as Python does when the model
-//! directories are missing (corpus prior for homographs, the все/всё rule).
+//! RUAccent's two ONNX context models (homograph classifier and ё-tagger) are not
+//! ported as such; their decisions are learned by a small native student
+//! (`ru-ctx.g2p`, a character-level encoder run by `tagger.rs`, distilled with
+//! `tools/ru_distill.py` + `tools/train_ru.py`) which [`Russian::load`] picks up
+//! from the data directory and consults at exactly the points where Python calls
+//! the ONNX models ([`TaggerCtx`]). Other decisions can be injected through
+//! [`ContextModels`] ([`Russian::phonemize_with`]). Without any model the
+//! pipeline behaves as Python does when the model directories are missing
+//! (corpus prior for homographs, the все/всё rule).
 //! The legacy RUAccent+RUPhon engine for out-of-dictionary words is also absent
 //! (as in Python when `ruaccent`/`ruphon` are not importable): the suffix-analogy
 //! guess is used. Latin-script words go to an optional caller-supplied callback
@@ -35,6 +39,8 @@ use std::path::Path;
 use unicode_normalization::UnicodeNormalization;
 
 use super::lexicon::Lexicon;
+use super::tagger::{Logits, Tagger};
+use std::cell::RefCell;
 
 // ===========================================================================
 // tables (generated from the Python modules; dict order kept where it matters)
@@ -1414,6 +1420,95 @@ impl ContextModels for Overrides {
     }
 }
 
+/// The native context student (`ru-ctx.g2p`, trained by `tools/train_ru.py`): a
+/// character-level encoder distilled from RUAccent's homograph classifier and
+/// ё-tagger. One pass per sentence serves both decisions; the pass is cached so
+/// every homograph in the sentence reuses it.
+pub struct TaggerCtx<'a> {
+    model: &'a Tagger,
+    cache: RefCell<HashMap<String, Logits>>,
+}
+
+impl<'a> TaggerCtx<'a> {
+    pub fn new(model: &'a Tagger) -> Self {
+        TaggerCtx { model, cache: RefCell::new(HashMap::new()) }
+    }
+
+    /// Window of at most `max_len` characters around `focus`, snapped to a word
+    /// start: (start offset, window text).
+    fn window(&self, sc: &[char], focus: usize) -> (usize, String) {
+        let max = self.model.cfg.max_len;
+        if sc.len() <= max {
+            return (0, sc.iter().collect());
+        }
+        let mut start = focus.saturating_sub(max / 2).min(sc.len() - max);
+        while start > 0 && sc[start - 1] != ' ' && focus - start < max - 1 {
+            start -= 1;
+        }
+        (start, sc[start..start + max].iter().collect())
+    }
+
+    /// Stress margin (stressed − unstressed logit) and ё probability per character
+    /// of the window that covers `focus`; `start` is the window's offset.
+    fn with_logits<R>(&self, sc: &[char], focus: usize, f: impl FnOnce(usize, &Logits) -> R) -> R {
+        let (start, text) = self.window(sc, focus);
+        let mut cache = self.cache.borrow_mut();
+        if !cache.contains_key(&text) {
+            let ids = self.model.encode(&text);
+            let lg = self.model.forward(&ids);
+            cache.insert(text.clone(), lg);
+        }
+        f(start, &cache[&text])
+    }
+}
+
+impl ContextModels for TaggerCtx<'_> {
+    fn has_yo_model(&self) -> bool {
+        true
+    }
+    fn has_homograph_model(&self) -> bool {
+        true
+    }
+    fn yo_labels(&self, sentence: &str, words: &[String], offsets: &[usize]) -> HashMap<usize, bool> {
+        let sc: Vec<char> = sentence.chars().collect();
+        let mut out = HashMap::new();
+        for (w, &off) in words.iter().zip(offsets) {
+            if !w.contains('е') || w.contains('ё') {
+                continue;
+            }
+            let yo = self.with_logits(&sc, off, |start, lg| {
+                w.chars().enumerate().any(|(k, c)| {
+                    let p = off + k;
+                    c == 'е' && p >= start && p - start < lg.len && lg.vow[(p - start) * 2 + 1] > lg.vow[(p - start) * 2]
+                })
+            });
+            out.insert(off, yo);
+        }
+        out
+    }
+    fn choose_stress(&self, _word_index: usize, marked: &str, hypotheses: &[String]) -> String {
+        let Some(a) = marked.find("<w>") else { return hypotheses[0].clone() };
+        let a = marked[..a].chars().count();
+        let sentence = marked.replacen("<w>", "", 1).replacen("</w>", "", 1);
+        let sc: Vec<char> = sentence.chars().collect();
+        self.with_logits(&sc, a, |start, lg| {
+            let mut best = (f32::MIN, 0usize);
+            for (i, h) in hypotheses.iter().enumerate() {
+                let Some(k) = h.chars().position(|c| c == '+') else { continue };
+                let p = a + k;
+                if p < start || p - start >= lg.len {
+                    continue;
+                }
+                let m = lg.stress[(p - start) * 2 + 1] - lg.stress[(p - start) * 2];
+                if m > best.0 {
+                    best = (m, i);
+                }
+            }
+            hypotheses[best.1].clone()
+        })
+    }
+}
+
 /// An optional mmap'd lexicon tier.
 struct Tier(Option<Lexicon>);
 
@@ -1446,6 +1541,8 @@ pub struct Russian {
     ctx: Tier,
     yo_hom: Tier,
     latin: Option<LatinFn>,
+    /// `ru-ctx.g2p`: the native homograph / ё context student, if present
+    ctx_model: Option<Tagger>,
 }
 
 impl Russian {
@@ -1463,7 +1560,13 @@ impl Russian {
             ctx: Tier::open(dir, "ru_homograph_ctx.lex"),
             yo_hom: Tier::open(dir, "ru_yo_homographs.lex"),
             latin: None,
+            ctx_model: dir.and_then(|d| Tagger::open(&d.join("ru-ctx.g2p")).ok()),
         }
+    }
+
+    /// Whether the native context student (`ru-ctx.g2p`) is loaded.
+    pub fn has_context_model(&self) -> bool {
+        self.ctx_model.is_some()
     }
 
     /// Route Latin-script runs to `f` (e.g. an English G2P). It receives the run of
@@ -1482,25 +1585,36 @@ impl Russian {
 
     /// Russian text -> normalized IPA in the training-label conventions.
     pub fn phonemize(&self, text: &str) -> String {
-        self.run(text, None, None)
+        match &self.ctx_model {
+            Some(m) => self.run(text, Some(&TaggerCtx::new(m)), None),
+            None => self.run(text, None, None),
+        }
     }
 
     /// As [`phonemize`](Self::phonemize), with context-model decisions.
     pub fn phonemize_with(&self, text: &str, models: Option<&dyn ContextModels>) -> String {
-        self.run(text, models, None)
+        self.phonemize_report(text, models).0
     }
 
     /// (word, tier, ipa) for every word of `text` (Python `last_report()`).
     pub fn stress_report(&self, text: &str) -> Report {
         let mut r = Vec::new();
-        self.run(text, None, Some(&mut r));
+        match &self.ctx_model {
+            Some(m) => self.run(text, Some(&TaggerCtx::new(m)), Some(&mut r)),
+            None => self.run(text, None, Some(&mut r)),
+        };
         r
     }
 
     /// `phonemize_with` plus the report.
     pub fn phonemize_report(&self, text: &str, models: Option<&dyn ContextModels>) -> (String, Report) {
         let mut r = Vec::new();
-        let s = self.run(text, models, Some(&mut r));
+        // explicit decisions win; otherwise the native student, if loaded
+        let s = match (models, &self.ctx_model) {
+            (Some(m), _) => self.run(text, Some(m), Some(&mut r)),
+            (None, Some(t)) => self.run(text, Some(&TaggerCtx::new(t)), Some(&mut r)),
+            (None, None) => self.run(text, None, Some(&mut r)),
+        };
         (s, r)
     }
 

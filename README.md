@@ -25,7 +25,7 @@ retraining. It contains no espeak code or data.
 | Finnish (fi) | Rust | Rules: weight-sensitive secondary stress, compound splitting, boundary gemination in `join` |
 | Indonesian (id) | Rust | Rules + e/ə stem table, prefix peeling, stress |
 | Swedish (sv) | Rust | Rules + ~1,400-entry table, loan-suffix stress, compound splitter; optional `sv.lex` |
-| Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons; Latin words go to the English engine |
+| Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons, plus a native context student (`ru-ctx.g2p`, 1.5M params) for homograph stress and е/ё distilled from RUAccent's models; Latin words go to the English engine |
 | Hebrew (he) | Rust | Sentence-level character tagger (4.9M-param transformer encoder, `he.g2p`) distilled from [RenikudPlus](https://github.com/maxmelichov/RenikudPlus), same IPA notation; number front end ported from hebrew-num2words. See [docs/hebrew.md](docs/hebrew.md). Falls back to renikud-onnx in Python when `he.g2p` is absent |
 | Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
 
@@ -142,9 +142,20 @@ tear, lead, use, wind, present, object, estimate, separate, …; written by the
 authors, so indicative only): polyg2p 40/40, espeak-ng 32/40.
 
 **Russian:** exact port of Russian-G2P. Identical output to the Python
-version on 845 gold words, 555k synthetic words and 28.8k sentences. It's about
-25× faster per word, and the 3.19M-form stress dictionary is memory-mapped
-instead of ~1.5 GB of RAM.
+version on 845 gold words, 555k synthetic words and 28.8k sentences (both
+without context models). It's about 25× faster per word, and the 3.19M-form
+stress dictionary is memory-mapped instead of ~1.5 GB of RAM.
+
+Homograph stress (замо́к/за́мок, цепи́, стены́) and е/ё (все/всё, чем/чём) need
+context. Russian-G2P uses RUAccent's two ONNX models for that (a 351 MB BERT
+and a 14 MB tagger); polyg2p instead ships a 1.5M-parameter character-level
+student (`ru-ctx.g2p`) distilled from them on 290k Tatoeba sentences
+containing a homograph. On 5,000 held-out sentences the student agrees with
+the teacher pipeline on 94.4% of homograph decisions (the dictionary's first
+candidate alone: 46.6%) and 92.4% of ё decisions; 93.6% of the sentences come
+out identical. It runs only on sentences that contain a homograph and costs
+about 0.5 ms there; `ru-ctx-small.g2p` (0.55M params, 92.0% / 0.3 ms) is the
+faster option.
 
 **Speed** (Universal Dependencies test sentences, one pass, including process start):
 
@@ -154,7 +165,7 @@ instead of ~1.5 GB of RAM.
 | Spanish | **10.9k sent/s** | 2.6k sent/s |
 | Italian | **24.3k sent/s** | 4.6k sent/s |
 | German | **24.4k sent/s** | 3.9k sent/s |
-| Russian (vs the Python Russian-G2P) | **12k sent/s** | ~13 sent/s |
+| Russian (vs the Python Russian-G2P) | **1.7k sent/s** with the context student, 12k without | ~13 sent/s |
 
 From Python, one English sentence takes about 11 µs (espeak per call: ~240 µs).
 `phonemize_batch` uses all cores. Peak memory with lexicons loaded: under 20 MB.
@@ -214,6 +225,7 @@ CLI: `cargo build --release && echo "La città è bella." | target/release/g2p i
 | `it.lex` | WikiPron (Wiktionary) | CC BY-SA | Italian uses rules + statistics |
 | `de.lex` | ipa-dict / german-ipa-dict (Wiktionary) | CC BY-SA | German uses rules |
 | `ru_*.lex` | RUAccent dictionaries (`tools/ru_build_lex.py ru_lexicon/ out/`) | Apache-2.0 | Russian uses its suffix fallback (stress often wrong) |
+| `ru-ctx.g2p` (`ru-ctx-small.g2p`) | distilled from RUAccent's homograph and ё models on Tatoeba (`tools/ru_distill.py`, `tools/train_ru.py`) | Apache-2.0 | homographs take the dictionary's first candidate, все/всё by rule |
 | `he.g2p` (`he-int8.g2p`, `he-small.g2p`) | distilled from RenikudPlus on 1M Knesset sentences (`tools/he_distill.py`, `tools/train_he.py`) | Apache-2.0 | Hebrew falls back to renikud-onnx in Python |
 | `uk.lex`, `nl.lex`, `sv.lex` | WikiPron (Wiktionary) | CC BY-SA | rules only |
 
