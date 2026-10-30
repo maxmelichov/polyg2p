@@ -50,6 +50,8 @@ import time
 REPO = os.environ.get("RUSSIAN_G2P_REPO", "../Russian-G2P")
 CRATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 RU_CHECK = os.path.join(CRATE, "target/release/ru_check")
+# parity is against Python WITHOUT its ONNX context models: keep the built-in student off
+os.environ["POLYG2P_RU_CTX"] = "0"
 WIKT = os.path.join(os.environ.get("POLYG2P_SRC", "sources"), "rus_cyrl_narrow.tsv")
 UD = os.path.join(os.environ.get("POLYG2P_SRC", "sources"), "ud", "ru.txt")
 HERE = os.path.dirname(os.path.abspath(__file__))

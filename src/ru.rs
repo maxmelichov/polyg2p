@@ -10,7 +10,8 @@
 //! ported as such; their decisions are learned by a small native student
 //! (`ru-ctx.g2p`, a character-level encoder run by `tagger.rs`, distilled with
 //! `tools/ru_distill.py` + `tools/train_ru.py`) which [`Russian::load`] picks up
-//! from the data directory and consults at exactly the points where Python calls
+//! from the data directory (an int8 copy is built into the crate; `POLYG2P_RU_CTX=0`
+//! turns it off) and consults at exactly the points where Python calls
 //! the ONNX models ([`TaggerCtx`]). Other decisions can be injected through
 //! [`ContextModels`] ([`Russian::phonemize_with`]). Without any model the
 //! pipeline behaves as Python does when the model directories are missing
@@ -41,6 +42,10 @@ use unicode_normalization::UnicodeNormalization;
 use super::lexicon::Lexicon;
 use super::tagger::{Logits, Tagger};
 use std::cell::RefCell;
+
+/// The context student shipped with the crate (int8, 1.7 MB; see `tools/train_ru.py`).
+/// A `ru-ctx.g2p` in the data directory overrides it; `POLYG2P_RU_CTX=0` disables both.
+const RU_CTX_BUILTIN: &[u8] = include_bytes!("../data/ru-ctx.g2p");
 
 // ===========================================================================
 // tables (generated from the Python modules; dict order kept where it matters)
@@ -1560,8 +1565,15 @@ impl Russian {
             ctx: Tier::open(dir, "ru_homograph_ctx.lex"),
             yo_hom: Tier::open(dir, "ru_yo_homographs.lex"),
             latin: None,
-            ctx_model: dir.and_then(|d| Tagger::open(&d.join("ru-ctx.g2p")).ok()),
+            ctx_model: Self::load_ctx(dir),
         }
+    }
+
+    fn load_ctx(dir: Option<&Path>) -> Option<Tagger> {
+        if matches!(std::env::var("POLYG2P_RU_CTX").as_deref(), Ok("0") | Ok("off") | Ok("false")) {
+            return None;
+        }
+        dir.and_then(|d| Tagger::open(&d.join("ru-ctx.g2p")).ok()).or_else(|| Tagger::from_bytes(RU_CTX_BUILTIN).ok())
     }
 
     /// Whether the native context student (`ru-ctx.g2p`) is loaded.

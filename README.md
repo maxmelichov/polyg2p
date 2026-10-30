@@ -151,11 +151,13 @@ context. Russian-G2P uses RUAccent's two ONNX models for that (a 351 MB BERT
 and a 14 MB tagger); polyg2p instead ships a 1.5M-parameter character-level
 student (`ru-ctx.g2p`) distilled from them on 290k Tatoeba sentences
 containing a homograph. On 5,000 held-out sentences the student agrees with
-the teacher pipeline on 94.4% of homograph decisions (the dictionary's first
-candidate alone: 46.6%) and 92.4% of ё decisions; 93.6% of the sentences come
+the teacher pipeline on 95.2% of homograph decisions (the dictionary's first
+candidate alone: 46.6%) and 92.7% of ё decisions; 94.3% of the sentences come
 out identical. It runs only on sentences that contain a homograph and costs
 about 0.5 ms there; `ru-ctx-small.g2p` (0.55M params, 92.0% / 0.3 ms) is the
-faster option.
+faster option. An int8 copy of the model (1.7 MB, same accuracy) is compiled
+into the crate, so Russian works out of the box; a `ru-ctx.g2p` in the data
+directory overrides it and `POLYG2P_RU_CTX=0` turns it off.
 
 **Speed** (Universal Dependencies test sentences, one pass, including process start):
 
