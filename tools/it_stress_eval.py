@@ -3,7 +3,7 @@ import collections, random, sys, unicodedata
 VL = "aeiouàèéìòóùíú"
 lex = {}
 for line in open('it_lex.tsv'):
-    w, st, op = line.rstrip('\n').split('\t')
+    w, st, op = line.rstrip('\n').split('\t')[:3]
     lex[w] = (None if st == '-' else int(st), op)
 words = sorted(lex)
 random.seed(1)

@@ -12,7 +12,7 @@ def pred(w):
     return 1  # Italian default: penult
 stats = collections.defaultdict(collections.Counter)
 for line in open('it_lex.tsv'):
-    w, st, op = line.rstrip('\n').split('\t')
+    w, st, op = line.rstrip('\n').split('\t')[:3]
     if op == '-':
         continue
     if st == '-':

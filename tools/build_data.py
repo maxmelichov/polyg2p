@@ -92,9 +92,9 @@ def build_it(work, out):
     seen = set()
     with open(os.path.join(work, "it_lex.tsv"), encoding="utf8") as f, open(tsv, "w", encoding="utf8") as o:
         for line in f:
-            w, st, op = line.rstrip("\n").split("\t")
+            w, st, op, z = line.rstrip("\n").split("\t")
             seen.add(w)
-            o.write(f"{w}\t{st}|{op}\n")
+            o.write(f"{w}\t{st}|{op}|{z}\n")
         # unstressed WikiPron entries carry no stress or openness, but their presence
         # lets the rules recognise verb forms (mangiano -> mangiare)
         for line in open(os.path.join(os.environ["POLYG2P_SRC"], "ita_latn_broad.tsv"), encoding="utf8"):

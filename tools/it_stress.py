@@ -111,7 +111,9 @@ def main():
         # reading without any open vowel means the readings may differ in stress
         if not all_open:
             stress_votes = set()
-        stress_votes = {s for s in stress_votes if 1 <= s <= 2}
+        # meritano, telefonano: a 3pl verb may be stressed four vowels from the end
+        top = 3 if w.endswith(("ano", "ono")) else 2
+        stress_votes = {s for s in stress_votes if 1 <= s <= top}
         if not stress_votes and hiatus == {True}:
             stress_votes = {1}
         if acc:
@@ -120,11 +122,17 @@ def main():
         op = open_votes.pop() if len(open_votes) == 1 else "-"
         if nv == 1:
             st = 0
-        lex[w] = (st, op)
+        # voicing of z (manzo d͡z, danza t͡s) when every reading agrees
+        z = "-"
+        if "z" in wl:
+            # one flag per word: a word with both affricates (-izzazione) is left to the rules
+            zs = {("-" if ("dz" in p) == ("ts" in p) else "v" if "dz" in p else "u") for p in ps}
+            z = zs.pop() if len(zs) == 1 else "-"
+        lex[w] = (st, op, z)
     with open("it_lex.tsv", "w", encoding="utf8") as f:
-        for w, (st, op) in sorted(lex.items()):
-            f.write(f"{w}\t{'-' if st is None else st}\t{op}\n")
-    known = {w: st for w, (st, _) in lex.items() if st is not None and len(vowel_letters(w)) >= 2}
+        for w, (st, op, z) in sorted(lex.items()):
+            f.write(f"{w}\t{'-' if st is None else st}\t{op}\t{z}\n")
+    known = {w: st for w, (st, _, _) in lex.items() if st is not None and len(vowel_letters(w)) >= 2}
     print("words", len(lex), "with known stress", len(known), file=sys.stderr)
     # suffix -> stress distribution (stress index measured from the end, so it
     # transfers between words sharing an ending)

@@ -16,13 +16,13 @@ const OPEN_TSV: &str = include_str!("../data/it_open.tsv");
 const UNSTRESSED: &[&str] = &[
     "il", "lo", "la", "i", "gli", "le", "un", "di", "a", "da", "in", "con", "su", "per", "tra", "fra", "e",
     "ed", "o", "od", "ma", "che", "non", "mi", "ti", "si", "ci", "vi", "ne", "del", "al", "dal", "nel", "sul",
-    "col", "se", "è", "ha", "ho", "hai", "hanno", "dei", "ai", "dai", "nei", "sui", "coi", "me", "te", "ce", "ve",
+    "col", "se", "è", "ha", "hai", "hanno", "dei", "ai", "dai", "nei", "sui", "coi", "me", "te", "ce", "ve",
 ];
 /// Short words whose u before a final vowel is the stressed nucleus (sˈuo), not a glide.
 /// Open stressed vowel where the ending statistics say closed.
 const OPEN_WORDS: &[&str] = &["chiesa", "chiese", "chiesetta", "chiesastico"];
 /// Closed stressed vowel where the ending statistics say open (articulated prepositions).
-const CLOSED_WORDS: &[&str] = &["della", "delle", "dello", "degli", "nella", "nelle", "nello", "negli"];
+const CLOSED_WORDS: &[&str] = &["della", "delle", "dello", "degli", "nella", "nelle", "nello", "negli", "stella", "stelle"];
 /// Enclitic pronouns that attach to imperatives, infinitives and gerunds (smettila, parlatemi).
 const ENCLITIC: &[&str] = &[
     "glielo", "gliela", "glieli", "gliele", "gliene", "melo", "mela", "meli", "mele", "mene", "telo", "tela", "teli",
@@ -35,9 +35,8 @@ const U_NUCLEUS: &[&str] = &["suo", "sua", "sue", "tuo", "tua", "tue", "due", "b
 const VOICED_ZZ: &[&str] = &["mezz", "azzurr", "rozz", "brezz", "bizzarr", "razz", "zizzan", "gazz", "olezz", "orzz"];
 /// English and other loanwords in everyday Italian (hand-written).
 const LOAN: &[(&str, &str)] = &[
-    ("computer", "kompjˈuter"), ("internet", "ˈinternet"), ("john", "ʤɔn"), ("york", "jˈɔrk"), ("new", "nju"),
-    ("sushi", "sˈuʃi"), ("weekend", "wˈikɛnd"), ("baseball", "bˈɛizbol"), ("sandwich", "sˈɛndwiʧ"),
-    ("halloween", "ˈallowin"), ("roma", "rˈoma"), ("europa", "eʊrˈɔpa"), ("hotel", "otˈɛl"), ("bangladesh", "baŋɡladˈɛʃ"), ("facebook", "fˈeɪsbuk"), ("son", "sˈon"), ("autobus", "ˈaʊtobʊs"), ("mary", "mˈɛri"),
+    ("computer", "kompjˈuter"), ("internet", "ˈinternet"), ("john", "ʤɔn"), ("york", "jˈɔrk"),     ("sushi", "sˈuʃi"), ("weekend", "wˈikɛnd"), ("baseball", "bˈɛizbol"), ("sandwich", "sˈɛndwiʧ"),
+    ("halloween", "ˈallowin"), ("roma", "rˈoma"), ("europa", "eʊrˈɔpa"), ("hotel", "otˈɛl"), ("bangladesh", "baŋɡladˈɛʃ"), ("facebook", "fˈeɪsbuk"), ("son", "sˈon"), ("autobus", "ˈaʊtobʊs"), ("mary", "mˈɛri"), ("new", "njˈu"), ("motel", "motˈɛl"), ("privacy", "prˈaivasi"), ("garage", "ɡarˈaʒ"), ("champagne", "ʃampˈaɲ"), ("george", "ʤˈɔrʤ"), ("judo", "ʤˈudo"), ("routine", "rutˈin"), ("detective", "detˈɛktiv"), ("bush", "bˈuʃ"), ("shanghai", "ʃaŋɡˈai"), ("souvenir", "suvenˈir"), ("chicago", "ʧikˈaɡo"), ("jackson", "ʤˈɛkson"), ("dessert", "dessˈɛr"), ("laptop", "lˈaptop"), ("bill", "bˈil"), ("sciare", "ʃiˈare"), ("sciatore", "ʃiatˈore"), ("sciatori", "ʃiatˈori"), ("sciatrice", "ʃiatrˈiʧe"), ("sciato", "ʃiˈato"), ("sciava", "ʃiˈava"), ("scio", "ʃˈio"),
     ("ok", "okˈɛi"), ("okay", "okˈɛi"), ("jeans", "ʤins"), ("club", "klab"), ("email", "imˈɛil"), ("web", "wɛb"),
     ("online", "onlˈain"), ("smartphone", "zmartfˈon"), ("party", "pˈarti"), ("leader", "lˈider"),
     ("manager", "mˈɛneʤer"), ("meeting", "mˈitinɡ"), ("marketing", "mˈarketinɡ"), ("business", "bˈiznes"),
@@ -66,7 +65,7 @@ const SDRUCCIOLE: &[&str] = &[
     "esima", "esimi", "esime", "agine", "agini", "igine", "igini", "udine", "udini", "logo", "loga", "logi",
     "loghe", "grafo", "grafa", "grafi", "grafe", "fono", "fona", "foni", "metro", "metri", "ico", "ica",
     "ici", "iche", "fugo", "fuga", "colo", "cola", "coli", "cole", "avano", "evano", "ivano", "ebbero",
-    "arono", "erono", "irono", "assero", "essero", "issero",
+    "arono", "erono", "irono", "assero", "essero", "issero", "gliere",
 ];
 /// Common proparoxytone words not covered by an ending rule (hand-written).
 const SDRUCCIOLE_WORDS: &[&str] = &[
@@ -107,7 +106,7 @@ const SDRUCCIOLE_WORDS: &[&str] = &[
 const PIANE: &[&str] = &[
     "amico", "amica", "amici", "amiche", "nemico", "nemica", "nemici", "nemiche", "antico", "antica", "antichi",
     "antiche", "fico", "fichi", "pudico", "mendico", "lombrico", "formica", "formiche", "vescica", "ortica",
-    "fatica", "fatiche", "lettica", "barbabietola", "colui", "ciascuno", "pacifica",
+    "fatica", "fatiche", "lettica", "barbabietola", "colui", "ciascuno", "pacifica", "avere",
 ];
 
 pub struct Italian {
@@ -200,18 +199,26 @@ impl Italian {
                     let right = if b.to_lowercase() == "è" { "ˈɛ".to_string() } else { right };
                     return format!("{left}{right}");
                 }
-                let left = self.realize(&al, 0);
+                let mut left = self.realize(&al, 0);
+                let bl = b.to_lowercase();
+                // cos'hai, com'è, dov'è: the verb is stressed; cosa's s is intervocalic (kozˈai)
+                let right = if UNSTRESSED.contains(&bl.as_str()) { self.realize(&bl, 2) } else { right };
+                if left.ends_with('s') && bl.chars().next().is_some_and(|ch| is_v(ch) || ch == 'h') {
+                    left.pop();
+                    left.push('z');
+                }
                 return format!("{left}{right}");
             }
         }
         self.realize(&lw, level)
     }
 
-    fn lex_info(&self, lw: &str) -> (Option<u8>, Option<bool>) {
-        let Some(l) = &self.lex else { return (None, None) };
+    /// (stress index from the end, open vowel, voiced z) from the lexicon.
+    fn lex_info(&self, lw: &str) -> (Option<u8>, Option<bool>, Option<bool>) {
+        let Some(l) = &self.lex else { return (None, None, None) };
         // proper nouns are capitalized in the lexicon (Roma, Europa)
         let cap: String = lw.chars().next().map(|c| c.to_uppercase().chain(lw.chars().skip(1)).collect()).unwrap_or_default();
-        let parse = |v: &str| -> (Option<u8>, Option<bool>) {
+        let parse = |v: &str| -> (Option<u8>, Option<bool>, Option<bool>) {
             let mut it = v.split('|');
             let st = it.next().and_then(|s| s.parse().ok());
             let op = match it.next() {
@@ -219,16 +226,31 @@ impl Italian {
                 Some("c") => Some(false),
                 _ => None,
             };
-            (st, op)
+            let z = match it.next() {
+                Some("v") => Some(true),
+                Some("u") => Some(false),
+                _ => None,
+            };
+            (st, op, z)
         };
-        if let Some(v) = l.get(lw).or_else(|| l.get(&cap)) {
-            return parse(&v);
-        }
-        let op = None;
-        // an inflected form that Wiktionary lacks takes stress and vowel quality from the
-        // form it has: dollari -> dollaro, felici -> felice, fattorie -> fattoria, ricorda -> ricordo
         let cs: Vec<char> = lw.chars().collect();
         let n = cs.len();
+        // giocano, pensano: a 3pl verb has the vowel quality of its 3sg (gioca), not its stress
+        let sg3 = |op: Option<bool>| -> Option<bool> {
+            if op.is_some() || n < 5 {
+                return op;
+            }
+            let s3: String = cs[..n - 3].iter().collect();
+            let sg = if lw.ends_with("ano") { Some(format!("{s3}a")) } else if lw.ends_with("ono") { Some(format!("{s3}e")) } else { None };
+            sg.and_then(|k| l.get(&k).or_else(|| l.get(&format!("{s3}o")))).and_then(|v| parse(&v).1)
+        };
+        if let Some(v) = l.get(lw).or_else(|| l.get(&cap)) {
+            let (st, op, z) = parse(&v);
+            return (st, sg3(op), z);
+        }
+        let (mut op, mut z) = (None, None);
+        // an inflected form that Wiktionary lacks takes stress and vowel quality from the
+        // form it has: dollari -> dollaro, felici -> felice, fattorie -> fattoria, ricorda -> ricordo
         if n >= 3 {
             let stem: String = cs[..n - 1].iter().collect();
             let alts: &[char] = match cs[n - 1] {
@@ -239,20 +261,20 @@ impl Italian {
                 'o' if n >= 4 => &['a'],
                 _ => &[],
             };
-            let mut op = op;
             for &a in alts {
                 if let Some(v) = l.get(&format!("{stem}{a}")) {
-                    let (st2, op2) = parse(&v);
+                    let (st2, op2, z2) = parse(&v);
                     op = op.or(op2);
+                    z = z.or(z2);
                     // the stressed vowel must not be the one that changed
                     if let Some(s) = st2.filter(|&s| s >= 1) {
-                        return (Some(s), op);
+                        return (Some(s), op, z);
                     }
                 }
             }
-            return (None, op);
+            return (None, sg3(op), z);
         }
-        (None, op)
+        (None, op, z)
     }
 
     /// smettila, parlatemi, vederlo: a verb form with an enclitic pronoun keeps its own stress.
@@ -317,7 +339,7 @@ impl Italian {
             }
             let kc: Vec<char> = key.chars().collect();
             let kvp: Vec<usize> = (0..kc.len()).filter(|&i| is_v(kc[i])).collect();
-            let (st, _) = if l.contains(&key) { self.lex_info(&key) } else { (None, None) };
+            let (st, _, _) = if l.contains(&key) { self.lex_info(&key) } else { (None, None, None) };
             let p = match st {
                 Some(s) if (s as usize) < kvp.len() => kvp[kvp.len() - 1 - s as usize],
                 _ => {
@@ -326,7 +348,7 @@ impl Italian {
                         // an -ere infinitive of unknown stress (scriver-ci, annetter-si) is
                         // stressed the way the rules stress the infinitive itself
                         if base.ends_with("er") {
-                            let (kst, kop) = self.lex_info(&key);
+                            let (kst, kop, _) = self.lex_info(&key);
                             let kp = self.stress_pos(&kc, &key, &kvp, kst, kop == Some(false));
                             if kp >= bc.len() {
                                 continue;
@@ -379,7 +401,8 @@ impl Italian {
             return if syl.len() >= 3 { syl[syl.len() - 3] } else { vp[nv - 3] };
         }
         if !PIANE.contains(&lw) && nv >= 3 && SDRUCCIOLE.iter().any(|e| lw.len() > e.len() + 1 && lw.ends_with(e)) {
-            return vp[nv - 3];
+            let syl: Vec<usize> = vp.iter().copied().filter(|&p| syllabic(c, p)).collect();
+            return if syl.len() >= 3 { syl[syl.len() - 3] } else { vp[nv - 3] };
         }
         if let Some(p) = self.verb_3pl(c, lw, vp) {
             return p;
@@ -502,7 +525,7 @@ impl Italian {
         if vp.is_empty() {
             return spell(lw);
         }
-        let (lex_st, lex_op) = self.lex_info(lw);
+        let (lex_st, lex_op, lex_z) = self.lex_info(lw);
         let sp = self.stress_pos(&c, lw, &vp, lex_st, lex_op == Some(false));
         // smettila, vedetelo: vowel quality comes from the verb, not from the clitic ending
         let (oc, oop) = match self.enclitic(&c, lw, &vp) {
@@ -649,15 +672,17 @@ impl Italian {
                     if double {
                         // -izzare verbs are voiced in espeak
                         let vowels_before = c[..i].iter().filter(|&&x| is_v(x)).count();
-                        let voiced = (pv == 'i' && vowels_before >= 2 && !lw.starts_with("indirizz"))
-                            || VOICED_ZZ.iter().any(|z| lw.starts_with(z));
+                        let voiced = lex_z.unwrap_or_else(|| {
+                            (pv == 'i' && vowels_before >= 2 && !lw.starts_with("indirizz"))
+                                || VOICED_ZZ.iter().any(|z| lw.starts_with(z))
+                        });
                         out.push_str(if voiced { "ʣː" } else { "tsː" });
                         i += 2;
                         continue;
                     }
                     // negozi, servizi, grazie: a single z before i is voiceless
                     let before_i = base(nx) == 'i';
-                    let voiced = i == 0 || (is_v(pv) && is_v(nx) && !before_i);
+                    let voiced = lex_z.unwrap_or(i == 0 || (is_v(pv) && is_v(nx) && !before_i));
                     out.push_str(if voiced { "ʣ" } else { "ts" });
                 }
                 'h' => {}
