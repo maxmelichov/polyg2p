@@ -13,6 +13,7 @@ punctuation, difflib-aligned when the word counts differ).
 |---|---:|---:|---|
 | student f32 `he.g2p` (19.6 MB) | **97.43 %** | 75.5 % | 99.88 / 99.35 / 99.82 % |
 | student int8 `he-int8.g2p` (5.4 MB) | 97.4 % (99.1 % of sentences identical to f32) | | |
+| `he-int8.g2p` through the int8 `sdot` kernel (aarch64 default, 3× faster) | 97.44 % | 75.7 % | gold 86.70 % (same as f32) |
 | 50 k-sentence checkpoint (20 epochs) | 94.08 % | 53.6 % | 99.72 / 98.45 / 99.60 % |
 
 Training curve on the 1 M run (held-out word agreement): 94.5 → 95.6 (ep 1)

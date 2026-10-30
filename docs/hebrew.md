@@ -64,14 +64,19 @@ together so multi-sentence windows are in-distribution. 4.9 M parameters.
 Export (`G2PT`): `b"G2PT" | u32 header_len | JSON header | tensors`. The
 header carries the config, the character vocabulary, the class names and the
 per-letter legal consonant sets; tensors are f32 (19.6 MB) or, with `--int8`,
-int8 weights with per-output-row f32 scales (5.4 MB, dequantized at load by
-`tagger.rs`).
+int8 weights with per-output-row f32 scales (5.4 MB). On aarch64 with the
+dot-product extension `tagger.rs` keeps them int8 and runs the linear layers
+through an int8 `sdot` kernel over per-token quantized activations (3× faster,
+held-out agreement unchanged: 97.44 % vs 97.43 %); elsewhere, or with
+`POLYG2P_INT8=0`, they are dequantized at load. The engine loads
+`he-int8.g2p` when the data directory has one, else `he.g2p`.
 
 ## Runtime
 
-`src/tagger.rs` is a dependency-free encoder: every matrix product (the
-linears *and* `Q·Kᵀ` / `P·V`) goes through one cache-blocked `A·Bᵀ` kernel
-(4×4 register tile, NEON intrinsics on aarch64, portable fallback elsewhere).
+`src/tagger.rs` is a dependency-free encoder: every f32 matrix product (the
+linears of f32 models *and* `Q·Kᵀ` / `P·V`) goes through one cache-blocked
+`A·Bᵀ` kernel (4×4 register tile, NEON intrinsics on aarch64, portable
+fallback elsewhere); int8 linears use the `sdot` kernel described above.
 Inference is single-threaded and deterministic; `G2p::phonemize_batch`
 parallelizes across sentences.
 

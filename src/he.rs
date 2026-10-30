@@ -20,7 +20,7 @@
 //!
 //! Non-Hebrew characters pass through unchanged (digits are expanded first);
 //! Latin-script words can be routed to a callback with [`Hebrew::with_latin`].
-//! The model file is `he.g2p` in the data directory (see docs/hebrew.md).
+//! The model file is `he-int8.g2p` or `he.g2p` in the data directory (see docs/hebrew.md).
 
 use std::path::Path;
 use std::sync::OnceLock;
@@ -340,12 +340,16 @@ pub struct Hebrew {
 }
 
 impl Hebrew {
-    /// Loads `he.g2p` from `data_dir` (or `$POLYG2P_HE_MODEL`). Without a model
-    /// `phonemize` returns an empty string (and warns once).
+    /// Loads the model from `data_dir` (or `$POLYG2P_HE_MODEL`): `he-int8.g2p`
+    /// when present (same accuracy as `he.g2p`, 3× faster through the int8
+    /// kernel), else `he.g2p`. Without a model `phonemize` returns an empty
+    /// string (and warns once).
     pub fn load(data_dir: Option<&Path>) -> Self {
-        let path = std::env::var_os("POLYG2P_HE_MODEL")
-            .map(std::path::PathBuf::from)
-            .or_else(|| data_dir.map(|d| d.join("he.g2p")));
+        let path = std::env::var_os("POLYG2P_HE_MODEL").map(std::path::PathBuf::from).or_else(|| {
+            let d = data_dir?;
+            let int8 = d.join("he-int8.g2p");
+            Some(if int8.is_file() { int8 } else { d.join("he.g2p") })
+        });
         let model = path.and_then(|p| match Tagger::open(&p) {
             Ok(m) => Some(m),
             Err(e) => {

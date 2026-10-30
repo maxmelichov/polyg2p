@@ -5,11 +5,14 @@
 //!
 //! Weight file (`G2PT`): b"G2PT" | u32 header_len | JSON header | tensors.
 //! Tensors are little-endian f32, or int8 with a per-output-row f32 scale
-//! (`"dtype": "i8"`, scale tensor `<name>.scale`) which is dequantized at load.
+//! (`"dtype": "i8"`, scale tensor `<name>.scale`). On aarch64 with the dot-product
+//! extension the int8 weights stay int8 and the linear layers run an int8 `sdot`
+//! kernel over per-token dynamically quantized activations (4× the MACs per
+//! instruction of f32 NEON); elsewhere they are dequantized at load.
 //!
-//! All matrix products go through one cache-blocked `A·Bᵀ` kernel (4×4 register
-//! tile, NEON on aarch64, portable fallback elsewhere), including attention, so
-//! one sentence costs a few milliseconds single-threaded.
+//! All other matrix products go through one cache-blocked `A·Bᵀ` kernel (4×4
+//! register tile, NEON on aarch64, portable fallback elsewhere), including
+//! attention, so one sentence costs about a millisecond single-threaded.
 
 use std::collections::HashMap;
 use std::io;
@@ -199,9 +202,126 @@ fn matmul_abt(a: &[f32], sa: usize, b: &[f32], sb: usize, m: usize, n: usize, k:
     }
 }
 
-/// Linear layer, weight in PyTorch layout `[out, in]`.
+// ------------------------------------------------------- int8 kernel (aarch64)
+
+/// `sdot acc, a, b`: four i32 lanes each accumulating a 4-byte dot product.
+/// Inline asm because the `vdotq_s32` intrinsic is not stable yet.
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+unsafe fn sdot(acc: std::arch::aarch64::int32x4_t, a: std::arch::aarch64::int8x16_t, b: std::arch::aarch64::int8x16_t) -> std::arch::aarch64::int32x4_t {
+    let mut r = acc;
+    unsafe {
+        std::arch::asm!(".arch_extension dotprod", "sdot {0:v}.4s, {1:v}.16b, {2:v}.16b",
+            inout(vreg) r, in(vreg) a, in(vreg) b, options(pure, nomem, nostack));
+    }
+    r
+}
+
+/// 4 rows of A × 4 rows of B over `k` int8 elements (k % 16 == 0).
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+unsafe fn tile4x4_q8(x: [&[i8]; 4], w: [&[i8]; 4], k: usize) -> [i32; 16] {
+    use std::arch::aarch64::*;
+    debug_assert!(k % 16 == 0 && x.iter().all(|s| s.len() >= k) && w.iter().all(|s| s.len() >= k));
+    unsafe {
+        let z = vdupq_n_s32(0);
+        let mut a = [z; 16];
+        let (x0, x1, x2, x3) = (x[0].as_ptr(), x[1].as_ptr(), x[2].as_ptr(), x[3].as_ptr());
+        let (w0, w1, w2, w3) = (w[0].as_ptr(), w[1].as_ptr(), w[2].as_ptr(), w[3].as_ptr());
+        let mut i = 0;
+        while i < k {
+            let p = [vld1q_s8(x0.add(i)), vld1q_s8(x1.add(i)), vld1q_s8(x2.add(i)), vld1q_s8(x3.add(i))];
+            let q = [vld1q_s8(w0.add(i)), vld1q_s8(w1.add(i)), vld1q_s8(w2.add(i)), vld1q_s8(w3.add(i))];
+            for r in 0..4 {
+                for c in 0..4 {
+                    a[r * 4 + c] = sdot(a[r * 4 + c], p[r], q[c]);
+                }
+            }
+            i += 16;
+        }
+        let mut out = [0i32; 16];
+        for j in 0..16 {
+            out[j] = vaddvq_s32(a[j]);
+        }
+        out
+    }
+}
+
+#[cfg(target_arch = "aarch64")]
+fn dot_q8(a: &[i8], b: &[i8]) -> i32 {
+    a.iter().zip(b).map(|(&x, &y)| x as i32 * y as i32).sum()
+}
+
+/// `out[r, c] = sx[r]·sw[c]·(xq[r] · wq[c]) + bias[c]` for `m` rows of `k` int8
+/// activations against `n` int8 weight rows (`k % 16 == 0`).
+#[cfg(target_arch = "aarch64")]
+fn matmul_q8(xq: &[i8], sx: &[f32], wq: &[i8], sw: &[f32], m: usize, n: usize, k: usize, bias: &[f32], out: &mut [f32]) {
+    let row_x = |i: usize| &xq[i * k..(i + 1) * k];
+    let row_w = |j: usize| &wq[j * k..(j + 1) * k];
+    let mut c0 = 0;
+    while c0 < n {
+        let c1 = (c0 + NB).min(n);
+        let mut r = 0;
+        while r + 4 <= m {
+            let xs = [row_x(r), row_x(r + 1), row_x(r + 2), row_x(r + 3)];
+            let mut c = c0;
+            while c + 4 <= c1 {
+                let ws = [row_w(c), row_w(c + 1), row_w(c + 2), row_w(c + 3)];
+                let s = unsafe { tile4x4_q8(xs, ws, k) };
+                for rr in 0..4 {
+                    for cc in 0..4 {
+                        out[(r + rr) * n + c + cc] = s[rr * 4 + cc] as f32 * sx[r + rr] * sw[c + cc] + bias[c + cc];
+                    }
+                }
+                c += 4;
+            }
+            while c < c1 {
+                for rr in 0..4 {
+                    out[(r + rr) * n + c] = dot_q8(xs[rr], row_w(c)) as f32 * sx[r + rr] * sw[c] + bias[c];
+                }
+                c += 1;
+            }
+            r += 4;
+        }
+        while r < m {
+            for c in c0..c1 {
+                out[r * n + c] = dot_q8(row_x(r), row_w(c)) as f32 * sx[r] * sw[c] + bias[c];
+            }
+            r += 1;
+        }
+        c0 = c1;
+    }
+}
+
+/// Symmetric per-row int8 quantization of `l` rows of `k` activations.
+#[cfg(target_arch = "aarch64")]
+fn quantize_rows(x: &[f32], l: usize, k: usize) -> (Vec<i8>, Vec<f32>) {
+    let mut q = vec![0i8; l * k];
+    let mut s = vec![0f32; l];
+    for r in 0..l {
+        let row = &x[r * k..(r + 1) * k];
+        let amax = row.iter().fold(0f32, |m, v| m.max(v.abs()));
+        let scale = if amax > 0.0 { amax / 127.0 } else { 1.0 };
+        s[r] = scale;
+        let inv = 1.0 / scale;
+        for (dst, v) in q[r * k..(r + 1) * k].iter_mut().zip(row) {
+            *dst = (v * inv).round().clamp(-127.0, 127.0) as i8;
+        }
+    }
+    (q, s)
+}
+
+/// Int8 weight rows with a scale per output row.
+struct Q8 {
+    w: Vec<i8>,
+    scale: Vec<f32>,
+}
+
+/// Linear layer, weight in PyTorch layout `[out, in]`; `q` holds the int8
+/// weights when the layer runs the int8 kernel (then `w` is empty).
 struct Lin {
     w: Vec<f32>,
+    q: Option<Q8>,
     b: Vec<f32>,
     i: usize,
     o: usize,
@@ -212,6 +332,12 @@ impl Lin {
     fn apply(&self, x: &[f32], l: usize, y: &mut [f32]) {
         debug_assert_eq!(x.len(), l * self.i);
         debug_assert_eq!(y.len(), l * self.o);
+        #[cfg(target_arch = "aarch64")]
+        if let Some(q) = &self.q {
+            let (xq, sx) = quantize_rows(x, l, self.i);
+            matmul_q8(&xq, &sx, &q.w, &q.scale, l, self.o, self.i, &self.b, y);
+            return;
+        }
         matmul_abt(x, self.i, &self.w, self.i, l, self.o, self.i, Some(&self.b), y, self.o);
     }
 }
@@ -273,6 +399,19 @@ pub struct Tagger {
 
 type Tensors = HashMap<String, (Vec<usize>, Vec<f32>)>;
 
+/// Does this machine run the int8 kernel? (aarch64 with the dot-product extension)
+fn int8_kernel() -> bool {
+    #[cfg(target_arch = "aarch64")]
+    {
+        !matches!(std::env::var("POLYG2P_INT8").as_deref(), Ok("0" | "off" | "false"))
+            && std::arch::is_aarch64_feature_detected!("dotprod")
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        false
+    }
+}
+
 impl Tagger {
     pub fn open(path: &Path) -> io::Result<Tagger> {
         Self::from_bytes(&std::fs::read(path)?)
@@ -289,7 +428,9 @@ impl Tagger {
         let f32s = |off: usize, n: usize| -> Vec<f32> {
             data[off..off + n * 4].chunks_exact(4).map(|c| f32::from_le_bytes(c.try_into().unwrap())).collect()
         };
+        let use_q8 = int8_kernel();
         let mut t: Tensors = HashMap::new();
+        let mut q8: HashMap<String, Q8> = HashMap::new();
         let metas: HashMap<&str, &TensorMeta> = h.tensors.iter().map(|m| (m.name.as_str(), m)).collect();
         for m in &h.tensors {
             let n: usize = m.shape.iter().product();
@@ -298,21 +439,28 @@ impl Tagger {
                 let scale = f32s(sm.offset, m.shape[0]);
                 let cols = n / m.shape[0];
                 let raw = &data[m.offset..m.offset + n];
-                let v: Vec<f32> = raw.iter().enumerate().map(|(i, &b)| (b as i8) as f32 * scale[i / cols]).collect();
-                t.insert(m.name.clone(), (m.shape.clone(), v));
+                if use_q8 && m.shape.len() == 2 && cols % 16 == 0 {
+                    q8.insert(m.name.clone(), Q8 { w: raw.iter().map(|&b| b as i8).collect(), scale });
+                    t.insert(m.name.clone(), (m.shape.clone(), Vec::new()));
+                } else {
+                    let v: Vec<f32> = raw.iter().enumerate().map(|(i, &b)| (b as i8) as f32 * scale[i / cols]).collect();
+                    t.insert(m.name.clone(), (m.shape.clone(), v));
+                }
             } else if !m.name.ends_with(".scale") {
                 t.insert(m.name.clone(), (m.shape.clone(), f32s(m.offset, n)));
             }
         }
-        let mut take = |name: &str| -> io::Result<(Vec<usize>, Vec<f32>)> {
-            t.remove(name).ok_or_else(|| bad(&format!("missing tensor {name}")))
+        let mut take = |name: &str| -> io::Result<(Vec<usize>, Vec<f32>, Option<Q8>)> {
+            let (s, v) = t.remove(name).ok_or_else(|| bad(&format!("missing tensor {name}")))?;
+            Ok((s, v, q8.remove(name)))
         };
-        let lin = |take: &mut dyn FnMut(&str) -> io::Result<(Vec<usize>, Vec<f32>)>, p: &str| -> io::Result<Lin> {
-            let (s, w) = take(&format!("{p}.weight"))?;
-            let (_, b) = take(&format!("{p}.bias"))?;
-            Ok(Lin { w, b, o: s[0], i: s[1] })
+        type Take<'a> = &'a mut dyn FnMut(&str) -> io::Result<(Vec<usize>, Vec<f32>, Option<Q8>)>;
+        let lin = |take: Take, p: &str| -> io::Result<Lin> {
+            let (s, w, q) = take(&format!("{p}.weight"))?;
+            let (_, b, _) = take(&format!("{p}.bias"))?;
+            Ok(Lin { w, q, b, o: s[0], i: s[1] })
         };
-        let ln = |take: &mut dyn FnMut(&str) -> io::Result<(Vec<usize>, Vec<f32>)>, p: &str| -> io::Result<Ln> {
+        let ln = |take: Take, p: &str| -> io::Result<Ln> {
             Ok(Ln { g: take(&format!("{p}.weight"))?.1, b: take(&format!("{p}.bias"))?.1 })
         };
         let cfg = h.config.clone();
@@ -443,7 +591,7 @@ mod tests {
             let w: Vec<f32> = (0..i * o).map(|k| ((k * 7919) % 97) as f32 / 50.0 - 1.0).collect();
             let b: Vec<f32> = (0..o).map(|k| k as f32 / 10.0).collect();
             let x: Vec<f32> = (0..i * l).map(|k| ((k * 31) % 53) as f32 / 20.0 - 1.0).collect();
-            let lin = Lin { w: w.clone(), b: b.clone(), i, o };
+            let lin = Lin { w: w.clone(), q: None, b: b.clone(), i, o };
             let mut y = vec![0f32; l * o];
             lin.apply(&x, l, &mut y);
             for r in 0..l {
@@ -470,6 +618,35 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
+    #[cfg(target_arch = "aarch64")]
+    #[test]
+    fn int8_matmul_matches_f32() {
+        let (m, n, k) = (7, 13, 192);
+        let x: Vec<f32> = (0..m * k).map(|i| ((i * 37 % 101) as f32 / 50.0 - 1.0) * 3.0).collect();
+        let w: Vec<f32> = (0..n * k).map(|i| ((i * 53 % 97) as f32 / 48.0 - 1.0) * 0.1).collect();
+        let b: Vec<f32> = (0..n).map(|i| i as f32 * 0.01).collect();
+        // per-row weight quantization, as the exporter does
+        let mut wq = vec![0i8; n * k];
+        let mut sw = vec![0f32; n];
+        for j in 0..n {
+            let row = &w[j * k..(j + 1) * k];
+            let amax = row.iter().fold(0f32, |a, v| a.max(v.abs()));
+            sw[j] = amax / 127.0;
+            for (d, v) in wq[j * k..(j + 1) * k].iter_mut().zip(row) {
+                *d = (v / sw[j]).round() as i8;
+            }
+        }
+        let mut want = vec![0f32; m * n];
+        matmul_abt(&x, k, &w, k, m, n, k, Some(&b), &mut want, n);
+        let (xq, sx) = quantize_rows(&x, m, k);
+        let mut got = vec![0f32; m * n];
+        matmul_q8(&xq, &sx, &wq, &sw, m, n, k, &b, &mut got);
+        let scale = want.iter().fold(0f32, |a, v| a.max(v.abs()));
+        for (g, w) in got.iter().zip(&want) {
+            assert!((g - w).abs() < 0.02 * scale, "{g} vs {w}");
+        }
+    }
+
     #[test]
     #[ignore]
     fn kernel_gflops() {
@@ -477,7 +654,7 @@ mod bench {
             let w: Vec<f32> = (0..i * o).map(|k| ((k * 7919) % 97) as f32 / 50.0 - 1.0).collect();
             let b = vec![0f32; o];
             let x: Vec<f32> = (0..i * l).map(|k| ((k * 31) % 53) as f32 / 20.0 - 1.0).collect();
-            let lin = Lin { w, b, i, o };
+            let lin = Lin { w, q: None, b, i, o };
             let mut y = vec![0f32; l * o];
             let reps = 50;
             let t0 = std::time::Instant::now();

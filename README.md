@@ -34,7 +34,7 @@ Arabic (ar) is scaffolded in `src/` and pending a context model like Hebrew's; s
 ## Results
 
 All numbers on 2 CPU cores, single-threaded, against espeak-ng 1.52 through
-`phonemizer` (the way BlueTTS calls it). Scripts are in `tools/`.
+`phonemizer`. Scripts are in `tools/`.
 
 **Accuracy vs Wiktionary** (WikiPron; 20k most frequent words, frequency-weighted;
 both outputs collapsed to a shared broad phone set so only real pronunciation
@@ -159,20 +159,31 @@ which carry rarer homographs, it is 90.5%. It runs only on sentences that contai
 about 0.5 ms there; `ru-ctx-small.g2p` (0.55M params, 92.0% / 0.3 ms) is the
 faster option. An int8 copy of the model (1.7 MB, same accuracy) is compiled
 into the crate, so Russian works out of the box; a `ru-ctx.g2p` in the data
-directory overrides it and `POLYG2P_RU_CTX=0` turns it off.
+directory overrides it and `POLYG2P_RU_CTX=0` turns it off. On Apple Silicon
+and other aarch64 CPUs with the dot-product extension the int8 weights run an
+int8 `sdot` kernel (3× faster than the f32 math, 5 of 20,000 Tatoeba sentences
+change); `POLYG2P_INT8=0` forces f32. The same kernel serves the Hebrew
+`he-int8.g2p`, which the Hebrew engine now prefers when present.
 
-**Speed** (Universal Dependencies test sentences, one pass, including process start):
+**Speed** (20,000 Tatoeba sentences piped through the CLI, including process
+start, 8-core Apple M-series laptop; espeak-ng 1.52 through `phonemizer`, batch
+mode):
 
 | | polyg2p | espeak-ng (batch) |
 |---|---|---|
-| English (web text, many names/URLs) | **11.6k sent/s** | 4.7k sent/s |
-| Spanish | **10.9k sent/s** | 2.6k sent/s |
-| Italian | **24.3k sent/s** | 4.6k sent/s |
-| German | **24.4k sent/s** | 3.9k sent/s |
-| Russian (vs the Python Russian-G2P) | **1.7k sent/s** with the context student, 12k without | ~13 sent/s |
+| English (web text, many names/URLs) | **63k sent/s** | 8.2k sent/s |
+| Spanish | **440k sent/s** | 9.6k sent/s |
+| Italian | **325k sent/s** | 10.4k sent/s |
+| German | **400k sent/s** | 7.9k sent/s |
+| Russian (vs the Python Russian-G2P) | **18k sent/s** with the context student (int8 kernel), 148k without | 7.1k sent/s (Russian-G2P: ~13) |
+| Hebrew (`he-int8.g2p`) | **1.4k sent/s** (4.9M-param tagger on every sentence) | — |
 
-From Python, one English sentence takes about 11 µs (espeak per call: ~240 µs).
-`phonemize_batch` uses all cores. Peak memory with lexicons loaded: under 20 MB.
+Single-threaded, one Russian sentence with a homograph costs about 0.35 ms
+in the student, a Hebrew sentence about 1.7 ms. Piped input to the CLI is
+phonemized in 2,048-line chunks on all cores (order preserved); a terminal is
+answered line by line. From Python, one English sentence takes about 11 µs
+(espeak per call: ~240 µs); `phonemize_batch` uses all cores. Peak memory
+with lexicons loaded: under 20 MB.
 Each unknown English word costs ~0.5 ms in the default model (~1.6 ms large);
 results are cached and affix/compound splitting resolves many of them first.
 
