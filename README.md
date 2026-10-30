@@ -149,14 +149,19 @@ stress dictionary is memory-mapped instead of ~1.5 GB of RAM.
 Homograph stress (замо́к/за́мок, цепи́, стены́) and е/ё (все/всё, чем/чём) need
 context. Russian-G2P uses RUAccent's two ONNX models for that (a 351 MB BERT
 and a 14 MB tagger); polyg2p instead ships a 1.5M-parameter character-level
-student (`ru-ctx.g2p`) distilled from them on 354k sentences containing a
-homograph (Tatoeba, plus Leipzig news and Wikipedia sentences chosen for the
-rarer homographs). On 5,000 held-out Tatoeba sentences the student agrees
-with the teacher pipeline on 95.3% of homograph decisions (the dictionary's
-first candidate alone: 46.6%) and 92.3% of ё decisions; 94.4% of the
+student (`ru-ctx.g2p`) distilled from them on 454k sentences containing a
+homograph (Tatoeba, plus Leipzig news, web and Wikipedia sentences chosen for
+the rarer homographs). Sentences whose writer spelled всё/чём/нём with ё are
+also trained in a copy with ё written as е, so the student restores ё in text
+that omits it. On 5,000 held-out Tatoeba sentences the student agrees with
+the teacher pipeline on 96.1% of homograph decisions (the dictionary's first
+candidate alone: 48.9%) and 98.4% of stressed-ё words; 95.1% of the
 sentences come out identical. On 2,000 held-out news/Wikipedia sentences,
-which carry rarer homographs, it is 90.5%. It runs only on sentences that contain a homograph and costs
-about 0.5 ms there; `ru-ctx-small.g2p` (0.55M params, 92.0% / 0.3 ms) is the
+which carry rarer homographs, it is 90.5%. With every ё in the held-out
+sentences rewritten as е, 89.0% still come out identical to the teacher's
+reading of the ё-spelled text (всё/все is decided from context). It runs only
+on sentences that contain a homograph and costs about 0.35 ms there with the
+int8 kernel; `ru-ctx-small.g2p` (0.55M params, 92.0% / 0.3 ms) is the
 faster option. An int8 copy of the model (1.7 MB, same accuracy) is compiled
 into the crate, so Russian works out of the box; a `ru-ctx.g2p` in the data
 directory overrides it and `POLYG2P_RU_CTX=0` turns it off. On Apple Silicon

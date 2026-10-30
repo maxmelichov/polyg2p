@@ -17,6 +17,9 @@ Output (one JSON per line, for tools/train_ru.py):
     w   per char weight digit: '3' on words the teacher *models* decided, '1' elsewhere
     hm  [[start, len, [candidate char idx...], chosen char idx], ...] homograph-model words
     yh  [[start, len, 1/0], ...] ё-homograph words the ё tagger decided
+    o   the writer's original sentence (for end-to-end checks against the teacher)
+Rows whose writer spelled a ё-homograph with ё (всё) are copied with that ё as е
+and labelled ё: certain positives for text that omits ё (key "a": 1, placed last).
 
 usage: ru_distill.py RU_LEXICON_DIR part*.jsonl --out build-data/ru_ctx.jsonl
 """
@@ -54,8 +57,9 @@ def main():
     a = ap.parse_args()
     hom = read_tsv(os.path.join(a.lexdir, "homographs.tsv.gz"))
     yo_hom = read_tsv(os.path.join(a.lexdir, "yo_homographs.tsv.gz"))
+    yo_forms = set(yo_hom.values())
     rows = []
-    stats = {"rows": 0, "skipped": 0, "hm": 0, "yh": 0, "err": 0}
+    stats = {"rows": 0, "skipped": 0, "hm": 0, "yh": 0, "err": 0, "aug": 0}
     for part in a.parts:
         with open(part, encoding="utf8") as f:
             for line in f:
@@ -76,12 +80,14 @@ def main():
                 hm, yh = [], []
                 pos = 0
                 ok = True
+                word_pos = []
                 for w, acc, tier, yo_label, _m in d:
                     i = sent.find(w, pos)
                     if i < 0:
                         ok = False
                         break
                     pos = i + len(w)
+                    word_pos.append((i, w))
                     clean = acc.replace("+", "")
                     if len(clean) != len(w):
                         continue
@@ -113,8 +119,32 @@ def main():
                 stats["rows"] += 1
                 stats["hm"] += len(hm)
                 stats["yh"] += len(yh)
-                rows.append({"t": sent, "s": "".join(s), "y": "".join(y), "w": "".join(wt), "hm": hm, "yh": yh})
+                rows.append({"t": sent, "s": "".join(s), "y": "".join(y), "w": "".join(wt), "hm": hm, "yh": yh, "o": r["t"]})
+                # augmentation: a ё-homograph the writer spelled with ё (всё, чём, нём) is a
+                # certain positive example of the е-spelling the student will meet in text
+                # that omits ё; copy the row with those ё written as е and labelled ё
+                aug = [(i, w) for (i, w) in word_pos if "ё" in w and w in yo_forms]
+                if aug:
+                    # the copy drops every ё, as ё-less text does
+                    t2 = [("е" if ch == "ё" else ch) for ch in sent]
+                    y2 = list(y)
+                    w2 = list(wt)
+                    yh2 = list(yh)
+                    for i, w in aug:
+                        for p, ch in enumerate(w):
+                            if ch == "ё":
+                                t2[i + p] = "е"
+                                y2[i + p] = "1"
+                            elif ch == "е":
+                                y2[i + p] = "0"
+                            w2[i + p] = "3"
+                        yh2.append([i, len(w), 1])
+                    stats["aug"] += 1
+                    rows.append({"t": "".join(t2), "s": "".join(s), "y": "".join(y2), "w": "".join(w2), "hm": hm, "yh": yh2, "a": 1})
+    # shuffle, then move augmented copies behind the originals so that a leading
+    # dev slice (train_ru --heldout) never contains a ё-stripped copy
     random.Random(a.seed).shuffle(rows)
+    rows.sort(key=lambda r: r.get("a", 0))
     with open(a.out, "w", encoding="utf8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
