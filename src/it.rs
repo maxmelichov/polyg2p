@@ -30,7 +30,7 @@ const ENCLITIC: &[&str] = &[
     "seli", "sele", "sene", "gli", "lo", "la", "li", "le", "mi", "ti", "ci", "vi", "si", "ne",
 ];
 const IMPERFECT: &[&str] = &["evo", "evi", "eva", "evamo", "evate", "evano"];
-const U_NUCLEUS: &[&str] = &["suo", "sua", "sue", "tuo", "tua", "tue", "due", "bue"];
+const U_NUCLEUS: &[&str] = &["suo", "sua", "sue", "tuo", "tua", "tue", "due", "bue", "lui", "cui", "fui"];
 /// zz that is voiced (mèzzo, azzurro); the default for zz is voiceless.
 const VOICED_ZZ: &[&str] = &["mezz", "azzurr", "rozz", "brezz", "bizzarr", "razz", "zizzan", "gazz", "olezz", "orzz"];
 /// English and other loanwords in everyday Italian (hand-written).
@@ -57,7 +57,7 @@ const LOAN: &[(&str, &str)] = &[
 ];
 const SECONDARY: &[&str] = &[
     "della", "dello", "delle", "degli", "dalla", "dallo", "dalle", "dagli", "nella", "nello", "nelle", "negli",
-    "sulla", "sullo", "sulle", "sugli", "alla", "allo", "alle", "agli",
+    "sulla", "sullo", "sulle", "sugli", "alla", "allo", "alle", "agli", "una", "uno",
 ];
 
 /// Endings with fixed antepenultimate stress (Italian morphology; hand-written).
@@ -196,6 +196,8 @@ impl Italian {
                         ("qu", _) => "kw",
                         _ => al.as_str(),
                     };
+                    // c'è, v'è: the verb keeps its stress even though è alone is a clitic
+                    let right = if b.to_lowercase() == "è" { "ˈɛ".to_string() } else { right };
                     return format!("{left}{right}");
                 }
                 let left = self.realize(&al, 0);
@@ -276,7 +278,7 @@ impl Italian {
             let bc: Vec<char> = base.chars().collect();
             // gerunds, plural imperatives and infinitives are unmistakable; a 2sg imperative
             // plus clitic is only read into a word Wiktionary doesn't know (generale, animale
-            // are not genera+le, anima+le), and never with mi/ti/si/vi (amavi, finiti)
+            // are not genera+le, anima+le), and never with mi/ti/si/vi (amavi, finiti, salami)
             let unambiguous = base.ends_with('r') || ["ndo", "ate", "ete", "ite"].iter().any(|e| base.ends_with(e));
             if !unambiguous && (known || matches!(*cl, "mi" | "ti" | "si" | "vi")) {
                 continue;
@@ -321,11 +323,18 @@ impl Italian {
                 _ => {
                     if base.ends_with('r') {
                         // -are/-ire infinitives stress the vowel before the r (parlar-lo, finir-la);
-                        // an -ere infinitive of unknown stress (annetter-si) is left to the rules
+                        // an -ere infinitive of unknown stress (scriver-ci, annetter-si) is
+                        // stressed the way the rules stress the infinitive itself
                         if base.ends_with("er") {
-                            continue;
+                            let (kst, kop) = self.lex_info(&key);
+                            let kp = self.stress_pos(&kc, &key, &kvp, kst, kop == Some(false));
+                            if kp >= bc.len() {
+                                continue;
+                            }
+                            kp
+                        } else {
+                            *bvp.last().unwrap()
                         }
-                        *bvp.last().unwrap()
                     } else {
                         let syl: Vec<usize> = bvp.iter().copied().filter(|&p| syllabic(&bc, p)).collect();
                         if syl.len() >= 2 { syl[syl.len() - 2] } else { continue }
@@ -537,9 +546,11 @@ impl Italian {
                                 };
                                 out.push(if glide { 'j' } else { 'i' });
                             }
-                        } else if !stressed && i + 1 == n && vp.len() > 1 {
+                        } else if !stressed && i + 1 == n && vp.len() > 1 && !is_v(pv) {
+                            // final unstressed i is reduced (amici), but not a diphthong offglide (sei, poi)
                             out.push('ɪ');
-                        } else if !stressed && i + 1 == n && level == 0 {
+                        } else if i + 1 == n && level == 0 && n > 1 {
+                            // ci, si, di, mi: an unstressed clitic ends in the reduced vowel (the article i keeps i)
                             out.push('ɪ');
                         } else {
                             out.push('i');
@@ -551,7 +562,8 @@ impl Italian {
                             out.push('w');
                         } else if !stressed && is_v(nx) && i == 0 {
                             out.push('w');
-                        } else if !stressed && !(i + 1 == n && vp.len() == 1) {
+                        } else if level < 2 || (!stressed && !(i + 1 == n && vp.len() == 1)) {
+                            // un, una, su, sul: espeak writes the reduced vowel in unstressed function words
                             out.push('ʊ');
                         } else {
                             out.push('u');

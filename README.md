@@ -46,7 +46,7 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | English, unstressed ɪ = ə ² | **98.6%** | 97.6% |
 | Spanish | **99.5%** | 99.3% |
 | Italian, with `it.lex` | **99.3%** | 87.1% |
-| Italian, rules only | **92.7%** | 87.1% |
+| Italian, rules only | **92.6%** | 87.1% |
 | German, with `de.lex` ¹ | **98.7%** | 96.4% |
 | German, rules only | 92.1% | 96.4% |
 | French (nasals scored) | **98.9%** | 97.7% |
@@ -100,7 +100,7 @@ the same collapse; where the two disagree, WikiPron decides who is right):
 |---|---|---|---|---|---|
 | English | 2,018,803 | 15,002,702 | 4.55% | 217,762 | 44,238 |
 | Spanish | 437,127 | 3,083,117 | 1.25% | 28,070 | 264 |
-| Italian | 984,011 | 5,845,851 | 7.70% | 269,664 | 3,799 |
+| Italian | 984,011 | 5,845,851 | 7.72% | 269,714 | 3,689 |
 | German | 773,746 | 5,781,616 | 3.67% | 84,919 | 3,319 |
 | French | 721,913 | 5,179,252 | 3.69% | 101,506 | 5,568 |
 | Portuguese | 433,944 | 3,048,347 | 1.49% | 19,732 | 2,388 |

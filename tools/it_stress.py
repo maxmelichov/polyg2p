@@ -105,7 +105,8 @@ def main():
             # a syllabic i before the final vowel (fattoria, zia, Algeria: "i a", not
             # the glide "j a") is the stressed vowel of a word in hiatus
             j = len(nuc) - 2
-            hiatus.add(len(nuc) == nv and j >= 0 and nuc[j] == "i" and letters[nv - 2][1] == "i")
+            hiatus.add(len(nuc) == nv and j >= 0 and nuc[j] == "i" and letters[nv - 2][1] == "i"
+                       and letters[nv - 2][0] + 1 == letters[nv - 1][0])
         # an open vowel far from the end is a compound's secondary stress, and a
         # reading without any open vowel means the readings may differ in stress
         if not all_open:
