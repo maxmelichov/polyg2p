@@ -34,7 +34,13 @@ pub fn tokenize(text: &str) -> Vec<Tok> {
     let mut i = 0;
     while i < chars.len() {
         let c = chars[i];
-        if is_word_char(c) {
+        // a clitic written with a leading apostrophe ('s morgens, 't, 'em) stays one token
+        let clitic = matches!(c, '\'' | '’')
+            && (i == 0 || !is_word_char(chars[i - 1]))
+            && i + 1 < chars.len()
+            && is_word_char(chars[i + 1])
+            && !(i + 2 < chars.len() && is_word_char(chars[i + 2]) && i + 3 < chars.len() && is_word_char(chars[i + 3]));
+        if is_word_char(c) || clitic {
             let start = i;
             i += 1;
             while i < chars.len() {

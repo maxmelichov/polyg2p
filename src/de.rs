@@ -88,6 +88,9 @@ impl German {
         if let Some(f) = self.func.get(lw.as_str()) {
             return f.to_string();
         }
+        if let Some(p) = self.pronominal_adverb(&lw) {
+            return p;
+        }
         if let Some(p) = self.lookup(w) {
             return p;
         }
@@ -104,6 +107,26 @@ impl German {
             Some(m) => m.predict(&lw),
             None => rules(&lw),
         }
+    }
+
+    /// Pronominal adverbs (darüber, damit, worauf, hierher) stress the preposition,
+    /// not the da-/wo-/hier- part; lexica and espeak both get many of these wrong.
+    fn pronominal_adverb(&self, lw: &str) -> Option<String> {
+        for (pre, ph) in [("dar", "dɑːr"), ("da", "dɑː"), ("wor", "voːr"), ("wo", "voː"), ("hier", "hiːr")] {
+            let Some(rest) = lw.strip_prefix(pre) else { continue };
+            if !PRON_ADV_PREP.contains(&rest) {
+                continue;
+            }
+            // the linking -r- appears only before a vowel (darauf / damit, worin / womit)
+            let vowel = rest.starts_with(is_v);
+            if pre != "hier" && (pre.ends_with('r') != vowel) {
+                continue;
+            }
+            let p = self.content_word(rest);
+            let p = if p.contains('ˈ') { p } else { format!("ˈ{p}") };
+            return Some(format!("{ph}{p}"));
+        }
+        None
     }
 
     /// Split an unknown word into known parts (the last part is the head).
@@ -155,6 +178,13 @@ impl German {
 }
 
 // ---------------------------------------------------------------- rules
+
+/// Second parts of pronominal adverbs (da-/wo-/hier- + preposition).
+const PRON_ADV_PREP: &[&str] = &[
+    "über", "auf", "an", "in", "von", "mit", "zu", "nach", "um", "her", "hin", "aus", "bei", "für", "durch",
+    "gegen", "hinter", "neben", "unter", "vor", "zwischen", "wider", "rum", "ran", "rauf", "raus", "rein",
+    "runter", "rüber", "rin", "nieder", "zwischen", "entlang", "gegenüber",
+];
 
 const PREFIX_STRESSED: &[&str] = &[
     "zurück", "zusammen", "weiter", "wieder", "heraus", "herein", "hinaus", "hinein", "voran", "vorbei", "über",

@@ -7,12 +7,13 @@ from en_convert import fold
 REPL = [
     ("ɐ̯", "ɾ"), ("aɪ̯", "aɪ"), ("aʊ̯", "aʊ"), ("ɔɪ̯", "ɔø"), ("ɔʏ̯", "ɔø"),
     ("ʁ", "r"), ("ɐ", "ɐ"), ("g", "ɡ"), ("t͡s", "ts"), ("t͡ʃ", "tʃ"), ("p͡f", "pf"),
-    ("d͡ʒ", "dʒ"), ("̯", ""), ("ʔ", ""), (".", ""),
+    ("d͡ʒ", "dʒ"), ("̯", ""), ("ʔ", ""), (".", ""), ("‿", ""), ("\u0311", ""), ("\u0361", ""),
 ]
 V = "aeiouyøɛɪʊʏœəɔɐæɑɜ"
 def lex_to_espeak(ipa, word=""):
     s = unicodedata.normalize("NFC", ipa.strip().strip("/"))
-    s = s.replace("n̩", "ən").replace("l̩", "əl").replace("m̩", "əm")
+    s = re.sub("[\u0329\u030d]+", "\u0329", s)  # WikiPron sometimes doubles the syllabic mark
+    s = s.replace("ʁɐ̯", "ɐ").replace("n̩", "ən").replace("l̩", "əl").replace("m̩", "əm").replace("ŋ̩", "ən")
     s = s.replace("ʊʁ", "ʊɐ̆") if False else s
     for a, b in REPL:
         s = s.replace(a, b)

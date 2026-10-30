@@ -319,7 +319,25 @@ fn x_kind(c: &[char], i: usize) -> &'static str {
 /// Phonemize one lower-case word (hyphen/apostrophe parts are read one by one).
 pub fn word(lw: &str) -> String {
     let parts: Vec<&str> = lw.split(['-', '\'', '’']).filter(|p| p.chars().any(char::is_alphabetic)).collect();
-    parts.iter().map(|p| word_one(p)).collect()
+    let mut out = String::new();
+    for (k, p) in parts.iter().enumerate() {
+        // d'água, n'água: an elided single consonant is read as that consonant, not its letter name
+        let elided = p.chars().count() == 1 && k + 1 < parts.len() && !p.chars().any(is_v) && lw.contains(['\'', '’']);
+        if elided {
+            out.push_str(match *p {
+                "d" => "d",
+                "n" => "n",
+                "l" => "l",
+                "m" => "m",
+                "s" | "c" => "s",
+                "t" => "t",
+                _ => "",
+            });
+        } else {
+            out.push_str(&word_one(p));
+        }
+    }
+    out
 }
 
 fn word_one(w: &str) -> String {

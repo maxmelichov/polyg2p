@@ -55,6 +55,11 @@ def build_en(work, out):
     from en_convert import load_cmudict, arpa_to_espeak
     lex = load_cmudict(os.path.join(os.environ["POLYG2P_SRC"], "cmudict.dict"))
     tsv = os.path.join(work, "en_lex.tsv")
+    fix = {}
+    for line in open(os.path.join(HERE, "en_fix.tsv"), encoding="utf8"):
+        if line.strip() and not line.startswith("#"):
+            w, e = line.rstrip("\n").split("\t")
+            fix[w] = unicodedata.normalize("NFD", e)
     with open(tsv, "w", encoding="utf8") as f, open(os.path.join(work, "en_train.tsv"), "w", encoding="utf8") as t:
         for w, prons in lex.items():
             vs = []
@@ -62,6 +67,8 @@ def build_en(work, out):
                 e = unicodedata.normalize("NFD", arpa_to_espeak(p, w))
                 if e not in vs:
                     vs.append(e)
+            if w in fix:
+                vs = [fix[w]] + [v for v in vs if v != fix[w]]
             f.write(w + "\t" + "\t".join(vs) + "\n")
             if re.fullmatch(r"[a-z][a-z'\-\.]*", w) and len(w) <= 30:
                 for e in vs:
@@ -82,10 +89,19 @@ def build_it(work, out):
     shutil.copy(os.path.join(work, "it_suffix2.tsv"), os.path.join(ROOT, "data", "it_suffix.tsv"))
     shutil.copy(os.path.join(work, "it_open.tsv"), os.path.join(ROOT, "data", "it_open.tsv"))
     tsv = os.path.join(work, "it_lex_in.tsv")
+    seen = set()
     with open(os.path.join(work, "it_lex.tsv"), encoding="utf8") as f, open(tsv, "w", encoding="utf8") as o:
         for line in f:
             w, st, op = line.rstrip("\n").split("\t")
+            seen.add(w)
             o.write(f"{w}\t{st}|{op}\n")
+        # unstressed WikiPron entries carry no stress or openness, but their presence
+        # lets the rules recognise verb forms (mangiano -> mangiare)
+        for line in open(os.path.join(os.environ["POLYG2P_SRC"], "ita_latn_broad.tsv"), encoding="utf8"):
+            w = line.split("\t")[0]
+            if w not in seen and " " not in w:
+                seen.add(w)
+                o.write(f"{w}\t|\n")
     build_lex(tsv, os.path.join(out, "it.lex"))
 
 
@@ -115,10 +131,59 @@ def build_de(work, out):
                            capture_output=True, text=True, check=True).stdout.split("\n")
     strip = lambda x: unicodedata.normalize("NFC", x).replace("ˈ", "").replace("ˌ", "")  # noqa: E731
     order = {w: sorted(vs, key=lambda v: edit(strip(v), strip(r))) for (w, vs), r in zip(multi, rules)}
+    # WikiPron (deu_latn_broad) settles the variant order where it knows the word
+    # (Bus: ipa-dict lists buːs first, WikiPron has only bʊs) and adds missing words
+    wp = {}
+    for line in open(os.path.join(os.environ["POLYG2P_SRC"], "deu_latn_broad.tsv"), encoding="utf8"):
+        w, p = line.rstrip("\n").split("\t")
+        e = unicodedata.normalize("NFD", lex_to_espeak(p.replace(" ", ""), w))
+        if "ˈ" not in e:
+            m = re.search("[%s]" % V, e)
+            if m:
+                e = e[: m.start()] + "ˈ" + e[m.start():]
+        wp.setdefault(w, []).append(e)
+    have = {w for w, _ in rows}
+    bare = lambda x: strip(x).replace("ː", "")  # noqa: E731
+    # WikiPron carries no stress: take the stress pattern from the rules/compound
+    # splitter running on the ipa-dict-only lexicon (Auseinanderstreben keeps its
+    # ˌaʊsaɪnˈandɜ... instead of a default first-syllable stress)
+    extra = [w for w in wp if w not in have and " " not in w]
+    tmp = os.path.join(work, "de_tmp")
+    os.makedirs(tmp, exist_ok=True)
+    tsv0 = os.path.join(tmp, "de_lex0.tsv")
+    with open(tsv0, "w", encoding="utf8") as f:
+        for w, vs in rows:
+            f.write(w + "\t" + "\t".join(order.get(w, vs)) + "\n")
+    build_lex(tsv0, os.path.join(tmp, "de.lex"))
+    rule_out = subprocess.run([os.path.join(ROOT, "target", "release", "g2p"), "de", "--data", tmp, "--words"],
+                              input="\n".join(extra) + "\n", capture_output=True, text=True, check=True).stdout.split("\n")
+    NUC = re.compile("[ˈˌ]?[%sː]+" % V)
+    def restress(wpv, ref):
+        nuc_r = NUC.findall(unicodedata.normalize("NFC", ref))
+        plain = unicodedata.normalize("NFC", wpv).replace("ˈ", "")
+        nuc_w = list(NUC.finditer(plain))
+        if len(nuc_r) != len(nuc_w):
+            return wpv
+        out, pos = [], 0
+        for m, r in zip(nuc_w, nuc_r):
+            out.append(plain[pos:m.start()])
+            out.append(r[0] if r[0] in "ˈˌ" else "")
+            out.append(m.group())
+            pos = m.end()
+        out.append(plain[pos:])
+        return unicodedata.normalize("NFD", "".join(out))
     tsv = os.path.join(work, "de_lex.tsv")
     with open(tsv, "w", encoding="utf8") as f:
         for w, vs in rows:
-            f.write(w + "\t" + "\t".join(order.get(w, vs)) + "\n")
+            vs = order.get(w, vs)
+            if w in wp:
+                # pick the ipa-dict variant closest to WikiPron (Bus: bʊs not buːs)
+                g = [bare(x) for x in wp[w]]
+                vs = sorted(vs, key=lambda v: min(edit(bare(v), x) for x in g))
+            f.write(w + "\t" + "\t".join(vs) + "\n")
+        for w, ref in zip(extra, rule_out):
+            vs = [restress(v, ref) for v in dict.fromkeys(wp[w])]
+            f.write(w + "\t" + "\t".join(vs) + "\n")
     build_lex(tsv, os.path.join(out, "de.lex"))
 
 
@@ -128,15 +193,18 @@ def main():
     ap.add_argument("--work", default="build-data")
     ap.add_argument("--src", default=os.path.join(ROOT, "sources"))
     ap.add_argument("--ccbysa", action="store_true", help="also build de/it data from CC BY-SA sources")
+    ap.add_argument("--only", default=None, help="build just this language (en, it, de)")
     a = ap.parse_args()
     os.environ["POLYG2P_SRC"] = os.path.abspath(a.src)
     sys.path.insert(0, HERE)
     os.makedirs(a.out, exist_ok=True)
     os.makedirs(a.work, exist_ok=True)
     fetch(a.src, a.ccbysa)
-    build_en(a.work, a.out)
-    if a.ccbysa:
+    if a.only in (None, "en"):
+        build_en(a.work, a.out)
+    if a.ccbysa and a.only in (None, "it"):
         build_it(os.path.abspath(a.work), a.out)
+    if a.ccbysa and a.only in (None, "de"):
         build_de(a.work, a.out)
     print("done ->", a.out)
 

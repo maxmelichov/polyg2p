@@ -47,9 +47,17 @@ def align_vowels(word, ps):
                 break
         else:
             break
+    # realize / create: a magic final e plus one letter pair carrying two phones
+    me = re.search(r"e[sd]?$", w)
+    if len(groups) == len(vph) and len(groups) > 1 and me and groups[-1][0] == me.start() \
+            and ps[vph[-1]][:-1] in ("AY", "EY", "OW", "UW", "IY") and vph[-1] + 1 < len(ps):
+        for k, (a, b) in enumerate(groups[:-1]):
+            if b - a >= 2 and w[a:b] in ("ea", "ia", "io", "ua", "eo", "ie", "eu"):
+                groups = groups[:k] + [(a, a + 1), (a + 1, b)] + groups[k + 1:-1]
+                break
     if len(groups) != len(vph):
         return {}
-    return {pi: (w[a:b], w[b:b + 3], k == 0, k == len(groups) - 1) for k, (pi, (a, b)) in enumerate(zip(vph, groups))}
+    return {pi: (w[a:b], w[b:b + 3], k == 0, k == len(groups) - 1, w[b:]) for k, (pi, (a, b)) in enumerate(zip(vph, groups))}
 
 
 def reduced(base, spelled, ps, i, word):
@@ -59,7 +67,7 @@ def reduced(base, spelled, ps, i, word):
     n = len(ps)
     prev = ps[i - 1] if i else None
     nxt = ps[i + 1] if i + 1 < n else None
-    g, after, initial, final = spelled
+    g, after, initial, final = spelled[:4]
     pretonic = nxt is not None and not is_vowel(nxt) and any(p.endswith("1") for p in ps[i + 1:i + 4] if is_vowel(p)) and not any(is_vowel(p) for p in ps[:i])
     if g in ("i", "y"):
         if after.startswith("bl") or after.startswith("bil"):
@@ -73,8 +81,8 @@ def reduced(base, spelled, ps, i, word):
                 return "ᵻ" if prev in ("T", "D") else "ə"
             if after.startswith("s") and nxt == "Z" and i + 2 == n:
                 return "ᵻ" if prev in SIBILANT else "ə"
-            if after in ("st", "t", "ts") or after.startswith("st"):
-                return "ɪ"
+            if after in ("st", "t", "ts") or after.startswith("st") or after.startswith("dg"):
+                return "ɪ"  # basket, knowledge
             if after.startswith("ss"):
                 return "ɪ" if base == "IH" else "ə"
             if after.startswith("n") and base == "IH" and word not in ("women",):
@@ -82,6 +90,8 @@ def reduced(base, spelled, ps, i, word):
             return "ɪ" if base == "IH" else "ə"
         if after.startswith("x"):
             return "ɪ" if base == "IH" else "ə"
+        if (after[:1] == "t" and after[1:2] and after[1:2] not in "aeiouy") or after.startswith("dg"):
+            return "ɪ"  # basketball, knowledgeable
         if pretonic and initial and base == "IH":
             return "ɪ" if after.startswith("n") else "ᵻ"
         if pretonic and base == "AH" and after[:1] in ("c", "d", "b", "f", "l", "p", "t", "h", "v", "g", "s") and word.find(g) <= 1 and not after.startswith("n"):
@@ -112,9 +122,25 @@ def reduced(base, spelled, ps, i, word):
 def arpa_to_espeak(phones, word=""):
     ps = phones.split() if isinstance(phones, str) else list(phones)
     n = len(ps)
+    lw = word.lower()
+    # CMUdict's post-tonic "2" marks full-vowel quality, not a stress espeak would
+    # write: thirty TH ER1 D IY2 -> θˈɜːɾi, president ... EH2 N T -> ...ənt,
+    # realize ... AY2 Z -> ɹˈiːəlaɪz
+    prim = next((k for k, q in enumerate(ps) if q.endswith("1")), None)
+    if prim is not None:
+        for k in range(prim + 1, n):
+            q = ps[k]
+            if not q.endswith("2"):
+                continue
+            rest = ps[k + 1:]
+            if q[:-1] == "IY":
+                ps[k] = "IY0"
+            elif q[:-1] == "EH" and rest in (["N", "T"], ["N", "T", "S"]) and re.search(r"ents?$", lw):
+                ps[k] = "AH0"
+            elif q[:-1] == "AY" and rest[:1] == ["Z"] and re.search(r"i[sz](e|ed|es|ing)$", lw):
+                ps[k] = "AY0"
     out = []
     spelled = align_vowels(word, ps) if word else {}
-    lw = word.lower()
     skip_w = False
     for i, p in enumerate(ps):
         prev = ps[i - 1] if i else None
@@ -145,6 +171,15 @@ def arpa_to_espeak(phones, word=""):
                 v = "ʊ"  # pʊɹ
             elif base == "AA" and nxt == "R":
                 v = "ɑː"
+            elif base == "AA" and s and i in spelled and (spelled[i][0] in ("au", "aw") or (spelled[i][0] == "a" and re.match(r"l(l(ing|ed|er|s|y|en)?$|[^aeiouylmfkv]|$)", spelled[i][4]))):
+                v = "ɔː"  # caused, falling, salt: espeak keeps the ɔː of au/aw/al spellings
+            elif base == "AA" and s and i in spelled and spelled[i][0] == "o" and (
+                    nxt == "F" or (nxt in ("S", "NG", "G") and re.match(r"(ss|st|ng|g)([^aeiouy]|$|(ing|ed|es|er|y|ly|en)$)", spelled[i][4]))):
+                v = "ɔː"  # cost, soft, off, long, dog: lot-cloth split as espeak writes it
+            elif base == "AE" and s == 0 and i == 0 and nxt in ("D", "K") and i + 2 < n and not is_vowel(ps[i + 2]):
+                v = "ɐ"  # ɐdvˈaɪs, ɐksˈɛptᵻd
+            elif base == "AY" and s == 0:
+                v = "aɪ"
             elif base == "AO" and nxt == "R":
                 v = "ɔː"
             elif base == "IH" and s == 0 and nxt in ("D", "Z") and i + 2 == n and prev in ("T", "D", "S", "Z", "SH", "ZH", "CH", "JH"):
@@ -161,6 +196,8 @@ def arpa_to_espeak(phones, word=""):
                 v += "ɹ"  # espeak keeps an audible r before a following vowel
             out.append(mark + v)
         else:
+            if p == "K" and prev == "NG" and nxt == "TH":
+                continue  # strength, length: espeak writes ŋθ
             c = CONS[p]
             # flapping: t/d after a vowel (or r) and before an unstressed vowel
             if p == "T" and nxt == "AH0" and i + 3 == n and ps[i + 2] == "N" and prev and is_vowel(prev):
@@ -171,6 +208,8 @@ def arpa_to_espeak(phones, word=""):
                 continue
             if p == "T" and prev and nxt and is_vowel(nxt) and nxt[-1] == "0" and (is_vowel(prev) or prev == "R"):
                 c = "ɾ"
+            if p == "D" and "d" not in lw and prev and nxt and is_vowel(nxt) and nxt[-1] == "0" and (is_vowel(prev) or prev == "R"):
+                c = "ɾ"  # thirty TH ER1 D IY2: CMUdict writes the flap as D
             out.append(c)
     # CMUdict marks both halves of some compounds primary (nineteen, etcetera);
     # espeak keeps one primary, the last, and demotes the others

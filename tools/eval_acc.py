@@ -166,6 +166,7 @@ def main():
     ap.add_argument("--data", default=None)
     ap.add_argument("--top", type=int, default=20000)
     ap.add_argument("--words", default=None, help="file of words to evaluate (uniform weights)")
+    ap.add_argument("--all", action="store_true", help="every word in the gold list (uniform weights)")
     ap.add_argument("--label", default="")
     ap.add_argument("--no-espeak", action="store_true")
     ap.add_argument("--show", type=int, default=0)
@@ -175,7 +176,11 @@ def main():
     LENIENT = a.lenient
     lang = a.lang
     gold = load_gold(lang)
-    if a.words:
+    if a.all:
+        words = [w for w in gold if all(c.isalpha() or c in "'’-·" for c in w)]
+        weights = {w: 1.0 for w in words}
+        kind = f"all {len(words)} gold words (uniform)"
+    elif a.words:
         words = [w.strip() for w in open(a.words, encoding="utf8") if w.strip() in gold]
         weights = {w: 1.0 for w in words}
         kind = f"{len(words)} listed words (uniform)"

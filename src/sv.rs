@@ -1200,7 +1200,10 @@ const INFLECT: &[(&str, &str)] = &[
 
 /// Built-in table (later entries override earlier ones), then the data-pack lexicon.
 fn lex_get(w: &str) -> Option<String> {
-    if let Some(p) = LEX.iter().rev().find(|(k, _)| *k == w).map(|x| x.1) {
+    static MAP: OnceLock<std::collections::HashMap<&'static str, &'static str>> = OnceLock::new();
+    // later entries override earlier ones, as the linear scan from the end did
+    let map = MAP.get_or_init(|| LEX.iter().copied().collect());
+    if let Some(p) = map.get(w) {
         return Some(p.to_string());
     }
     data_lex().and_then(|l| l.get(w)).map(|p| p.to_string())
@@ -1253,7 +1256,8 @@ fn compound(lw: &str) -> Option<String> {
                 continue;
             }
             let right: String = c[i + link.len()..].iter().collect();
-            if right.chars().count() == 2 && !SHORT_WORDS.contains(&right.as_str()) {
+            // a two-letter right part needs a real word on the left: vän+ta is vänta, not vän + ta
+            if right.chars().count() == 2 && (!SHORT_WORDS.contains(&right.as_str()) || i < 4) {
                 continue;
             }
             if !right.starts_with(|ch: char| !is_v(ch)) && link.is_empty() && !is_v(c[i - 1]) {

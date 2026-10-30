@@ -30,7 +30,7 @@ const EREN_TSV: &str = include_str!("../data/nl_eren.tsv");
 /// and words the rules get wrong.
 const EXC: &[(&str, &str)] = &[
     ("de", "də"), ("het", "ət"), ("een", "ən"), ("één", "ˈeːn"), ("er", "ər"), ("je", "jə"), ("ze", "zə"), ("we", "ʋə"),
-    ("me", "mə"), ("te", "tə"), ("ik", "ɪk"), ("en", "ɛn"), ("'t", "ət"), ("'n", "ən"), ("'s", "s"), ("'k", "ək"),
+    ("me", "mə"), ("te", "tə"), ("ik", "ɪk"), ("en", "ɛn"), ("ge", "ɣə"), ("'t", "ət"), ("'n", "ən"), ("'s", "s"), ("'k", "ək"),
     ("'m", "əm"), ("z'n", "zən"), ("m'n", "mən"), ("d'r", "dər"), ("zo'n", "zoːn"), ("hun", "hɵn"), ("hen", "hɛn"),
     ("mijn", "mɛɪn"), ("zijn", "zɛɪn"), ("zich", "zɪx"), ("ons", "ɔns"), ("niet", "nit"), ("wat", "ʋɑt"), ("dat", "dɑt"),
     ("dit", "dɪt"), ("die", "di"), ("deze", "dˈeːzə"), ("hij", "hɛɪ"), ("zij", "zɛɪ"), ("wij", "ʋɛɪ"), ("jij", "jɛɪ"),
@@ -646,7 +646,8 @@ fn analyze(w: &str, depth: usize) -> String {
                 ("af", 'd') => "ˈɑv".to_string(),
                 ("aan", 'g' | 'k') => "ˈaːŋ".to_string(),
                 ("in", 'g' | 'k') => "ˈɪŋ".to_string(),
-                ("on", 'g' | 'k') => "ˈɔŋ".to_string(),
+                ("on", 'k') => "ˈɔŋ".to_string(),
+                ("on", 'g') => "ˈɔn".to_string(), // ongeluk: n stays alveolar before the fricative ɣ
                 _ => stem(p),
             };
             let tail = analyze(rem, depth + 1);
@@ -1473,7 +1474,7 @@ mod tests {
             ("leveren", "lˈeːvərən"), ("studeren", "stydˈeːrən"), ("kinderen", "kˈɪndərən"), ("regelen", "rˈeːɣələn"),
             ("vriendelijk", "vrˈindələk"), ("mogelijk", "mˈoːɣələk"), ("eigenlijk", "ˈɛɪɣənlək"), ("gelijk", "ɣəlˈɛɪk"),
             ("twintig", "tʋˈɪntəx"), ("weinig", "ʋˈɛɪnəx"), ("nodige", "nˈoːdəɣə"), ("mogelijkheid", "mˈoːɣələkhɛɪt"),
-            ("ontwikkeling", "ɔntʋˈɪkəlɪŋ"), ("onafhankelijk", "ˈɔnˌɑfhˌɑŋkələk"), ("ongeveer", "ˈɔŋɣəvˌeːr"), ("aangeven", "ˈaːŋɣˌeːvən"),
+            ("ontwikkeling", "ɔntʋˈɪkəlɪŋ"), ("onafhankelijk", "ˈɔnˌɑfhˌɑŋkələk"), ("ongeveer", "ˈɔnɣəvˌeːr"), ("aangeven", "ˈaːŋɣˌeːvən"),
             ("interessant", "ɪntərɛsˈɑnt"), ("universiteit", "ˌynivɛrsitˈɛɪt"), ("telefoon", "teːləfˈoːn"),
             ("generaal", "ɣeːnərˈaːl"), ("materiaal", "maːteːriˈaːl"), ("student", "stydˈɛnt"), ("energie", "eːnərʒˈi"),
             ("economie", "eːkoːnoːmˈi"), ("familie", "fˈaːmili"), ("regering", "rəɣˈeːrɪŋ"), ("verandering", "vərˈɑndərɪŋ"),

@@ -1739,8 +1739,10 @@ fn vowel_run(
                 } else if closed_after {
                     push_v(out, "ɛ");
                 } else if j + 1 < me && c[j + 1] == nx {
-                    // e before a double consonant + vowel: e (effet, cellule, terrain)
-                    push_v(out, "e");
+                    // e before a double consonant + vowel: e (effet, cellule, intelligent),
+                    // but ɛ before rr (terrain, erreur) and before ll + mute e (tellement)
+                    let mute_e = j + 2 < m && c[j + 2] == 'e' && (j + 3 >= m || !is_vl(c[j + 3]));
+                    push_v(out, if nx == 'r' || (nx == 'l' && mute_e) { "ɛ" } else { "e" });
                 } else if word_initial || prev_glide {
                     push_v(out, "e");
                 } else if nx == 'r' && start == 3 && (w.starts_with("inter") || w.starts_with("hyper") || w.starts_with("super")) {
