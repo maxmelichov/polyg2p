@@ -19,6 +19,17 @@ const UNSTRESSED: &[&str] = &[
     "col", "se", "è", "ha", "ho", "hai", "hanno", "dei", "ai", "dai", "nei", "sui", "coi", "me", "te", "ce", "ve",
 ];
 /// Short words whose u before a final vowel is the stressed nucleus (sˈuo), not a glide.
+/// Open stressed vowel where the ending statistics say closed.
+const OPEN_WORDS: &[&str] = &["chiesa", "chiese", "chiesetta", "chiesastico"];
+/// Closed stressed vowel where the ending statistics say open (articulated prepositions).
+const CLOSED_WORDS: &[&str] = &["della", "delle", "dello", "degli", "nella", "nelle", "nello", "negli"];
+/// Enclitic pronouns that attach to imperatives, infinitives and gerunds (smettila, parlatemi).
+const ENCLITIC: &[&str] = &[
+    "glielo", "gliela", "glieli", "gliele", "gliene", "melo", "mela", "meli", "mele", "mene", "telo", "tela", "teli",
+    "tele", "tene", "celo", "cela", "celi", "cele", "cene", "velo", "vela", "veli", "vele", "vene", "selo", "sela",
+    "seli", "sele", "sene", "gli", "lo", "la", "li", "le", "mi", "ti", "ci", "vi", "si", "ne",
+];
+const IMPERFECT: &[&str] = &["evo", "evi", "eva", "evamo", "evate", "evano"];
 const U_NUCLEUS: &[&str] = &["suo", "sua", "sue", "tuo", "tua", "tue", "due", "bue"];
 /// zz that is voiced (mèzzo, azzurro); the default for zz is voiceless.
 const VOICED_ZZ: &[&str] = &["mezz", "azzurr", "rozz", "brezz", "bizzarr", "razz", "zizzan", "gazz", "olezz", "orzz"];
@@ -26,7 +37,7 @@ const VOICED_ZZ: &[&str] = &["mezz", "azzurr", "rozz", "brezz", "bizzarr", "razz
 const LOAN: &[(&str, &str)] = &[
     ("computer", "kompjˈuter"), ("internet", "ˈinternet"), ("john", "ʤɔn"), ("york", "jˈɔrk"), ("new", "nju"),
     ("sushi", "sˈuʃi"), ("weekend", "wˈikɛnd"), ("baseball", "bˈɛizbol"), ("sandwich", "sˈɛndwiʧ"),
-    ("halloween", "ˈallowin"), ("roma", "rˈoma"), ("europa", "eʊrˈɔpa"), ("hotel", "otˈɛl"), ("bangladesh", "baŋɡladˈɛʃ"), ("facebook", "fˈɛizbuk"), ("mary", "mˈɛri"),
+    ("halloween", "ˈallowin"), ("roma", "rˈoma"), ("europa", "eʊrˈɔpa"), ("hotel", "otˈɛl"), ("bangladesh", "baŋɡladˈɛʃ"), ("facebook", "fˈeɪsbuk"), ("son", "sˈon"), ("autobus", "ˈaʊtobʊs"), ("mary", "mˈɛri"),
     ("ok", "okˈɛi"), ("okay", "okˈɛi"), ("jeans", "ʤins"), ("club", "klab"), ("email", "imˈɛil"), ("web", "wɛb"),
     ("online", "onlˈain"), ("smartphone", "zmartfˈon"), ("party", "pˈarti"), ("leader", "lˈider"),
     ("manager", "mˈɛneʤer"), ("meeting", "mˈitinɡ"), ("marketing", "mˈarketinɡ"), ("business", "bˈiznes"),
@@ -59,6 +70,7 @@ const SDRUCCIOLE: &[&str] = &[
 ];
 /// Common proparoxytone words not covered by an ending rule (hand-written).
 const SDRUCCIOLE_WORDS: &[&str] = &[
+    "autobus",
     "vogliono", "devono", "debbono", "sogliono", "muoiono", "siano", "vadano", "facciano", "dicano", "vengano",
     "abbiano", "sappiano", "possano", "vogliano", "debbano", "diano", "stiano",
     "ultimo", "ultima", "ultimi", "ultime", "utile", "utili", "facile", "facili", "difficile", "difficili",
@@ -197,15 +209,134 @@ impl Italian {
         let Some(l) = &self.lex else { return (None, None) };
         // proper nouns are capitalized in the lexicon (Roma, Europa)
         let cap: String = lw.chars().next().map(|c| c.to_uppercase().chain(lw.chars().skip(1)).collect()).unwrap_or_default();
-        let Some(v) = l.get(lw).or_else(|| l.get(&cap)) else { return (None, None) };
-        let mut it = v.split('|');
-        let st = it.next().and_then(|s| s.parse().ok());
-        let op = match it.next() {
-            Some("o") => Some(true),
-            Some("c") => Some(false),
-            _ => None,
+        let parse = |v: &str| -> (Option<u8>, Option<bool>) {
+            let mut it = v.split('|');
+            let st = it.next().and_then(|s| s.parse().ok());
+            let op = match it.next() {
+                Some("o") => Some(true),
+                Some("c") => Some(false),
+                _ => None,
+            };
+            (st, op)
         };
-        (st, op)
+        if let Some(v) = l.get(lw).or_else(|| l.get(&cap)) {
+            return parse(&v);
+        }
+        let op = None;
+        // an inflected form that Wiktionary lacks takes stress and vowel quality from the
+        // form it has: dollari -> dollaro, felici -> felice, fattorie -> fattoria, ricorda -> ricordo
+        let cs: Vec<char> = lw.chars().collect();
+        let n = cs.len();
+        if n >= 3 {
+            let stem: String = cs[..n - 1].iter().collect();
+            let alts: &[char] = match cs[n - 1] {
+                'i' if n >= 4 => &['o', 'e', 'a'],
+                'e' if n >= 4 => &['a', 'o'],
+                'e' => &['a'],
+                'a' if n >= 4 => &['o', 'e'],
+                'o' if n >= 4 => &['a'],
+                _ => &[],
+            };
+            let mut op = op;
+            for &a in alts {
+                if let Some(v) = l.get(&format!("{stem}{a}")) {
+                    let (st2, op2) = parse(&v);
+                    op = op.or(op2);
+                    // the stressed vowel must not be the one that changed
+                    if let Some(s) = st2.filter(|&s| s >= 1) {
+                        return (Some(s), op);
+                    }
+                }
+            }
+            return (None, op);
+        }
+        (None, op)
+    }
+
+    /// smettila, parlatemi, vederlo: a verb form with an enclitic pronoun keeps its own stress.
+    fn enclitic(&self, c: &[char], lw: &str, vp: &[usize]) -> Option<(usize, String)> {
+        let l = self.lex.as_ref()?;
+        if vp.len() < 3 {
+            return None;
+        }
+        // dammelo, fallo, dicci, vattene: a monosyllabic imperative doubles the clitic's consonant
+        for pre in ["da", "fa", "di", "va", "sta"] {
+            let k = pre.len();
+            if lw.starts_with(pre) && c.len() > k + 2 && c[k] == c[k + 1] && !is_v(c[k]) {
+                let tail: String = c[k + 2..].iter().collect();
+                let with: String = c[k + 1..].iter().collect();
+                if ENCLITIC.contains(&tail.as_str()) || ENCLITIC.contains(&with.as_str()) {
+                    return Some((vp[0], lw.to_string()));
+                }
+            }
+        }
+        let known = l.contains(lw);
+        for cl in ENCLITIC {
+            let Some(base) = lw.strip_suffix(cl) else { continue };
+            let bc: Vec<char> = base.chars().collect();
+            // gerunds, plural imperatives and infinitives are unmistakable; a 2sg imperative
+            // plus clitic is only read into a word Wiktionary doesn't know (generale, animale
+            // are not genera+le, anima+le), and never with mi/ti/si/vi (amavi, finiti)
+            let unambiguous = base.ends_with('r') || ["ndo", "ate", "ete", "ite"].iter().any(|e| base.ends_with(e));
+            if !unambiguous && (known || matches!(*cl, "mi" | "ti" | "si" | "vi")) {
+                continue;
+            }
+            if bc.len() < 3 {
+                continue;
+            }
+            let bvp: Vec<usize> = (0..bc.len()).filter(|&i| is_v(bc[i])).collect();
+            if bvp.len() < 2 {
+                continue;
+            }
+            // infinitives drop the e (far-lo, veder-lo); imperatives and gerunds are verb forms
+            // only if their infinitive exists (guarda -> guardare, but settima-ne is not one)
+            let key = if base.ends_with('r') { format!("{base}e") } else { base.to_string() };
+            if base.ends_with('r') {
+                if !l.contains(&key) {
+                    continue;
+                }
+            } else {
+                let inf = |suf: &str, ends: &[&str]| -> Vec<String> {
+                    base.strip_suffix(suf).map_or(vec![], |st| ends.iter().map(|e| format!("{st}{e}")).collect())
+                };
+                let mut cands = vec![];
+                cands.extend(inf("ando", &["are"]));
+                cands.extend(inf("endo", &["ere", "ire"]));
+                cands.extend(inf("ate", &["are"]));
+                cands.extend(inf("ete", &["ere"]));
+                cands.extend(inf("ite", &["ire"]));
+                cands.extend(inf("iamo", &["are", "ere", "ire"]));
+                cands.extend(inf("isci", &["ire"]));
+                cands.extend(inf("a", &["are"]));
+                cands.extend(inf("i", &["ere", "ire"]));
+                if !cands.iter().any(|i| l.contains(i)) {
+                    continue;
+                }
+            }
+            let kc: Vec<char> = key.chars().collect();
+            let kvp: Vec<usize> = (0..kc.len()).filter(|&i| is_v(kc[i])).collect();
+            let (st, _) = if l.contains(&key) { self.lex_info(&key) } else { (None, None) };
+            let p = match st {
+                Some(s) if (s as usize) < kvp.len() => kvp[kvp.len() - 1 - s as usize],
+                _ => {
+                    if base.ends_with('r') {
+                        // -are/-ire infinitives stress the vowel before the r (parlar-lo, finir-la);
+                        // an -ere infinitive of unknown stress (annetter-si) is left to the rules
+                        if base.ends_with("er") {
+                            continue;
+                        }
+                        *bvp.last().unwrap()
+                    } else {
+                        let syl: Vec<usize> = bvp.iter().copied().filter(|&p| syllabic(&bc, p)).collect();
+                        if syl.len() >= 2 { syl[syl.len() - 2] } else { continue }
+                    }
+                }
+            };
+            if p < bc.len() && c.get(p) == bc.get(p) {
+                return Some((p, base.to_string()));
+            }
+        }
+        None
     }
 
     /// Index (into `c`) of the stressed vowel letter.
@@ -225,6 +356,9 @@ impl Italian {
             if (st as usize) < nv {
                 return vp[nv - 1 - st as usize];
             }
+        }
+        if let Some((p, _)) = self.enclitic(c, lw, vp) {
+            return p;
         }
         let n = c.len();
         if PIANE.contains(&lw) {
@@ -250,6 +384,10 @@ impl Italian {
                         // ending statistics come from open-vowel words; a word known to have
                         // no open vowel can't be stressed on an e/o there by that evidence
                         if st >= 2 && lex_closed && matches!(c[p], 'e' | 'o') {
+                            break;
+                        }
+                        // a glide can't carry the stress (pieno, fieno: -eno counts letters)
+                        if !syllabic(c, p) {
                             break;
                         }
                         return p;
@@ -305,7 +443,34 @@ impl Italian {
         if let Some(o) = lex_op {
             return o;
         }
+        let lw: String = c.iter().collect();
+        if OPEN_WORDS.contains(&lw.as_str()) {
+            return true;
+        }
+        if CLOSED_WORDS.contains(&lw.as_str()) {
+            return false;
+        }
+        // the uo diphthong is always open (buona, nuovo, scuola)
+        if base(c[sp]) == 'o' && sp > 0 && c[sp - 1] == 'u' {
+            return true;
+        }
         let tail: String = c[sp..].iter().collect();
+        // viene, tiene, appartiene, contiene (but pieno/piene is closed)
+        if tail == "ene" && sp > 0 && c[sp - 1] == 'i' && !lw.starts_with("pien") {
+            return true;
+        }
+        // posto, risposto, proposta, imposte: the participle family is closed
+        if sp >= 2 && c[sp - 1] == 'p' && matches!(tail.as_str(), "osto" | "osta" | "osti" | "oste") {
+            return false;
+        }
+        // the -mento suffix has a closed e (allevamenti, movimento); vento/cento are too short to be it
+        if sp >= 3 && c[sp - 1] == 'm' && matches!(tail.as_str(), "ento" | "enti") {
+            return false;
+        }
+        // imperfect indicative of -ere verbs keeps a closed e (vedevano, credeva, dovevi)
+        if sp > 0 && IMPERFECT.iter().any(|e| tail == *e) {
+            return false;
+        }
         let full = format!("{tail}#");
         if let Some(&p) = self.open.get(&full) {
             return p >= 0.5;
@@ -330,9 +495,14 @@ impl Italian {
         }
         let (lex_st, lex_op) = self.lex_info(lw);
         let sp = self.stress_pos(&c, lw, &vp, lex_st, lex_op == Some(false));
+        // smettila, vedetelo: vowel quality comes from the verb, not from the clitic ending
+        let (oc, oop) = match self.enclitic(&c, lw, &vp) {
+            Some((_, b)) if lex_st.is_none() => (b.chars().collect::<Vec<char>>(), lex_op.or(self.lex_info(&b).1)),
+            _ => (c.clone(), lex_op),
+        };
         // a grave accent spells the open vowel even on an unstressed clitic (è, c'è, ciò)
         let open = matches!(c[sp], 'è' | 'ò')
-            || (level > 0 && matches!(base(c[sp]), 'e' | 'o') && self.is_open(&c, sp, lex_op));
+            || (level > 0 && matches!(base(c[sp]), 'e' | 'o') && self.is_open(&oc, sp, oop));
         let at = |i: isize| -> char { if i < 0 || i as usize >= n { '#' } else { c[i as usize] } };
         let mut out = String::with_capacity(n * 2);
         let mut i = 0usize;

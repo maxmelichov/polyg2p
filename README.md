@@ -45,7 +45,8 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | English, strict | **97.9%** | 96.7% |
 | English, unstressed ɪ = ə ² | **98.6%** | 97.6% |
 | Spanish | **99.5%** | 99.3% |
-| Italian (rules + tables, no lexicon) | **99.0%** | 87.1% |
+| Italian, with `it.lex` | **99.3%** | 87.1% |
+| Italian, rules only | **92.7%** | 87.1% |
 | German, with `de.lex` ¹ | **98.7%** | 96.4% |
 | German, rules only | 92.1% | 96.4% |
 | French (nasals scored) | **98.9%** | 97.7% |
@@ -73,7 +74,7 @@ uniform weights, so rare words, names and abbreviations count as much as "the"):
 |---|---|---|---|
 | English (mostly rare words and acronyms; the OOV model does the work) | 80,992 | 62.2% (PER 10.5%) | 61.8% (PER 9.7%) |
 | Spanish | 132,191 | 97.1% | 97.1% |
-| Italian | 82,280 | **95.3%** | 89.2% |
+| Italian | 82,280 | **96.2%** | 89.2% |
 | German, with `de.lex` ¹ | 53,011 | **97.5%** | 71.5% |
 | French | 85,516 | **93.8%** | 89.9% |
 | Portuguese (BR) | 57,900 | **94.3%** | 93.2% |
@@ -99,7 +100,7 @@ the same collapse; where the two disagree, WikiPron decides who is right):
 |---|---|---|---|---|---|
 | English | 2,018,803 | 15,002,702 | 4.55% | 217,762 | 44,238 |
 | Spanish | 437,127 | 3,083,117 | 1.25% | 28,070 | 264 |
-| Italian | 984,011 | 5,845,851 | 8.94% | 269,446 | 8,546 |
+| Italian | 984,011 | 5,845,851 | 7.70% | 269,664 | 3,799 |
 | German | 773,746 | 5,781,616 | 3.67% | 84,919 | 3,319 |
 | French | 721,913 | 5,179,252 | 3.69% | 101,506 | 5,568 |
 | Portuguese | 433,944 | 3,048,347 | 1.49% | 19,732 | 2,388 |
@@ -117,10 +118,10 @@ the same collapse; where the two disagree, WikiPron decides who is right):
 | Catalan | 10,659 | 76,516 | 6.62% | 1,117 | 211 |
 
 Most differences are ones WikiPron cannot settle (names, loanwords, notation); the two
-right-hand columns count only the words it can. The table was measured before the fixes
+right-hand columns count only the words it can. All rows but Italian were measured before the fixes
 this run produced (Italian elision and verb stress, German pronominal adverbs, English
 secondary stress, the Dutch and Portuguese apostrophe clitics), so polyg2p's column is
-if anything understated. Speed on the same run, single process: polyg2p 4–12 µs per
+if anything understated; the Italian row was re-run after its fixes. Speed on the same run, single process: polyg2p 4–12 µs per
 sentence, espeak-ng 8–30 µs per sentence with four worker processes.
 
 ³ Finnish writes boundary gemination and nasal assimilation across words

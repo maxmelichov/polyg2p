@@ -42,7 +42,7 @@ def _plugin(lang):
         return importlib.import_module(f"collapse_{lang}").collapse
     except ImportError:
         return None
-CLI = os.path.join(ROOT, "target", "release", "g2p")
+CLI = os.environ.get('G2P_CLI', os.path.join(ROOT, 'target', 'release', 'g2p'))
 
 COMMON = [("t͡s", "ts"), ("t͡ʃ", "tʃ"), ("d͡ʒ", "dʒ"), ("d͡z", "dz"), ("ʦ", "ts"), ("ʧ", "tʃ"), ("ʤ", "dʒ"), ("ʣ", "dz"),
           ("͡", ""), ("g", "ɡ"), ("ˈ", ""), ("ˌ", ""), (".", ""), (" ", ""), ("‿", ""), ("ʰ", ""), ("ʲ", "ʲ")]

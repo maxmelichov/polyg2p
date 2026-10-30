@@ -72,24 +72,25 @@ def main():
     for line in open(os.path.join(SRC, "ita_latn_broad.tsv"), encoding="utf8"):
         w, p = line.rstrip("\n").split("\t")
         w = unicodedata.normalize("NFC", w)
-        if not re.fullmatch(f"[a-z{VL}]+", w):
+        if not re.fullmatch(f"[A-Za-z{VL}]+", w):
             continue
         rows[w].add(p.replace(" ", "").replace("͡", ""))
     lex = {}
     for w, ps in rows.items():
-        letters = vowel_letters(w)
+        wl = w.lower()
+        letters = vowel_letters(wl)
         nv = len(letters)
         if nv == 0:
             continue
         # written final accent decides stress outright
         acc = [k for k, (_, ch) in enumerate(letters) if ch in ACC and k == nv - 1]
-        stress_votes, open_votes = set(), set()
+        stress_votes, open_votes, hiatus = set(), set(), set()
         all_open = True
         for p in ps:
             opens = [c for c in p if c in "ɛɔ"]
             if len(opens) > 1:
                 continue
-            a = align(w, p)
+            a = align(wl, p)
             if a is None:
                 continue
             m, _, nuc = a
@@ -101,11 +102,17 @@ def main():
             else:
                 open_votes.add("c")
                 all_open = False
+            # a syllabic i before the final vowel (fattoria, zia, Algeria: "i a", not
+            # the glide "j a") is the stressed vowel of a word in hiatus
+            j = len(nuc) - 2
+            hiatus.add(len(nuc) == nv and j >= 0 and nuc[j] == "i" and letters[nv - 2][1] == "i")
         # an open vowel far from the end is a compound's secondary stress, and a
         # reading without any open vowel means the readings may differ in stress
         if not all_open:
             stress_votes = set()
         stress_votes = {s for s in stress_votes if 1 <= s <= 2}
+        if not stress_votes and hiatus == {True}:
+            stress_votes = {1}
         if acc:
             stress_votes = {0}
         st = stress_votes.pop() if len(stress_votes) == 1 else None
