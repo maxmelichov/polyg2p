@@ -20,9 +20,15 @@ const UNSTRESSED: &[&str] = &[
 ];
 /// Short words whose u before a final vowel is the stressed nucleus (sˈuo), not a glide.
 /// Open stressed vowel where the ending statistics say closed.
-const OPEN_WORDS: &[&str] = &["chiesa", "chiese", "chiesetta", "chiesastico"];
+const OPEN_WORDS: &[&str] = &["chiesa", "chiese", "rosa", "rose"];
 /// Closed stressed vowel where the ending statistics say open (articulated prepositions).
-const CLOSED_WORDS: &[&str] = &["della", "delle", "dello", "degli", "nella", "nelle", "nello", "negli", "stella", "stelle"];
+const CLOSED_WORDS: &[&str] = &[
+    "della", "delle", "dello", "degli", "nella", "nelle", "nello", "negli", "stella", "stelle", "nascosto", "nascosta",
+    "nascosti", "nascoste", "veloce", "veloci", "venti", "tre", "segreto", "segreta", "segreti", "segrete",
+];
+/// Stems whose stressed e/o is open in every form (giòco, chièdere) or closed (scégliere).
+const OPEN_STEMS: &[&str] = &["gioc", "chied", "richied"];
+const CLOSED_STEMS: &[&str] = &["scegli", "scelg"];
 /// Enclitic pronouns that attach to imperatives, infinitives and gerunds (smettila, parlatemi).
 const ENCLITIC: &[&str] = &[
     "glielo", "gliela", "glieli", "gliele", "gliene", "melo", "mela", "meli", "mele", "mene", "telo", "tela", "teli",
@@ -69,7 +75,7 @@ const SDRUCCIOLE: &[&str] = &[
 ];
 /// Common proparoxytone words not covered by an ending rule (hand-written).
 const SDRUCCIOLE_WORDS: &[&str] = &[
-    "autobus",
+    "autobus", "togliti", "alzati", "sbrigati", "siediti", "muoviti", "fermati", "calmati", "svegliati",
     "vogliono", "devono", "debbono", "sogliono", "muoiono", "siano", "vadano", "facciano", "dicano", "vengano",
     "abbiano", "sappiano", "possano", "vogliano", "debbano", "diano", "stiano",
     "ultimo", "ultima", "ultimi", "ultime", "utile", "utili", "facile", "facili", "difficile", "difficili",
@@ -106,7 +112,7 @@ const SDRUCCIOLE_WORDS: &[&str] = &[
 const PIANE: &[&str] = &[
     "amico", "amica", "amici", "amiche", "nemico", "nemica", "nemici", "nemiche", "antico", "antica", "antichi",
     "antiche", "fico", "fichi", "pudico", "mendico", "lombrico", "formica", "formiche", "vescica", "ortica",
-    "fatica", "fatiche", "lettica", "barbabietola", "colui", "ciascuno", "pacifica", "avere",
+    "fatica", "fatiche", "lettica", "barbabietola", "colui", "ciascuno", "pacifica", "avere", "dopodomani", "veloce", "veloci",
 ];
 
 pub struct Italian {
@@ -299,10 +305,12 @@ impl Italian {
             let Some(base) = lw.strip_suffix(cl) else { continue };
             let bc: Vec<char> = base.chars().collect();
             // gerunds, plural imperatives and infinitives are unmistakable; a 2sg imperative
-            // plus clitic is only read into a word Wiktionary doesn't know (generale, animale
-            // are not genera+le, anima+le), and never with mi/ti/si/vi (amavi, finiti, salami)
+            // plus -le/-ne is only read into a word Wiktionary doesn't know (generale, animale
+            // are not genera+le, anima+le), mi/lo/la/ci/gli also into known ones (scusami),
+            // and ti/si/vi never (amavi, finiti)
             let unambiguous = base.ends_with('r') || ["ndo", "ate", "ete", "ite"].iter().any(|e| base.ends_with(e));
-            if !unambiguous && (known || matches!(*cl, "mi" | "ti" | "si" | "vi")) {
+            let safe_clitic = matches!(*cl, "mi" | "lo" | "la" | "ci" | "gli");
+            if !unambiguous && ((known && !safe_clitic) || matches!(*cl, "ti" | "si" | "vi")) {
                 continue;
             }
             if bc.len() < 3 {
@@ -407,6 +415,11 @@ impl Italian {
         if let Some(p) = self.verb_3pl(c, lw, vp) {
             return p;
         }
+        // pizzeria, birrerie, pasticceria: the productive -eria suffix is stressed on its i;
+        // the few -eria words stressed on the e (serie, materie) are in the lexicon
+        if nv >= 4 && (lw.ends_with("eria") || lw.ends_with("erie")) && self.lex.as_ref().is_none_or(|l| !l.contains(lw)) {
+            return vp[nv - 2];
+        }
         for k in (2..=7).rev() {
             if n > k {
                 let start = lw.char_indices().nth(n - k).map(|(b, _)| b).unwrap_or(0);
@@ -472,15 +485,27 @@ impl Italian {
             'é' | 'ó' => return false,
             _ => {}
         }
-        if let Some(o) = lex_op {
-            return o;
-        }
         let lw: String = c.iter().collect();
+        // hand-written word lists settle what Wiktionary leaves ambiguous
         if OPEN_WORDS.contains(&lw.as_str()) {
             return true;
         }
         if CLOSED_WORDS.contains(&lw.as_str()) {
             return false;
+        }
+        if let Some(o) = lex_op {
+            return o;
+        }
+        // the stressed vowel sits inside a stem of fixed quality (gioc-ano, chied-erlo, scegli-erne)
+        if let Some(st) = OPEN_STEMS.iter().find(|st| lw.starts_with(*st)) {
+            if sp < st.chars().count() {
+                return true;
+            }
+        }
+        if let Some(st) = CLOSED_STEMS.iter().find(|st| lw.starts_with(*st)) {
+            if sp < st.chars().count() {
+                return false;
+            }
         }
         // the uo diphthong is always open (buona, nuovo, scuola)
         if base(c[sp]) == 'o' && sp > 0 && c[sp - 1] == 'u' {
@@ -491,8 +516,12 @@ impl Italian {
         if tail == "ene" && sp > 0 && c[sp - 1] == 'i' && !lw.starts_with("pien") {
             return true;
         }
-        // posto, risposto, proposta, imposte: the participle family is closed
-        if sp >= 2 && c[sp - 1] == 'p' && matches!(tail.as_str(), "osto" | "osta" | "osti" | "oste") {
+        // posto, risposto, proposta, imposte, rispose, propose: the p-os- participle family is closed
+        if sp >= 2 && c[sp - 1] == 'p' && matches!(tail.as_str(), "osto" | "osta" | "osti" | "oste" | "ose") {
+            return false;
+        }
+        // passato remoto in -ette/-ettero (bevette, dovette, sedettero) and -ette nouns are closed
+        if sp >= 2 && matches!(tail.as_str(), "ette" | "ettero") {
             return false;
         }
         // the -mento suffix has a closed e (allevamenti, movimento); vento/cento are too short to be it
