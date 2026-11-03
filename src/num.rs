@@ -71,6 +71,13 @@ pub fn expand(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<Strin
         out.extend(d);
         return;
     }
+    if lang == Lang::En && matches!(tok, "911" | "411" | "311" | "999") {
+        // emergency and service numbers are spoken digit by digit
+        for d in tok.chars() {
+            out.extend(cardinal(d as u128 - '0' as u128, lang));
+        }
+        return;
+    }
     if let Some(d) = crate::norm::decade(tok, lang) {
         out.extend(d);
         return;

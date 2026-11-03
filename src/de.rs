@@ -44,14 +44,18 @@ impl German {
 
     fn lookup(&self, w: &str) -> Option<String> {
         let l = self.lex.as_ref()?;
-        if let Some(p) = l.get(w) {
-            return Some(p.to_string());
-        }
         let lw = w.to_lowercase();
-        if let Some(p) = l.get(&capitalize(&lw)) {
-            return Some(p.to_string());
+        if let Ok(k) = OVERRIDE.binary_search_by(|(k, _)| (*k).cmp(lw.as_str())) {
+            return Some(OVERRIDE[k].1.to_string());
         }
-        l.get(&lw).map(|p| p.to_string())
+        let p = l.get(w).or_else(|| l.get(&capitalize(&lw))).or_else(|| l.get(&lw))?;
+        // the lexicon marks level stress on some compounds (deshalb, irgendwie):
+        // keep the first primary, the rest become secondary
+        if p.matches('ˈ').count() > 1 {
+            let (head, tail) = p.split_once('ˈ').unwrap();
+            return Some(format!("{head}ˈ{}", tail.replace('ˈ', "ˌ")));
+        }
+        Some(p.to_string())
     }
 
     /// Pronunciation ignoring the unstressed function-word forms.
@@ -496,7 +500,7 @@ const FREQUENT: &[(&str, &str)] = &[
     ("herunter", "hɛrˈʊntɜ"),
     ("hervor", "hɛɾfˈoːɾ"),
     ("herüber", "hɛrˈyːbɜ"),
-    ("heutzutage", "hˈɔøttsuːtˌɑːɡə"),
+    ("heutzutage", "hˈɔøtsuːtˌɑːɡə"),
     ("hey", "hˈɛɪ"),
     ("hier", "hˈiːɾ"),
     ("hin", "hˈɪn"),
@@ -879,6 +883,12 @@ const FREQUENT: &[(&str, &str)] = &[
 ];
 
 /// Prefixes whose vowel is short although they stand alone (an-, un-, mit-).
+/// Lexicon entries overridden by hand (wrong stress or seam consonants in the source).
+const OVERRIDE: &[(&str, &str)] = &[
+    ("heutzutage", "hˈɔøtsuːtˌɑːɡə"),
+    ("warum", "vaːrˈʊm"),
+];
+
 const SHORT_PREFIX: &[&str] = &["an", "ab", "um", "un", "mit", "hin", "in"];
 /// Words that look like unstressed-prefix + stem but are not (besser, Geld, Erde).
 const NOT_PREFIXED: &[&str] = &[
