@@ -92,9 +92,17 @@ impl German {
         if let Some(f) = self.func.get(lw.as_str()) {
             return f.to_string();
         }
+        if lw == "sucht" && w.starts_with('S') {
+            return "zˈʊxt".into(); // the noun Sucht; the verb sucht is long
+        }
         if self.lex.is_none() {
             if let Ok(k) = FREQUENT.binary_search_by(|(k, _)| (*k).cmp(lw.as_str())) {
                 return FREQUENT[k].1.to_string();
+            }
+        }
+        if self.lex.is_some() {
+            if let Ok(k) = OVERRIDE.binary_search_by(|(k, _)| (*k).cmp(lw.as_str())) {
+                return OVERRIDE[k].1.to_string();
             }
         }
         if let Some(p) = self.pronominal_adverb(&lw) {
@@ -327,6 +335,7 @@ const FREQUENT: &[(&str, &str)] = &[
     ("computer", "kɔmpjˈuːtɜ"),
     ("cool", "kˈuːl"),
     ("dadurch", "dadˈʊɐç"),
+    ("dagegen", "daɡˈeːɡən"),
     ("dahin", "dahˈɪn"),
     ("damals", "dˈɑːmɑːls"),
     ("damit", "damˈɪt"),
@@ -910,8 +919,10 @@ const FREQUENT: &[(&str, &str)] = &[
 /// Prefixes whose vowel is short although they stand alone (an-, un-, mit-).
 /// Lexicon entries overridden by hand (wrong stress or seam consonants in the source).
 const OVERRIDE: &[(&str, &str)] = &[
+    ("dagegen", "daɡˈeːɡən"),
     ("heutzutage", "hˈɔøtsuːtˌɑːɡə"),
     ("warum", "vaːrˈʊm"),
+    ("zufolge", "tsuːfˈɔlɡə"),
 ];
 
 /// -em / -eme words stressed on that syllable (System); adjective -em is not (meistem).
@@ -1083,8 +1094,10 @@ fn core(w: &str, stem_initial: bool) -> String {
                 true
             } else if stressed && loan && i == sp && !is_v(nx) && i + 2 == n && matches!(ch, 'a' | 'o' | 'u' | 'i' | 'ü' | 'ä') {
                 true // final-stressed loan: Person, normal, Natur, aktiv
-            } else if ch == 'i' && nx == 'g' && is_v(n2) && !stressed && !loan && matches!(n2, 'e' | 'u') {
-                false // native -ig- suffix: heiligen, bestätigen (not korrigieren, digital)
+            } else if ch == 'i' && nx == 'g' && is_v(n2) && !stressed && !loan && (matches!(n2, 'e' | 'u') || n2 == 'i' && n3 == 'n' || n2 == 'a' && n3 == 'm') {
+                false // native -ig- suffix: heiligen, bestätigen, Königin (not korrigieren, digital)
+            } else if !stressed && i + 2 == n && !is_v(nx) && (matches!(ch, 'a') && matches!(nx, 't' | 'g' | 'l' | 'r' | 'n') || ch == 'o' && matches!(nx, 'r' | 'g') || ch == 'u' && matches!(nx, 't' | 'g')) {
+                true // unstressed final syllable of a compound or loan: Heimat, Montag, Doktor, Herzblut
             } else if !stressed && matches!(ch, 'i' | 'u' | 'o' | 'e' | 'ü' | 'ö') {
                 // espeak keeps unstressed tense vowels long in open syllables
                 long_vowel(&c[..bound.max(i + 1)], i) && is_v(c.get(i + 2).copied().unwrap_or('#'))
@@ -1322,8 +1335,11 @@ fn long_vowel(c: &[char], i: usize) -> bool {
     if k >= c.len() && matches!(tail.as_str(), "bt" | "dt" | "gt" | "bst" | "gst" | "bte" | "gte" | "bten" | "gten") && !tail.starts_with("dt") && c[i] != 'i' {
         return true;
     }
-    if c[i] == 'u' && tail == "ch" {
-        return true; // Buch, suchen, Versuch (not Bucht, Frucht, Fuchs)
+    if c[i] == 'u' && (tail == "ch" || tail.starts_with("chs") && i > 0 && c[i - 1] == 'w') {
+        return true; // Buch, suchen, Versuch, Wuchs (not Bucht, Frucht, Fuchs)
+    }
+    if c[i] == 'e' && tail.starts_with("rd") {
+        return true; // Erde, werden, Pferd, Erdbeben
     }
     if k >= c.len() {
         // word-final: monosyllables with one consonant are long (Tag, gut), else short
