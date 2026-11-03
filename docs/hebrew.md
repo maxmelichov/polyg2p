@@ -6,7 +6,7 @@ lexicon + rules engine: the same skeleton (`ספר`) is `sˈefeʁ`, `sˈapaʁ`,
 **sentence-level character tagger** distilled from
 [RenikudPlus](https://github.com/maxmelichov/RenikudPlus) (a ~310 MB BERT-style
 ONNX model, 86 % word accuracy on its benchmark), and it emits **exactly
-RenikudPlus's IPA notation**, which the BlueTTS Hebrew models are trained on.
+RenikudPlus's IPA notation**, so models trained on RenikudPlus output can use it unchanged.
 
 ```
 text ──► numbers ──► normalize ──► windows ──► tagger ──► constrained decode ──► render ──► IPA

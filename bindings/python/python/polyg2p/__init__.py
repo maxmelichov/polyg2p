@@ -1,7 +1,8 @@
 """polyg2p: fast grapheme-to-phoneme for TTS, espeak-compatible IPA, Apache-2.0.
 
-English, Spanish, Italian, German, Russian and Hebrew run in the Rust core
-(Hebrew needs the ``he.g2p`` tagger in the data folder). Yiddish, and Hebrew
+Every language except Yiddish runs in the Rust core. The wheel bundles the
+English, Russian and Hebrew data; point ``POLYG2P_DATA`` (or ``data_dir``) at a
+folder with the optional CC BY-SA lexicons for German, Italian and others. Yiddish, and Hebrew
 when ``he.g2p`` is missing, are routed to their Python engines when installed:
 
 * he -> renikud-onnx (``pip install renikud-onnx``), only without ``he.g2p``
@@ -12,9 +13,8 @@ when ``he.g2p`` is missing, are routed to their Python engines when installed:
     >>> g2p("I have read the record.", "en")
     'aɪ hæv ɹˈɛd ðə ɹˈɛkɚd.'
 
-Output follows the conventions BlueTTS trains on (espeak symbols after its
-``normalize_text``: NFD, affricate ligatures), and stays inside its 256-symbol
-vocabulary (see ``unknown_symbols``).
+Output uses espeak-ng's symbols (NFD, with ``ʧ ʤ ʦ ʣ`` ligatures) and stays
+inside the usual 256-symbol espeak phoneme vocabulary (see ``unknown_symbols``).
 """
 
 from __future__ import annotations
@@ -141,7 +141,7 @@ class Phonemizer:
     def phonemize(self, text: str, lang: str = "en", tags: bool = False) -> str:
         """Phonemize ``text``. Inline ``<xx>…</xx>`` spans switch language.
 
-        With ``tags=True`` each segment is wrapped as ``<lang>…</lang>`` (BlueTTS style).
+        With ``tags=True`` each segment is wrapped as ``<lang>…</lang>``.
         """
         lang = norm_lang(lang)
         pieces: list[tuple[str, str]] = []

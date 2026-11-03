@@ -28,9 +28,8 @@ agreement (gender, case) is handled by the language's `join` if needed.
 
 ## Notation: match espeak-ng exactly
 
-The output is consumed by TTS models trained on espeak-ng phonemes (after
-BlueTTS `normalize_text`: NFD, `ʧ ʤ ʦ ʣ` ligatures — `fold.rs` does that at the
-end, don't do it yourself). The *symbol conventions* must be espeak's; the
+The output is consumed by TTS models trained on espeak-ng phonemes (NFD,
+`ʧ ʤ ʦ ʣ` ligatures; `fold.rs` does that at the end, don't do it yourself). The *symbol conventions* must be espeak's; the
 *pronunciations* must be right even where espeak's aren't. Workflow:
 
 1. `tools/espeak_words.py <lang> <n>` phonemizes frequent words with espeak

@@ -17,6 +17,7 @@ import argparse, os, re, subprocess, sys, unicodedata, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
+SRC = os.environ.get("POLYG2P_SRC", os.path.join(ROOT, "sources"))
 SOURCES = {
     "cmudict.dict": "https://raw.githubusercontent.com/cmusphinx/cmudict/master/cmudict.dict",
     "cmudict.LICENSE": "https://raw.githubusercontent.com/cmusphinx/cmudict/master/LICENSE",
@@ -53,7 +54,7 @@ def edit(a, b):
 
 def build_en(work, out):
     from en_convert import load_cmudict, arpa_to_espeak
-    lex = load_cmudict(os.path.join(os.environ["POLYG2P_SRC"], "cmudict.dict"))
+    lex = load_cmudict(os.path.join(SRC, "cmudict.dict"))
     tsv = os.path.join(work, "en_lex.tsv")
     fix = {}
     for line in open(os.path.join(HERE, "en_fix.tsv"), encoding="utf8"):
@@ -100,7 +101,7 @@ def build_it(work, out):
             o.write(f"{w}\t{st}|{op}|{z}\n")
         # unstressed WikiPron entries carry no stress or openness, but their presence
         # lets the rules recognise verb forms (mangiano -> mangiare)
-        for line in open(os.path.join(os.environ["POLYG2P_SRC"], "ita_latn_broad.tsv"), encoding="utf8"):
+        for line in open(os.path.join(SRC, "ita_latn_broad.tsv"), encoding="utf8"):
             w = line.split("\t")[0]
             if w not in seen and " " not in w:
                 seen.add(w)
@@ -112,7 +113,7 @@ def build_de(work, out):
     from de_convert import lex_to_espeak
     V = "aeiouyøɛɪʊʏœɔɐæɑ"
     rows = []
-    for line in open(os.path.join(os.environ["POLYG2P_SRC"], "ipadict_de.txt"), encoding="utf8"):
+    for line in open(os.path.join(SRC, "ipadict_de.txt"), encoding="utf8"):
         w, p = line.rstrip("\n").split("\t")
         if " " in w or not w:
             continue
@@ -142,7 +143,7 @@ def build_de(work, out):
     # WikiPron (deu_latn_broad) settles the variant order where it knows the word
     # (Bus: ipa-dict lists buːs first, WikiPron has only bʊs) and adds missing words
     wp = {}
-    for line in open(os.path.join(os.environ["POLYG2P_SRC"], "deu_latn_broad.tsv"), encoding="utf8"):
+    for line in open(os.path.join(SRC, "deu_latn_broad.tsv"), encoding="utf8"):
         w, p = line.rstrip("\n").split("\t")
         e = unicodedata.normalize("NFD", lex_to_espeak(p.replace(" ", ""), w))
         if "ˈ" not in e:
@@ -203,7 +204,7 @@ def main():
     ap.add_argument("--ccbysa", action="store_true", help="also build de/it data from CC BY-SA sources")
     ap.add_argument("--only", default=None, help="build just this language (en, it, de)")
     a = ap.parse_args()
-    os.environ["POLYG2P_SRC"] = os.path.abspath(a.src)
+    SRC = os.path.abspath(a.src)
     sys.path.insert(0, HERE)
     os.makedirs(a.out, exist_ok=True)
     os.makedirs(a.work, exist_ok=True)

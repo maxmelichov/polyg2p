@@ -1,237 +1,83 @@
 # polyg2p
 
-Fast multilingual grapheme-to-phoneme conversion for TTS, written in Rust,
-Apache-2.0. It writes the same IPA symbols espeak-ng does (NFD, with the
-`ʧ ʤ ʦ ʣ` ligatures), so models trained on espeak phonemes can switch without
-retraining. It contains no espeak code or data.
+Grapheme-to-phoneme conversion for TTS in 20 languages, written in Rust.
+It writes espeak-ng's IPA notation, so models trained on espeak phonemes can
+switch without retraining. It matches or beats espeak-ng's accuracy in every
+language measured and is 35 to 65 times faster for most of them. Apache-2.0,
+with no espeak code or data.
 
-| Language | Engine | What it does |
-|---|---|---|
-| English (en) | Rust | CMUdict lexicon in espeak notation (spelling-aware reduced vowels), context rules for homographs (read/read, record/record, live/live, …), weak forms and word joining, affix/compound decomposition, title abbreviations, ordinals, currency, tiny transformer for unknown words |
-| Spanish (es, es-419) | Rust | Rules only: syllabification, orthographic stress, β/ð/ɣ allophones and cross-word effects; `es-419` (also `es-mx`, `es-ar`, …) writes Latin American seseo and yeísmo the way espeak's es-419 does (sjˈelo, ʝˈaβe, kˈajje) |
-| Italian (it) | Rust | Rules + stress and open/closed-vowel statistics, optional lexicon |
-| German (de) | Rust | Lexicon (optional pack) + compound splitting + rules |
-| French (fr) | Rust | Rules + ~900-entry exception lexicon: silent finals, e-caduc, nasal vowels, liaison and sandhi in `join` |
-| Portuguese, Brazil (pt) | Rust | Rules + open/closed-vowel ending statistics, palatalization, epenthesis, sandhi |
-| Catalan, Central (ca) | Rust | Rules + open/closed ending statistics, vowel reduction, sandhi in `join` |
-| Romanian (ro) | Rust | Rules: glides vs hiatus, morphological stress overrides, exception list |
-| Polish (pl) | Rust | Rules: soft series, nasal vowels by context, voicing assimilation, stress exceptions, loan respellings |
-| Czech (cs) | Rust | Rules: palatalization, ř, assimilation, preposition merging, loanword stems |
-| Ukrainian (uk) | Rust | Rules + stress statistics (stem/ending tables), optional `uk.lex` stress pack |
-| Hungarian (hu) | Rust | Rules: assimilation, long consonants, `egy` rules, compounds |
-| Greek (el) | Rust | Rules: palatals, synizesis, final-ν sandhi, σ-voicing |
-| Turkish (tr) | Rust | Rules: vowel allophones, ğ, pre-stressing suffixes, lexical stress list |
-| Dutch (nl) | Rust | Rules: syllable-openness vowel length, schwa morphology, prefix layering, assimilation; optional `nl.lex` |
-| Finnish (fi) | Rust | Rules: weight-sensitive secondary stress, compound splitting, boundary gemination in `join` |
-| Indonesian (id) | Rust | Rules + e/ə stem table, prefix peeling, stress |
-| Swedish (sv) | Rust | Rules + ~1,400-entry table, loan-suffix stress, compound splitter; optional `sv.lex` |
-| Russian (ru) | Rust | Exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P): Moscow-norm rules, stress tiers from mmap'd lexicons, plus a native context student (`ru-ctx.g2p`, 1.5M params) for homograph stress and е/ё distilled from RUAccent's models; Latin words go to the English engine |
-| Hebrew (he) | Rust | Sentence-level character tagger (4.9M-param transformer encoder, `he.g2p`) distilled from [RenikudPlus](https://github.com/maxmelichov/RenikudPlus), same IPA notation; number front end ported from hebrew-num2words. See [docs/hebrew.md](docs/hebrew.md). Falls back to renikud-onnx in Python when `he.g2p` is absent |
-| Yiddish (yi) | phonikud-yi | Routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) |
+```python
+from polyg2p import Phonemizer
 
-Arabic (ar) is scaffolded in `src/` and pending a context model like Hebrew's; see `docs/adding-a-language.md` and `docs/results/`.
+g2p = Phonemizer()
+g2p("I have read the record, and I will record it again.", "en")
+# 'aɪ hæv ɹˈɛd ðə ɹˈɛkɚd, ænd aɪ wɪl ɹᵻkˈɔːɹd ɪt ɐɡˈɛn.'
+g2p("Die Bundesregierung hat am 3. Oktober entschieden.", "de")
+# 'diː bʊndɛsreːɡˈiːrʊŋ hat am dɾˈɪtən ɔktˈoːbɜ ɛnʧˈiːdən.'
+g2p("Всё хорошо, дверь закрыта.", "ru")
+# 'fsʲˈɵ xərɐʂˈo, dvʲerʲ zɐkrˈɨtə.'
+```
 
-## Results
+## Why
 
-All numbers on 2 CPU cores, single-threaded, against espeak-ng 1.52 through
-`phonemizer`. Scripts are in `tools/`.
+- **Accurate.** On each language's 20,000 most frequent Wiktionary words,
+  polyg2p beats espeak-ng in 17 languages and ties it in Turkish and Finnish.
+  Italian goes from 87.1% to 99.7%, Greek from 81.0% to 99.3%, Russian from
+  62.4% to 98.9%.
+- **Context-aware.** Homographs are read from the sentence: *read*, *record*,
+  *live*, Russian замо́к / за́мок and все / всё, Hebrew without vowel points.
+  Sandhi, elision and liaison apply across words.
+- **Fast.** 400k to 550k sentences per second on a laptop for most languages,
+  against about 10k for espeak-ng. The CLI and the batch API use all cores.
+- **Drop-in.** Same symbols as espeak-ng: NFD, `ʧ ʤ ʦ ʣ` ligatures, and every
+  symbol inside the usual 256-token espeak phoneme vocabulary.
+- **Small.** 12 MB of memory for English and 45 MB for Russian with its
+  dictionaries and context model. Lexicons are memory-mapped.
 
-**Accuracy vs Wiktionary** (WikiPron; 20k most frequent words, frequency-weighted;
-both outputs collapsed to a shared broad phone set so only real pronunciation
-differences count, not notation; per-language collapse rules in `tools/collapse_*.py`):
+## Install
 
-| | polyg2p | espeak-ng |
-|---|---|---|
-| English, strict | **97.9%** | 96.7% |
-| English, unstressed ɪ = ə ² | **98.6%** | 97.6% |
-| Spanish | **99.5%** | 99.3% |
-| Italian, with `it.lex` | **99.8%** | 87.1% |
-| Italian, rules only | **98.6%** | 87.1% |
-| German, with `de.lex` ¹ | **98.7%** | 96.4% |
-| German, rules only | 96.5% | 96.4% |
-| French (nasals scored) | **99.0%** | 97.7% |
-| Dutch, with `nl.lex` ¹ | **99.9%** | 96.8% |
-| Dutch, rules only | **99.1%** | 96.8% |
-| Portuguese (BR), with `pt.lex` ¹ | **99.7%** | 96.9% |
-| Portuguese (BR), rules only | **99.6%** | 96.9% |
-| Polish | **99.8%** | 91.5% |
-| Romanian | **98.0%** | 97.8% |
-| Catalan (Central gold from `tools/ca_gold.py`) | **93.9%** | 93.2% |
-| Czech | **99.9%** | 96.4% |
-| Ukrainian (segments / with stress, `uk.lex`) ¹ | **99.3%** / **98.8%** | 79.5% / 69.1% |
-| Hungarian | **99.8%** | 95.2% |
-| Greek | **99.3%** | 81.0% |
-| Turkish | 99.7% | 99.7% |
-| Indonesian | **99.6%** | 88.4% |
-| Finnish | 99.5% | 99.5% |
-| Swedish (3.4k gold words), with `sv.lex` ¹ | **99.3%** | 95.6% |
-| Swedish, rules only | **98.0%** | 95.6% |
-| Russian (stress scored through vowel reduction, `ru_*.lex` + context student) | **98.9%** | 62.4% |
-
-¹ These lexicons come from Wiktionary too, so the numbers are optimistic. Held out
-(lexicon built from 90% of WikiPron, the other 10% scored): Dutch 82.1% → 83.9%,
-Swedish 68.7% → 71.7%, Portuguese 94.2% → 94.2% (its lexicon only stores the
-open/closed e and o of words the rules misjudge; see the sentence table).
-² CMUdict and Wiktionary disagree mostly on how reduced vowels are written.
-
-**Every word in WikiPron, not just the frequent ones** (`tools/eval_acc.py <lang> --all`;
-uniform weights, so rare words, names and abbreviations count as much as "the"):
-
-| | words | polyg2p | espeak-ng |
-|---|---|---|---|
-| English (mostly rare words and acronyms; the OOV model does the work) | 80,992 | 62.3% (PER 10.5%) | 61.8% (PER 9.7%) |
-| Spanish | 132,191 | **97.2%** | 97.1% |
-| Italian | 82,280 | **96.8%** | 89.2% |
-| German, with `de.lex` ¹ | 53,011 | **97.6%** | 71.5% |
-| French | 85,516 | **94.0%** | 89.9% |
-| Portuguese (BR), with `pt.lex` ¹ / rules only | 57,900 | **96.9%** / **94.3%** | 93.2% |
-| Polish | 148,992 | **99.0%** | 97.5% |
-| Ukrainian, `uk.lex` ¹ | 51,646 | **98.9%** | 61.3% |
-| Turkish | 11,582 | 98.8% | 98.7% |
-| Dutch, with `nl.lex` ¹ / rules only | 45,872 | **99.9%** / **82.0%** | 67.9% |
-| Czech | 64,350 | **97.9%** | 94.2% |
-| Greek | 19,108 | **98.3%** | 93.1% |
-| Romanian | 8,978 | **98.6%** | 97.3% |
-| Hungarian | 64,286 | **98.8%** | 91.3% |
-| Finnish | 168,814 | 99.3% | 99.2% |
-| Swedish, with `sv.lex` ¹ / rules only | 5,082 | **98.3%** / **70.1%** | 58.5% |
-| Russian (stress scored through vowel reduction) | 403,834 | **94.4%** | 31.2% |
-| Indonesian | 17,967 | **90.6%** | 78.8% |
-| Catalan | 42,559 | **94.5%** | 92.5% |
-
-**Whole sentences, whole corpora** (`tools/sentence_cmp.py`; every Tatoeba sentence
-in the language, 8.8 million sentences in all; both engines run on full sentences so
-context rules, elision and sandhi count; words aligned one to one and compared after
-the same collapse; where the two disagree, WikiPron decides who is right):
-
-| | sentences | words | words that differ | polyg2p right, espeak wrong | espeak right, polyg2p wrong |
-|---|---|---|---|---|---|
-| English | 2,018,803 | 15,002,702 | 4.35% | 219,339 | 24,973 |
-| Spanish | 437,127 | 3,083,117 | 1.24% | 28,195 | 26 |
-| Italian | 984,011 | 5,845,851 | 8.24% | 309,296 | 425 |
-| German | 773,746 | 5,781,616 | 3.50% | 83,273 | 2,240 |
-| French | 721,913 | 5,179,252 | 3.61% | 101,519 | 1,898 |
-| Portuguese (`pt.lex`) | 433,944 | 3,048,347 | 1.47% | 21,096 | 634 |
-| Polish | 135,463 | 714,336 | 3.94% | 22,597 | 774 |
-| Ukrainian | 186,162 | 914,147 | 22.34% | 148,398 | 274 |
-| Turkish | 746,747 | 3,712,308 | 0.03% | 54 | 2 |
-| Dutch (`nl.lex`) | 199,250 | 1,285,739 | 11.21% | 71,912 | 102 |
-| Czech | 89,023 | 457,561 | 2.67% | 9,170 | 1,244 |
-| Greek | 42,314 | 243,900 | 4.41% | 5,233 | 635 |
-| Romanian | 41,083 | 277,562 | 0.61% | 405 | 21 |
-| Hungarian | 437,246 | 2,330,269 | 3.86% | 55,212 | 411 |
-| Finnish ³ | 152,839 | 749,768 | 2.66% | 1,215 | 11,193 |
-| Swedish (`sv.lex`) | 56,357 | 317,717 | 17.94% | 15,350 | 78 |
-| Indonesian | 27,927 | 153,974 | 9.41% | 10,917 | 24 |
-| Catalan | 10,659 | 76,516 | 6.62% | 1,117 | 211 |
-
-Most differences are ones WikiPron cannot settle (names, loanwords, notation); the two
-right-hand columns count only the words it can. The rows were re-run after the fixes
-of each pass (the last one: German lexicon conversion, the Portuguese, Dutch and
-Swedish lexicons, Ukrainian г, Greek γγ, loanword tables for Spanish, French and
-Italian, English corrections); Polish, Turkish, Czech, Romanian, Hungarian, Finnish,
-Indonesian and Catalan are unchanged since their last run. Speed on the same run, single process: polyg2p 2–3 µs per
-sentence, espeak-ng 8–17 µs per sentence with four worker processes.
-
-³ Finnish writes boundary gemination and nasal assimilation across words
-(*tehdä seuraavaksi* → `tˈehdæs sˈeuraavaksi`, *on kaunis* → `oŋ kˈaunis`), which a
-word-by-word comparison scores as errors although the sentence is right.
-
-**English words not in the dictionary** (3,000 CMUdict words held out of model
-training; mostly names):
-
-| | exact | phoneme error rate |
-|---|---|---|
-| polyg2p, default model (`en.g2p`, 0.6M params) | **70.4%** | **7.3%** |
-| polyg2p, `POLYG2P_EN_MODEL=large` (1.2M params) | **74.6%** | **6.2%** |
-| espeak-ng | 64.2% | 8.7% |
-
-**English homographs in context** (40 sentences: read, record, live, close,
-tear, lead, use, wind, present, object, estimate, separate, …; written by the
-authors, so indicative only): polyg2p 40/40, espeak-ng 32/40.
-
-**Russian:** exact port of Russian-G2P. Identical output to the Python
-version on 845 gold words, 555k synthetic words and 28.8k sentences (both
-without context models). It's about 25× faster per word, and the 3.19M-form
-stress dictionary is memory-mapped instead of ~1.5 GB of RAM.
-
-Homograph stress (замо́к/за́мок, цепи́, стены́) and е/ё (все/всё, чем/чём) need
-context. Russian-G2P uses RUAccent's two ONNX models for that (a 351 MB BERT
-and a 14 MB tagger); polyg2p instead ships a 1.5M-parameter character-level
-student (`ru-ctx.g2p`) distilled from them on 454k sentences containing a
-homograph (Tatoeba, plus Leipzig news, web and Wikipedia sentences chosen for
-the rarer homographs). Sentences whose writer spelled всё/чём/нём with ё are
-also trained in a copy with ё written as е, so the student restores ё in text
-that omits it. On 5,000 held-out Tatoeba sentences the student agrees with
-the teacher pipeline on 96.1% of homograph decisions (the dictionary's first
-candidate alone: 48.9%) and 98.4% of stressed-ё words; 95.1% of the
-sentences come out identical. On 2,000 held-out news/Wikipedia sentences,
-which carry rarer homographs, it is 90.5%. With every ё in the held-out
-sentences rewritten as е, 89.0% still come out identical to the teacher's
-reading of the ё-spelled text (всё/все is decided from context). It runs only
-on sentences that contain a homograph and costs about 0.35 ms there with the
-int8 kernel; `ru-ctx-small.g2p` (0.55M params, 92.0% / 0.3 ms) is the
-faster option. An int8 copy of the model (1.7 MB, same accuracy) is compiled
-into the crate, so Russian works out of the box; a `ru-ctx.g2p` in the data
-directory overrides it and `POLYG2P_RU_CTX=0` turns it off. On Apple Silicon
-and other aarch64 CPUs with the dot-product extension the int8 weights run an
-int8 `sdot` kernel (3× faster than the f32 math, 5 of 20,000 Tatoeba sentences
-change); `POLYG2P_INT8=0` forces f32. The same kernel serves the Hebrew
-`he-int8.g2p`, which the Hebrew engine now prefers when present.
-
-**Speed** (20,000 Tatoeba sentences piped through the CLI, including process
-start, 8-core Apple M-series laptop; espeak-ng 1.52 through `phonemizer`, batch
-mode):
-
-| | polyg2p | espeak-ng (batch) |
-|---|---|---|
-| English (web text, many names/URLs) | **63k sent/s** | 8.2k sent/s |
-| Spanish | **440k sent/s** | 9.6k sent/s |
-| Italian | **325k sent/s** | 10.4k sent/s |
-| German | **400k sent/s** | 7.9k sent/s |
-| Russian (vs the Python Russian-G2P) | **18k sent/s** with the context student (int8 kernel), 148k without | 7.1k sent/s (Russian-G2P: ~13) |
-| Hebrew (`he-int8.g2p`) | **1.4k sent/s** (4.9M-param tagger on every sentence) | — |
-
-Single-threaded, one Russian sentence with a homograph costs about 0.35 ms
-in the student, a Hebrew sentence about 1.7 ms. Piped input to the CLI is
-phonemized in 2,048-line chunks on all cores (order preserved); a terminal is
-answered line by line. From Python, one English sentence takes about 11 µs
-(espeak per call: ~240 µs); `phonemize_batch` uses all cores. Peak memory
-with lexicons loaded: under 20 MB.
-Each unknown English word costs ~0.5 ms in the default model (~1.6 ms large);
-results are cached and affix/compound splitting resolves many of them first.
-
-## Use
-
-### Python
+polyg2p is not on PyPI yet. Build the wheel from this repository. It bundles
+the English, Russian and Hebrew data, so `Phonemizer()` works with no
+arguments.
 
 ```console
-pip install polyg2p            # wheel from bindings/python (maturin build --release)
-pip install renikud-onnx       # for Hebrew
+python tools/build_data.py --out data-out        # English lexicon from sources/cmudict.dict
+python tools/bundle_wheel_data.py                # copy the Apache/BSD data into the wheel
+cd bindings/python && maturin build --release -o ../../dist
+pip install ../../dist/polyg2p-*.whl
 ```
+
+The Russian dictionaries and the Hebrew model come from separate builds; see
+[Data files](#data-files).
+
+## Usage
+
+### Python
 
 ```python
 from polyg2p import Phonemizer, unknown_symbols
 
-g2p = Phonemizer()
-g2p("I have read the record, and I will record it again.", "en")
-# 'aɪ hæv ɹˈɛd ðə ɹˈɛkɚd, ænd aɪ wɪl ɹɪkˈɔːɹd ɪt əɡˈɛn.'
-g2p("Hello <es>hola amigo</es> world", "en", tags=True)   # BlueTTS-style <lang> tags
-g2p.phonemize_batch(lines, "de")                          # all cores, for corpora
-unknown_symbols(ipa)                                      # [] if inside the 256-token vocab
+g2p = Phonemizer()                       # or Phonemizer(data_dir="data-out") for the lexicon pack
+g2p("Gracias, [laughs] hasta mañana.", "es-419")
+# 'ɡɾˈasjas, [laughs] ˌasta maɲˈana.'
+g2p("Hello <es>hola amigo</es> world", "en", tags=True)
+# '<en>həlˈoʊ</en><es>ˈola amˈiɣo</es><en>wˈɜːld</en>'
+g2p.phonemize_batch(lines, "it")         # all cores, for corpora
+unknown_symbols(ipa)                     # [] when every symbol is in the espeak vocabulary
 ```
 
-### BlueTTS
+`<xx>…</xx>` spans switch language inside a sentence. `POLYG2P_DATA` sets the
+data folder for every `Phonemizer`.
 
-`bluetts-polyg2p.patch` replaces espeak in inference (`TextProcessor`), dataset
-phonemization, `combine_datasets.py`, the training eval phrases, the
-dependencies and the Dockerfile:
+### Command line
 
 ```console
-cd BlueTTS && git apply ../polyg2p/bluetts-polyg2p.patch
+cargo build --release
+echo "La città è bella." | target/release/g2p it --data data-out
+target/release/g2p de --data data-out < sentences.txt > phonemes.txt
 ```
 
-Or swap only inference: `from polyg2p.bluetts import TextProcessor`.
+One line in, one line out. Piped input runs in parallel and keeps its order.
 
 ### Rust
 
@@ -240,95 +86,137 @@ let g2p = polyg2p::G2p::new(Some(std::path::Path::new("data-out")));
 let ipa = g2p.phonemize("Die Bundesregierung hat entschieden.", polyg2p::Lang::De);
 ```
 
-CLI: `cargo build --release && echo "La città è bella." | target/release/g2p it --data data-out`
+## Languages
 
-## Data files
+Word accuracy on the 20,000 most frequent Wiktionary words, weighted by
+frequency. The "polyg2p" column is what the wheel gives. "With lexicon pack"
+adds the optional CC BY-SA lexicons described under [Licensing](#licensing).
 
-`G2p::new(data_dir)` loads these lazily if present (`POLYG2P_DATA` in Python):
+| Language | Code | How it works | polyg2p | with lexicon pack | espeak-ng |
+|---|---|---|---|---|---|
+| English | `en` | CMUdict, context rules, small transformer for unknown words | **97.9%** | | 96.7% |
+| Spanish | `es`, `es-419` | rules; `es-419` writes Latin American seseo and yeísmo | **99.5%** | | 99.3% |
+| Italian | `it` | rules, stress and vowel-quality statistics | **98.6%** | **99.7%** | 87.1% |
+| German | `de` | rules, compound splitting | 96.5% | **98.7%** | 96.5% |
+| French | `fr` | rules, exception lexicon, liaison | **99.0%** | | 97.7% |
+| Portuguese (Brazil) | `pt` | rules, vowel-quality statistics | **99.6%** | **99.7%** | 96.9% |
+| Dutch | `nl` | rules: vowel length, schwa, prefixes | **99.1%** | **99.9%** ¹ | 96.8% |
+| Swedish | `sv` | rules, compound splitter | **98.7%** | **99.3%** ¹ | 95.6% |
+| Ukrainian | `uk` | rules, stress statistics | **99.3%** | | 79.5% |
+| Polish | `pl` | rules | **99.8%** | | 91.5% |
+| Czech | `cs` | rules | **99.9%** | | 96.4% |
+| Hungarian | `hu` | rules | **99.8%** | | 95.2% |
+| Greek | `el` | rules | **99.3%** | | 81.0% |
+| Romanian | `ro` | rules | **98.0%** | | 97.8% |
+| Catalan (Central) | `ca` | rules, vowel-quality statistics | **93.9%** | | 93.2% |
+| Turkish | `tr` | rules | 99.7% | | 99.7% |
+| Finnish | `fi` | rules | 99.5% | | 99.5% |
+| Indonesian | `id` | rules, e/ə stem table | **99.6%** | | 88.4% |
+| Russian | `ru` | dictionaries, context model ([details](docs/russian.md)) | **98.9%** | | 62.4% |
+| Hebrew | `he` | sentence-level tagger ([details](docs/hebrew.md)) | | | |
+| Yiddish | `yi` | routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) | | | |
 
-| File | Source | License | Without it |
-|---|---|---|---|
-| `en.lex` | CMUdict | BSD-style (notice in NOTICE) | English needs it |
-| `en.g2p` | trained on CMUdict (small, default) | BSD-style | unknown words are spelled out |
-| `en-large.g2p` | trained on CMUdict (larger) | BSD-style | used with `POLYG2P_EN_MODEL=large` |
-| `it.lex` | WikiPron (Wiktionary) | CC BY-SA | Italian uses rules + statistics |
-| `de.lex` | ipa-dict / german-ipa-dict (Wiktionary) | CC BY-SA | German uses rules |
-| `ru_*.lex` | RUAccent dictionaries (`tools/ru_build_lex.py ru_lexicon/ out/`) | Apache-2.0 | Russian uses its suffix fallback (stress often wrong) |
-| `ru-ctx.g2p` (`ru-ctx-small.g2p`) | distilled from RUAccent's homograph and ё models on Tatoeba (`tools/ru_distill.py`, `tools/train_ru.py`) | Apache-2.0 | homographs take the dictionary's first candidate, все/всё by rule |
-| `he.g2p` (`he-int8.g2p`, `he-small.g2p`) | distilled from RenikudPlus on 1M Knesset sentences (`tools/he_distill.py`, `tools/train_he.py`) | Apache-2.0 | Hebrew falls back to renikud-onnx in Python |
-| `uk.lex`, `nl.lex`, `sv.lex`, `pt.lex` | WikiPron (Wiktionary; `tools/nl_build_lex.py`, `tools/sv_lex.py`, `tools/pt_build_lex.py`) | CC BY-SA | rules only |
+¹ Built from Wiktionary, so scoring on Wiktionary is optimistic. On a
+held-out 10% split the Dutch lexicon adds 1.8 points and the Swedish one 3.0.
 
-Rebuild everything from the public sources:
+Russian is an exact port of [Russian-G2P](https://github.com/maxmelichov/Russian-G2P),
+with RUAccent's context models distilled into one 1.5M-parameter model.
+Hebrew is distilled from [RenikudPlus](https://github.com/maxmelichov/RenikudPlus).
+Arabic is scaffolded and waits for a context model like Hebrew's.
 
-```console
-cargo build --release
-python tools/build_data.py --out data-out            # English
-python tools/build_data.py --out data-out --ccbysa   # + Italian, German
-python tools/train_g2p.py build-data/en_train.tsv models/en_small --epochs 24 --d 96 --ff 256 --layers 2
-python tools/train_g2p.py build-data/en_train.tsv models/en --epochs 20 --d 128 --ff 384 --layers 3
-cp models/en_small/g2p.bin data-out/en.g2p && cp models/en/g2p.bin data-out/en-large.g2p
-python tools/ru_build_lex.py /path/to/Russian-G2P/ru_lexicon data-out   # Russian stress tiers
-```
+[docs/benchmarks.md](docs/benchmarks.md) has every table: all gold words,
+8.8 million Tatoeba sentences, unknown English words, memory, and how the
+scoring works.
 
-The build is deterministic: rerunning it reproduces the lexicons byte for byte.
+## Speed
 
-### Data licensing
+20,000 Tatoeba sentences per language piped through the CLI on an Apple M5
+laptop, including process start. espeak-ng 1.52 runs through `phonemizer` in
+batch mode.
 
-The code and the English data are Apache-2.0 / BSD compatible. The German and
-Italian lexicons come from Wiktionary, whose share-alike terms do not fit an
-Apache package, so they are a separate optional pack. The small Italian tables
-compiled into the crate (`data/it_suffix.tsv`, `data/it_open.tsv`) hold only
-per-ending counts derived from Wiktionary; aggregate statistics are generally
-not copyrightable, but if you want zero Wiktionary-derived material, delete
-them and Italian falls back to the hand-written morphology rules.
+| Language | polyg2p | espeak-ng |
+|---|---|---|
+| English | **402k sent/s** | 11.3k sent/s |
+| German | **549k sent/s** | 8.2k sent/s |
+| Spanish | **495k sent/s** | 11.8k sent/s |
+| Russian, with the context model | **12.0k sent/s** | 9.6k sent/s |
+| Hebrew | **1.9k sent/s** | |
 
-## How it matches espeak
-
-Notation was matched by phonemizing 30k words per language with espeak and
-diffing against the converted lexicons until the remaining differences were
-real pronunciation differences, not symbol choices. Examples of conventions
-reproduced: English `ɾ` flapping (t only), `ᵻ` in -ed/-es, weak forms (`ðə`,
-`ɐ`, `tə`), joined pairs (`ʌvðə`, `hɐvbɪn`), `ðɪ`/`tʊ` before vowels;
-Spanish secondary stress on even syllables before the primary, `ŋ` only
-before g/x; Italian `Cː` for long stops and affricates but doubled letters for
-continuants, `rɾ` for rr, `ɲɲ` after the stress; German `ɾ` after plosives and
-before consonants, `ɜ` for -er, long unstressed tense vowels. Output is NFD
-with `ʧ ʤ ʦ ʣ` ligatures, and every symbol is inside the usual 256-token
-espeak phoneme vocabulary (`fold.rs` maps the two espeak diacritics that are
-not: ring above → ring below, vertical line above → syllabic mark).
-
-"Rules only" rows run without the optional Wiktionary lexicons: hand-written
-tables of frequent words (`FIXED` in `it.rs`, `FREQUENT` in `de.rs`) carry the
-function words, open/closed vowels and stress that the morphology rules alone
-get wrong, so an Apache-only install stays usable.
+Russian and Hebrew run a neural model over the sentence. On aarch64 CPUs with
+the dot-product extension it uses an int8 kernel; `POLYG2P_INT8=0` forces f32.
 
 ## Text normalization
 
-Numbers are expanded in every language (cardinals, decimals, thousands
-separators, currency, percent). English, German, Spanish, Italian, Portuguese
-and French also read years (`1990` → nineteen ninety), decades (`1990s`),
-clock times (`14:30`, German says Uhr once even when the text writes it),
-dates (`12/03/2021`, `3.10.2021`, German `am 3. Oktober` → am dritten Oktober),
-ordinals, abbreviations written with a period (`Dr.`, `z.B.`, `bzw.`, `Sr.`,
-`dott.`, `sig.ra`, `Mme`), single letters (`la h y la ñ` → hache, eñe) and
-web addresses (`www.example.com` → double-u … dot example dot com). Bracketed
-tags such as `[laughs]` or `[sighs]` pass through unchanged in every language. English
-also picks `read` past or present from the sentence (he read, read … yesterday)
-and `St.` street vs saint from the capitalization around it.
+Raw text can go straight in:
 
-Agreement with espeak's notation on 30k random words: Spanish 98.6% identical,
-Italian 78%, German 42%, English 45%. The rest are mostly words where espeak
-is wrong (the accuracy table above) or secondary-stress placement.
+- **Numbers** in every language: cardinals, decimals, thousands separators,
+  currency, percent.
+- **Years, decades, times and dates** in English, German, Spanish, Italian,
+  Portuguese and French: `1990s` → nineteen nineties, `14:30 Uhr`,
+  `12/03/2021`, `am 3. Oktober` → am dritten Oktober.
+- **Abbreviations** written with a period: `Dr.`, `z.B.`, `bzw.`, `e.g.`,
+  `Sr.`, `dott.`, `sig.ra`, `Mme`.
+- **Letters, acronyms and web addresses**: `la h y la ñ`, `FBI`,
+  `www.example.com` → double-u double-u double-u dot example dot com.
+- **Tags** in square brackets, such as `[laughs]` or `[sighs]`, pass through
+  unchanged.
 
-## Layout
+## Data files
+
+`G2p::new(data_dir)` and `Phonemizer(data_dir=...)` load these when present.
+
+| File | Source | License | In the wheel | Without it |
+|---|---|---|---|---|
+| `en.lex` | CMUdict | BSD-style | yes | English needs it |
+| `en.g2p` | trained on CMUdict | BSD-style | yes | unknown words are spelled out |
+| `en-large.g2p` | trained on CMUdict | BSD-style | no | `POLYG2P_EN_MODEL=large` uses it |
+| `ru_*.lex` | RUAccent dictionaries | Apache-2.0 | yes | stress falls back to suffix rules |
+| `ru-ctx.g2p` | distilled from RUAccent | Apache-2.0 | compiled in | |
+| `he-int8.g2p` | distilled from RenikudPlus | Apache-2.0 | yes | Hebrew needs it or renikud-onnx |
+| `de.lex` | ipa-dict, Wiktionary | CC BY-SA | no | German uses rules |
+| `it.lex`, `uk.lex`, `nl.lex`, `sv.lex`, `pt.lex` | WikiPron, Wiktionary | CC BY-SA | no | rules only |
+
+Rebuild from the public sources in `sources/`:
+
+```console
+python tools/build_data.py --out data-out            # English
+python tools/build_data.py --out data-out --ccbysa   # + Italian, German
+python tools/ru_build_lex.py /path/to/Russian-G2P/ru_lexicon data-out
+python tools/train_g2p.py build-data/en_train.tsv models/en_small --epochs 24 --d 96 --ff 256 --layers 2
+```
+
+The build is deterministic and reproduces the lexicons byte for byte.
+
+## Licensing
+
+The code is Apache-2.0. The bundled data is Apache-2.0 or BSD-compatible; the
+CMUdict notice is in `NOTICE`.
+
+The German, Italian, Ukrainian, Dutch, Swedish and Portuguese lexicons come
+from Wiktionary. Its share-alike license does not fit an Apache package, so
+they are an optional pack that the wheel leaves out. Without them every
+language still works from its rules and hand-written tables, at the "polyg2p"
+accuracy in the table above.
+
+The small Italian tables compiled into the crate, `data/it_suffix.tsv` and
+`data/it_open.tsv`, hold per-ending counts derived from Wiktionary. Aggregate
+statistics are generally not copyrightable. Delete them if you want no
+Wiktionary-derived material at all, and Italian falls back to its
+hand-written rules.
+
+The evaluation scripts call espeak-ng through `phonemizer`, which is GPL. They
+are development tools, not part of the package.
+
+## Development
 
 ```
-src/            Rust core (lib.rs, en/es/it/de/ru.rs, lexicon.rs FST store, nn.rs transformer, num.rs, fold.rs)
-bindings/python pyo3 extension + Python router (polyg2p.Phonemizer, polyg2p.bluetts.TextProcessor)
-data/           small tables compiled into the crate
-tools/          data build, model training, evaluation and benchmark scripts
+src/              Rust core: one file per language, lexicon store, transformer, numbers, normalization
+bindings/python/  pyo3 extension and the Python router
+data/             small tables compiled into the crate
+tools/            data build, training, evaluation and benchmark scripts
+docs/             benchmarks, Russian, Hebrew, adding a language
 ```
 
-`tools/eval_acc.py`, `tools/speed.py`, `tools/cmp_ours.py` and
-`tools/espeak_words.py` call espeak through `phonemizer` (GPL) for comparison.
-They are development tools, not part of the package.
+To add a language, follow [docs/adding-a-language.md](docs/adding-a-language.md).
+Measure every change with `tools/eval_acc.py`, on the frequent list and with
+`--all`, before keeping it.
