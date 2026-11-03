@@ -69,6 +69,9 @@ def build_en(work, out):
                     vs.append(e)
             if w in fix:
                 vs = [fix[w]] + [v for v in vs if v != fix[w]]
+            elif re.search(r"[bpkgdtfs]ling$", w) and len(vs) > 1 and any("əl" not in v for v in vs):
+                # trembling, gambling: espeak keeps the syllabic l out (tɹˈɛmblɪŋ)
+                vs = [v for v in vs if "əl" not in v] + [v for v in vs if "əl" in v]
             f.write(w + "\t" + "\t".join(vs) + "\n")
             if re.fullmatch(r"[a-z][a-z'\-\.]*", w) and len(w) <= 30:
                 for e in vs:

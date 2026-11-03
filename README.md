@@ -1,8 +1,8 @@
 # polyg2p
 
 Fast multilingual grapheme-to-phoneme conversion for TTS, written in Rust,
-Apache-2.0. It writes the same IPA symbols espeak-ng does (after BlueTTS's
-`normalize_text`), so models trained on espeak phonemes can switch without
+Apache-2.0. It writes the same IPA symbols espeak-ng does (NFD, with the
+`ʧ ʤ ʦ ʣ` ligatures), so models trained on espeak phonemes can switch without
 retraining. It contains no espeak code or data.
 
 | Language | Engine | What it does |
@@ -46,9 +46,9 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | English, unstressed ɪ = ə ² | **98.6%** | 97.6% |
 | Spanish | **99.5%** | 99.3% |
 | Italian, with `it.lex` | **99.8%** | 87.1% |
-| Italian, rules only | **93.0%** | 87.1% |
+| Italian, rules only | **98.6%** | 87.1% |
 | German, with `de.lex` ¹ | **98.7%** | 96.4% |
-| German, rules only | 92.1% | 96.4% |
+| German, rules only | 96.3% | 96.4% |
 | French (nasals scored) | **99.0%** | 97.7% |
 | Dutch, with `nl.lex` ¹ | **99.9%** | 96.8% |
 | Dutch, rules only | **99.1%** | 96.8% |
@@ -293,10 +293,27 @@ Spanish secondary stress on even syllables before the primary, `ŋ` only
 before g/x; Italian `Cː` for long stops and affricates but doubled letters for
 continuants, `rɾ` for rr, `ɲɲ` after the stress; German `ɾ` after plosives and
 before consonants, `ɜ` for -er, long unstressed tense vowels. Output is NFD
-with `ʧ ʤ ʦ ʣ` ligatures, exactly what BlueTTS's `normalize_text` produces, and
-every symbol is inside BlueTTS's 256-token vocabulary (`fold.rs` maps the two
-espeak diacritics that are not: ring above → ring below, vertical line above →
-syllabic mark).
+with `ʧ ʤ ʦ ʣ` ligatures, and every symbol is inside the usual 256-token
+espeak phoneme vocabulary (`fold.rs` maps the two espeak diacritics that are
+not: ring above → ring below, vertical line above → syllabic mark).
+
+"Rules only" rows run without the optional Wiktionary lexicons: hand-written
+tables of frequent words (`FIXED` in `it.rs`, `FREQUENT` in `de.rs`) carry the
+function words, open/closed vowels and stress that the morphology rules alone
+get wrong, so an Apache-only install stays usable.
+
+## Text normalization
+
+Numbers are expanded in every language (cardinals, decimals, thousands
+separators, currency, percent). English, German, Spanish, Italian, Portuguese
+and French also read years (`1990` → nineteen ninety), decades (`1990s`),
+clock times (`14:30`, German says Uhr once even when the text writes it),
+dates (`12/03/2021`, `3.10.2021`, German `am 3. Oktober` → am dritten Oktober),
+ordinals, abbreviations written with a period (`Dr.`, `z.B.`, `bzw.`, `Sr.`,
+`dott.`, `sig.ra`, `Mme`), single letters (`la h y la ñ` → hache, eñe) and
+web addresses (`www.example.com` → double-u … dot example dot com). English
+also picks `read` past or present from the sentence (he read, read … yesterday)
+and `St.` street vs saint from the capitalization around it.
 
 Agreement with espeak's notation on 30k random words: Spanish 98.6% identical,
 Italian 78%, German 42%, English 45%. The rest are mostly words where espeak

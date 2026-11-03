@@ -81,10 +81,19 @@ const CODAS: &[&str] = &[
 /// Spell `w` letter by letter: secondary stress on each letter, primary on the last.
 pub fn spell(w: &str, lang: Lang) -> Option<String> {
     let table = names(lang)?;
-    let letters: Vec<usize> = w.chars().filter(|c| c.is_ascii_alphabetic()).map(|c| (c.to_ascii_lowercase() as u8 - b'a') as usize).collect();
+    let letters: Vec<&str> = w
+        .chars()
+        .filter(|c| c.is_alphabetic())
+        .filter_map(|c| match c.to_lowercase().next().unwrap_or(c) {
+            'ñ' => Some("eɲe"),
+            'ç' => Some(match lang { Lang::Fr => "sesedij", _ => "sedilja" }),
+            'ß' => Some("ɛstsɛt"),
+            c if c.is_ascii_alphabetic() => Some(table[(c as u8 - b'a') as usize]),
+            _ => None,
+        })
+        .collect();
     let mut out = String::new();
-    for (k, &l) in letters.iter().enumerate() {
-        let name = table[l];
+    for (k, &name) in letters.iter().enumerate() {
         let mark = if k + 1 == letters.len() { "ˈ" } else { "ˌ" };
         let pos = name.find(|c: char| V.contains(c)).unwrap_or(0);
         out.push_str(&name[..pos]);

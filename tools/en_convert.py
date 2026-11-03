@@ -174,7 +174,7 @@ def arpa_to_espeak(phones, word=""):
             elif base == "AA" and s and i in spelled and (spelled[i][0] in ("au", "aw") or (spelled[i][0] == "a" and re.match(r"l(l(ing|ed|er|s|y|en)?$|[^aeiouylmfkv]|$)", spelled[i][4]))):
                 v = "ɔː"  # caused, falling, salt: espeak keeps the ɔː of au/aw/al spellings
             elif base == "AA" and s and i in spelled and spelled[i][0] == "o" and (
-                    nxt == "F" or (nxt in ("S", "NG", "G") and re.match(r"(ss|st|ng|g)([^aeiouy]|$|(ing|ed|es|er|y|ly|en)$)", spelled[i][4]))):
+                    nxt == "F" or (nxt in ("S", "NG", "G") and re.match(r"(ss|st|ng|g(?![lr]))([^aeiouy]|$|(ing|ed|es|er|y|ly|en)$)", spelled[i][4]))):
                 v = "ɔː"  # cost, soft, off, long, dog: lot-cloth split as espeak writes it
             elif base == "AE" and s == 0 and i == 0 and nxt in ("D", "K") and i + 2 < n and not is_vowel(ps[i + 2]):
                 v = "ɐ"  # ɐdvˈaɪs, ɐksˈɛptᵻd

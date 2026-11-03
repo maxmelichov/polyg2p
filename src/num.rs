@@ -48,7 +48,7 @@ fn parse(s: &str, lang: Lang) -> Option<(u128, Option<String>)> {
 }
 
 /// English ordinal of a cardinal word sequence (twenty one -> twenty first).
-fn en_ordinal(words: &mut Vec<String>) {
+pub fn en_ordinal(words: &mut Vec<String>) {
     let Some(last) = words.last_mut() else { return };
     let o = match last.as_str() {
         "one" => "first".to_string(),
@@ -67,6 +67,14 @@ fn en_ordinal(words: &mut Vec<String>) {
 /// Expand a numeric token into words, appended to `out`.
 pub fn expand(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<String>) {
     let lower = tok.to_ascii_lowercase();
+    if let Some(d) = crate::norm::date(tok, lang, prev) {
+        out.extend(d);
+        return;
+    }
+    if let Some(d) = crate::norm::decade(tok, lang) {
+        out.extend(d);
+        return;
+    }
     for suf in ["st", "nd", "rd", "th"] {
         if let Some(digits) = lower.strip_suffix(suf) {
             if digits.chars().all(|c| c.is_ascii_digit()) {
@@ -128,7 +136,7 @@ pub fn currency(sym: char, tok: &str, lang: Lang, out: &mut Vec<String>) {
     }
 }
 
-fn expand_plain(tok: &str, lang: Lang, _prev: &str, next: &str, out: &mut Vec<String>) {
+fn expand_plain(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<String>) {
     if let Some((h, m)) = tok.split_once(':') {
         if let (Ok(h), Ok(m)) = (h.parse::<u128>(), m.parse::<u128>()) {
             out.extend(cardinal(h, lang));
@@ -172,7 +180,9 @@ fn expand_plain(tok: &str, lang: Lang, _prev: &str, next: &str, out: &mut Vec<St
         return;
     }
     let mut words = cardinal(n, lang);
-    if lang == Lang::Es && frac.is_none() && !next.is_empty() {
+    let year_like = plain && tok.len() == 4 && (1000..=2099).contains(&n)
+        && (matches!(prev, "en" | "de" | "del" | "desde" | "hasta" | "año" | "a" | "el") || matches!(next, "de" | "y" | "a" | "en" | "que" | "o" | "con" | "por" | "se" | "el" | "la"));
+    if lang == Lang::Es && frac.is_none() && !next.is_empty() && !year_like {
         // apocope before a noun: veintiún niños, un libro
         if let Some(last) = words.last_mut() {
             match last.as_str() {

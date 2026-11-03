@@ -438,7 +438,17 @@ impl English {
             let prev = if k > 0 && !outs[k - 1].pause_after { outs[k - 1].src.clone() } else { String::new() };
             let next = if k + 1 < n && !outs[k].pause_after { outs[k + 1].src.clone() } else { String::new() };
             if let Some(kind) = homograph(&src) {
-                if let Some(p) = self.pick_homograph(kind, &src, &prev, &next) {
+                if let Some(mut p) = self.pick_homograph(kind, &src, &prev, &next) {
+                    if matches!(kind, Homograph::Read) && p == "ɹˈiːd" {
+                        // he read / read ... yesterday: a past form
+                        let third = matches!(prev.as_str(), "he" | "she" | "it" | "who" | "everyone" | "everybody" | "someone" | "nobody");
+                        let start = (0..k).rev().find(|&j| outs[j].pause_after).map_or(0, |j| j + 1);
+                        let end = (k..n).find(|&j| outs[j].pause_after).map_or(n, |j| j + 1);
+                        let cue = outs[start..end].iter().any(|o| matches!(o.src.as_str(), "yesterday" | "ago" | "earlier" | "previously" | "recently" | "last" | "once" | "afterwards" | "later"));
+                        if third || cue {
+                            p = "ɹˈɛd".into();
+                        }
+                    }
                     outs[k].ph = p;
                 }
             }

@@ -80,8 +80,29 @@ pub fn tokenize(text: &str) -> Vec<Tok> {
                     break;
                 }
             }
+            // a date with slashes: 12/03/2021, 3/10/21
+            if chars.get(i) == Some(&'/') && i - start <= 2 {
+                let mut j = i + 1;
+                let mut ok = false;
+                let m0 = j;
+                while j < chars.len() && chars[j].is_ascii_digit() { j += 1; }
+                if j - m0 >= 1 && j - m0 <= 2 && chars.get(j) == Some(&'/') {
+                    let y0 = j + 1;
+                    let mut k = y0;
+                    while k < chars.len() && chars[k].is_ascii_digit() { k += 1; }
+                    if (k - y0 == 4 || k - y0 == 2) && chars.get(k).map_or(true, |c| !c.is_alphanumeric() && *c != '/') {
+                        ok = true;
+                        i = k;
+                    }
+                }
+                let _ = ok;
+            }
+            // a decade: 1990s
+            if i - start == 4 && matches!(chars.get(i), Some('s') | Some('S')) && chars.get(i + 1).map_or(true, |c| !c.is_alphanumeric()) {
+                i += 1;
+            }
             // ordinal suffix glued to the digits: 5th, 21st, 2nd, 3rd
-            if i + 1 < chars.len() {
+            if i + 1 < chars.len() && !matches!(chars[i - 1], 's' | 'S') {
                 let suf: String = chars[i..(i + 2).min(chars.len())].iter().collect::<String>().to_ascii_lowercase();
                 let after_ok = chars.get(i + 2).map_or(true, |c| !c.is_alphanumeric());
                 if matches!(suf.as_str(), "st" | "nd" | "rd" | "th") && after_ok {

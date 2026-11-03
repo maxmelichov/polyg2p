@@ -14,6 +14,7 @@ pub mod it;
 pub mod lexicon;
 pub mod nn;
 pub mod num;
+pub mod norm;
 pub mod ru;
 pub mod spell;
 pub mod text;
@@ -38,6 +39,9 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use text::Tok;
+
+/// Top-level domains after a spoken "dot".
+const TLD: &[&str] = &["com", "org", "net", "edu", "gov", "io", "co", "de", "fr", "it", "es", "uk", "nl", "ru", "info", "eu", "ch", "at", "br", "pt", "se", "pl", "cz", "il", "tv", "me", "ai", "dev", "app", "html", "htm", "php", "pdf", "jpg", "png", "txt", "mp3", "mp4", "zip", "exe", "js", "py", "rs"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Lang {
@@ -224,12 +228,60 @@ impl G2p {
         let toks = text::tokenize(text);
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
         let mut words: Vec<String> = Vec::new();
-        let mut skip = usize::MAX;
+        let mut skip = 0usize;
+        // the next Word token after `i`, skipping separators (not punctuation)
+        let next_word = |i: usize| -> Option<&str> {
+            toks[i..].iter().find_map(|t| match t {
+                Tok::Word(w) => Some(w.as_str()),
+                Tok::Sep => None,
+                _ => Some(""),
+            }).filter(|w| !w.is_empty())
+        };
         for (ti, t) in toks.iter().enumerate() {
-            if ti == skip {
+            if ti < skip {
                 continue;
             }
             match t {
+                Tok::Word(w) if lang == Lang::En && w == "St" && toks.get(ti + 1) == Some(&Tok::Punct('.')) => {
+                    // Baker St. is → street; St. Paul → saint (en.rs)
+                    let nw = next_word(ti + 2);
+                    let saint = nw.is_some_and(|w| w.chars().next().is_some_and(|c| c.is_uppercase()));
+                    if saint {
+                        self.push_word(&mut outs, w, lang);
+                    } else {
+                        self.push_word(&mut outs, "street", lang);
+                        if nw.is_some() {
+                            skip = ti + 2;
+                        }
+                    }
+                }
+                Tok::Word(w) if toks.get(ti + 1) == Some(&Tok::Punct('.')) && {
+                    let lw = w.to_lowercase();
+                    // two-part abbreviations: z.B., d.h., sig.ra
+                    let two = match (toks.get(ti + 2), toks.get(ti + 3)) {
+                        (Some(Tok::Word(b)), after) => {
+                            let key = format!("{lw}.{}", b.to_lowercase());
+                            norm::abbrev(lang, &key).map(|x| (x, if after == Some(&Tok::Punct('.')) { ti + 4 } else { ti + 3 }))
+                        }
+                        _ => None,
+                    };
+                    let one = norm::abbrev(lang, &lw).map(|x| (x, ti + 2));
+                    if let Some((full, end)) = two.or(one) {
+                        for part in full.split(' ') {
+                            self.push_word(&mut outs, part, lang);
+                        }
+                        // the period is the abbreviation's, not a sentence end, unless a sentence
+                        // can end there (etc.) and the next word is capitalized
+                        let key = if end == ti + 2 { lw.clone() } else { format!("{lw}.{}", match &toks[ti + 2] { Tok::Word(b) => b.to_lowercase(), _ => String::new() }) };
+                        let cap_next = next_word(end).is_some_and(|w| w.chars().next().is_some_and(|c| c.is_uppercase()));
+                        let title = norm::is_title(lang, &key);
+                        let keep_dot = next_word(end).is_none() || cap_next && (norm::sentence_final(&key) || lang != Lang::De && !title);
+                        skip = if keep_dot { end - 1 } else { end };
+                        true
+                    } else {
+                        false
+                    }
+                } => {}
                 Tok::Word(w) => self.push_word(&mut outs, w, lang),
                 Tok::Sym(c) if num::is_currency(*c) && matches!(toks.get(ti + 1), Some(Tok::Num(_))) => {
                     let Some(Tok::Num(n)) = toks.get(ti + 1) else { unreachable!() };
@@ -238,7 +290,7 @@ impl G2p {
                     for w in words.drain(..) {
                         self.push_word(&mut outs, &w, lang);
                     }
-                    skip = ti + 1;
+                    skip = ti + 2;
                 }
                 Tok::Num(n) => {
                     // look at the next word for context (years, units, currency suffixes)
@@ -250,7 +302,24 @@ impl G2p {
                     let prev = outs.last().map(|o| o.src.as_str()).unwrap_or("");
                     let prev = prev.to_string();
                     words.clear();
-                    num::expand(n, lang, &prev, next.unwrap_or(""), &mut words);
+                    let month_after = toks.get(ti + 1) == Some(&Tok::Punct('.'))
+                        && next_word(ti + 2).is_some_and(|w| norm::is_month(lang, &w.to_lowercase()));
+                    if month_after && n.chars().all(|c| c.is_ascii_digit()) && n.len() <= 2 && lang == Lang::De {
+                        // am 3. Oktober
+                        let d: u128 = n.parse().unwrap_or(0);
+                        words.push(norm::de_ordinal(d, norm::de_dative(&prev)));
+                        skip = ti + 2;
+                    } else {
+                        num::expand(n, lang, &prev, next.unwrap_or(""), &mut words);
+                    }
+                    if lang == Lang::De && words.iter().any(|w| w == "Uhr") {
+                        // 14:30 Uhr: the expansion already says Uhr
+                        if let Some(k) = toks[ti + 1..].iter().position(|t| !matches!(t, Tok::Sep)) {
+                            if matches!(&toks[ti + 1 + k], Tok::Word(w) if w.eq_ignore_ascii_case("uhr")) {
+                                skip = ti + 2 + k;
+                            }
+                        }
+                    }
                     for w in words.drain(..) {
                         self.push_word(&mut outs, &w, lang);
                     }
@@ -261,6 +330,25 @@ impl G2p {
                             self.push_word(&mut outs, w, lang);
                         }
                     }
+                }
+                Tok::Punct('.') if ti > 0 && matches!(toks[ti - 1], Tok::Word(_)) && matches!(toks.get(ti + 1), Some(Tok::Word(w)) if {
+                    let w = w.to_lowercase();
+                    let prev = outs.last().map(|o| o.src.as_str()).unwrap_or("");
+                    prev == "www" || TLD.contains(&w.as_str())
+                }) => {
+                    // www.example.com: the period is spoken
+                    let dot = match lang {
+                        Lang::En => "dot",
+                        Lang::De => "Punkt",
+                        Lang::Es | Lang::It | Lang::Pt | Lang::Ca => "punto",
+                        Lang::Fr => "point",
+                        Lang::Nl => "punt",
+                        Lang::Pl => "kropka",
+                        Lang::Tr => "nokta",
+                        Lang::Sv => "punkt",
+                        _ => "dot",
+                    };
+                    self.push_word(&mut outs, dot, lang);
                 }
                 Tok::Punct(p) => {
                     if let Some(o) = outs.last_mut() {
@@ -333,13 +421,25 @@ impl G2p {
     }
 
     fn push_word(&self, outs: &mut Vec<Out>, w: &str, lang: Lang) {
+        if w.eq_ignore_ascii_case("www") {
+            let ph = if lang == Lang::En { Some("dˌʌbəljuːdˌʌbəljuːdˈʌbəljuː".to_string()) } else { spell::spell("WWW", lang) };
+            if let Some(ph) = ph {
+                outs.push(Out { ph, punct: String::new(), pause_after: false, src: "www".into() });
+                return;
+            }
+        }
         // Turkish has dotted and dotless i: I -> ı, İ -> i
         let lw = if lang == Lang::Tr {
             w.chars().map(|c| match c { 'I' => 'ı', 'İ' => 'i', c => c }).collect::<String>().to_lowercase()
         } else {
             w.to_lowercase()
         };
-        let single_letter = w.chars().count() == 1 && w.chars().next().is_some_and(|c| c.is_ascii_uppercase() && !"AEIOUY".contains(c));
+        let single_letter = w.chars().count() == 1
+            && w.chars().next().is_some_and(|c| {
+                c.is_ascii_uppercase() && !"AEIOUY".contains(c)
+                    // la h, la ñ: lower-case single consonants are letter names in languages with no one-letter words
+                    || c.is_lowercase() && !"aeiouyàèìòùáéíóúâêôäöüãõ".contains(c) && matches!(lang, Lang::Es | Lang::It | Lang::De | Lang::Pt | Lang::Fr)
+            });
         if lang != Lang::En && (spell::is_acronym(w) || single_letter) {
             if let Some(ph) = spell::spell(w, lang) {
                 outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
