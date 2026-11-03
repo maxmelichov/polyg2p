@@ -418,7 +418,8 @@ fn core(w: &str, stem_initial: bool) -> String {
             'b' => out.push(if last || (!is_v(nx) && !matches!(nx, 'l' | 'r') && nx != 'b') { 'p' } else { 'b' }),
             'd' => out.push(if last || (!is_v(nx) && !matches!(nx, 'l' | 'r') && nx != 'd') { 't' } else { 'd' }),
             'g' => {
-                if at(i as isize - 1) == 'i' && (last || !is_v(nx)) && !matches!(nx, 'l' | 'r') {
+                if at(i as isize - 1) == 'i' && at(i as isize - 2) != 'e' && (last || !is_v(nx)) && !matches!(nx, 'l' | 'r') {
+                    // -ig: ɪç, but -eig is a diphthong + k (Teig, Steig, Zweig)
                     // -ig: ɪç
                     out.push('ç');
                 } else {

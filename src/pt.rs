@@ -340,9 +340,26 @@ pub fn word(lw: &str) -> String {
     out
 }
 
+/// Optional data-pack lexicon `pt.lex` (WikiPron, CC BY-SA; built by
+/// `tools/pt_build_lex.py`): the rule output with Wiktionary's open/closed e and o.
+/// `POLYG2P_PT_NOLEX=1` ignores it (the build tool uses that to get the bare rules).
+fn lexicon() -> Option<&'static crate::lexicon::Lexicon> {
+    static L: std::sync::OnceLock<Option<crate::lexicon::Lexicon>> = std::sync::OnceLock::new();
+    L.get_or_init(|| {
+        if std::env::var_os("POLYG2P_PT_NOLEX").is_some() {
+            return None;
+        }
+        crate::lexicon::Lexicon::open(&crate::data_dir()?.join("pt.lex")).ok()
+    })
+    .as_ref()
+}
+
 fn word_one(w: &str) -> String {
     let raw: String = w.to_lowercase().chars().filter(|c| c.is_alphabetic()).collect();
     if let Some((_, p)) = FIXED.iter().find(|(k, _)| *k == raw) {
+        return p.to_string();
+    }
+    if let Some(p) = lexicon().and_then(|l| l.get(&raw)) {
         return p.to_string();
     }
     let lw: String = raw.chars().map(norm_char).collect();

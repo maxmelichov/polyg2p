@@ -115,6 +115,10 @@ def build_de(work, out):
             continue
         vs = []
         for x in p.split(", "):
+            # ipa-dict carries English readings for some capitalized names (Allen /ˈælən/,
+            # Hole /hɔʊ̯l/); German has none of these phones
+            if any(ch in x for ch in "æɹθðw") or "ɔʊ" in x:
+                continue
             e = lex_to_espeak(x, w)
             if "ˈ" not in e:
                 m = re.search("[%s]" % V, e)
@@ -123,7 +127,8 @@ def build_de(work, out):
             e = unicodedata.normalize("NFD", e)
             if e not in vs:
                 vs.append(e)
-        rows.append((w, vs))
+        if vs:
+            rows.append((w, vs))
     # ipa-dict's first variant is sometimes an odd one (tun -> tjuːn): order the
     # variants by closeness to the rule-based reading
     multi = [r for r in rows if len(r[1]) > 1]

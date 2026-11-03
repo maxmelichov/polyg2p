@@ -46,14 +46,14 @@ const FUNC: &[(&str, &str)] = &[
     ("dem", "dɔm"), ("som", "sɔm"), ("till", "tɪl"), ("för", "føːr"), ("med", "meːd"), ("på", "poː"), ("av", "ɑːv"),
     ("om", "ɔm"), ("är", "ɛːr"), ("jag", "jɑːɡ"), ("han", "han"), ("hon", "hʊn"), ("vi", "viː"), ("ni", "niː"),
     ("du", "dʉ"), ("kan", "kan"), ("man", "man"), ("har", "hɑːr"), ("var", "vɑːr"), ("från", "froːn"),
-    ("så", "soː"), ("men", "mɛn"), ("inte", "ɪntə"), ("ska", "ska"), ("skall", "skal"), ("i", "iː"), ("än", "ɛn"),
+    ("så", "soː"), ("men", "mɛn"), ("inte", "ɪntə"), ("ska", "skɑː"), ("skall", "skal"), ("i", "iː"), ("än", "ɛn"),
     ("sig", "sɛj"), ("mig", "mɛj"), ("dig", "dɛj"), ("sin", "sɪn"), ("sitt", "sɪt"), ("sina", "siːna"),
     ("min", "mɪn"), ("mitt", "mɪt"), ("din", "dɪn"), ("ditt", "dɪt"), ("hans", "hans"), ("er", "eːr"),
     ("ert", "eːrt"), ("vår", "voːr"), ("vårt", "voːrt"), ("ju", "jʉ"), ("nog", "nuːɡ"), ("väl", "vɛːl"),
     ("där", "dɛːr"), ("här", "hɛːr"), ("då", "doː"), ("nu", "nʉ"), ("ej", "ɛj"), ("ut", "ʉt"), ("in", "ɪn"),
     ("upp", "ɵp"), ("ner", "neːr"), ("hos", "huːs"), ("vid", "viːd"), ("mot", "muːt"), ("ur", "ʉr"),
     ("hur", "hʉr"), ("vad", "vɑː"), ("vem", "vɛm"), ("när", "nɛːr"), ("ha", "hɑː"), ("de", "dɔm"),
-    ("bli", "bliː"), ("blir", "bliːr"), ("ska", "ska"), ("få", "foː"), ("får", "foːr"), ("fick", "fɪk"),
+    ("bli", "bliː"), ("blir", "bliːr"), ("ska", "skɑː"), ("få", "foː"), ("får", "foːr"), ("fick", "fɪk"),
 ];
 
 /// Irregular words and frequent loans (stressed), in espeak notation.

@@ -339,7 +339,8 @@ impl G2p {
         } else {
             w.to_lowercase()
         };
-        if lang != Lang::En && spell::is_acronym(w) {
+        let single_letter = w.chars().count() == 1 && w.chars().next().is_some_and(|c| c.is_ascii_uppercase() && !"AEIOUY".contains(c));
+        if lang != Lang::En && (spell::is_acronym(w) || single_letter) {
             if let Some(ph) = spell::spell(w, lang) {
                 outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
                 return;

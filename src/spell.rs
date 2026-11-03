@@ -52,8 +52,31 @@ pub fn is_acronym(w: &str) -> bool {
     let has_vowel = letters.iter().any(vowel);
     // spell unless it reads as a word (ONU, RAI, NATO): two letters, no vowel,
     // or an initial consonant cluster (FBI, SPD) mean letter names
-    n == 2 || !has_vowel || (!vowel(&letters[0]) && !vowel(&letters[1]))
+    if n == 2 || !has_vowel || (!vowel(&letters[0]) && !vowel(&letters[1])) {
+        return true;
+    }
+    // a run of three consonants (ADHD, OTSC) or a final cluster no word ends in
+    // (ABN, AVG, APBJ) cannot be read as a word either
+    let mut run = 0;
+    for c in &letters {
+        run = if vowel(c) { 0 } else { run + 1 };
+        if run >= 3 {
+            return true;
+        }
+    }
+    if n >= 3 && !vowel(&letters[n - 1]) && !vowel(&letters[n - 2]) {
+        let coda: String = letters[n - 2..].iter().collect::<String>().to_ascii_lowercase();
+        return !CODAS.contains(&coda.as_str());
+    }
+    false
 }
+
+/// Two-consonant word endings that read as a syllable coda (FARC, USP, AIDS).
+const CODAS: &[&str] = &[
+    "st", "nt", "nd", "lt", "rt", "ns", "rs", "ls", "ks", "ts", "ps", "rk", "lk", "nk", "sk", "rd", "ld", "rn", "ln", "rm",
+    "lm", "mp", "rl", "ng", "ch", "sh", "th", "ck", "ll", "ss", "tt", "nn", "rr", "ff", "pp", "mm", "ph", "rc", "sp", "nc",
+    "ds", "lf", "rf", "rb", "rp", "ct", "pt", "ft", "mb", "lp", "lb", "nf", "ms", "cs", "ns", "gs", "bs",
+];
 
 /// Spell `w` letter by letter: secondary stress on each letter, primary on the last.
 pub fn spell(w: &str, lang: Lang) -> Option<String> {

@@ -8,7 +8,8 @@ usage: sentence_cmp.py <lang> <sentences.tsv|.txt> [N] [--data DIR]
   Tatoeba per-language exports work directly:
   https://downloads.tatoeba.org/exports/per_language/<iso3>/<iso3>_sentences.tsv.bz2
   (a .tsv takes the third column; a .txt takes one sentence per line)
-  SHOW=<n> controls how many disagreements are listed (default 80).
+  SHOW=<n> controls how many disagreements are listed (default 80); SHOW_ESP=<n> also lists
+  the n most frequent words where WikiPron sides with espeak.
 """
 import sys, os, re, random, subprocess, collections, unicodedata, json
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -68,3 +69,14 @@ for (w, x, y), c in pairs.items():
 print("  gold adjudication (token-weighted):", dict(sc))
 for (w, x, y), c in pairs.most_common(int(os.environ.get("SHOW", "80"))):
     print(f"  {c:5d} {gstat(w,x,y)} {w:<18} ours={x:<22} espeak={y:<22} | {ex[(w,x,y)][:70]}")
+# SHOW_ESP=<n>: also list the n most frequent disagreements where WikiPron sides with espeak
+n_esp = int(os.environ.get("SHOW_ESP", "0"))
+if n_esp:
+    print("  espeak right, polyg2p wrong (WikiPron):")
+    shown = 0
+    for (w, x, y), c in pairs.most_common():
+        if gstat(w, x, y).strip() == "esp✓":
+            print(f"  {c:5d} {w:<18} ours={x:<22} espeak={y:<22} | {ex[(w,x,y)][:70]}")
+            shown += 1
+            if shown >= n_esp:
+                break

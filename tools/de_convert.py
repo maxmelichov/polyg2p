@@ -15,8 +15,12 @@ def lex_to_espeak(ipa, word=""):
     s = re.sub("[\u0329\u030d]+", "\u0329", s)  # WikiPron sometimes doubles the syllabic mark
     s = s.replace("ʁɐ̯", "ɐ").replace("n̩", "ən").replace("l̩", "əl").replace("m̩", "əm").replace("ŋ̩", "ən")
     s = s.replace("ʊʁ", "ʊɐ̆") if False else s
+    # non-syllabic i after a consonant is the glide of -tion/-ier (Diskussion, Kanadier)
+    s = re.sub(r"(?<=[^%s])i̯" % V, "j", s)
     for a, b in REPL:
         s = s.replace(a, b)
+    # a stressed short vowel in a final closed syllable is lax (ipa-dict's ˌɡelt for Geld)
+    s = re.sub(r"([ˈˌ][^%sː]*)([eiouyø])(?=[^ː%sˈˌ]+$)" % (V, V), lambda m: m.group(1) + dict(e="ɛ", i="ɪ", o="ɔ", u="ʊ", y="ʏ", ø="œ")[m.group(2)], s)
     # -er schwa: espeak writes ɜ
     s = s.replace("ɐ", "ɜ")
     # ʊ + r before a consonant -> ʊɐ (durch, Kurs)
@@ -32,7 +36,7 @@ def lex_to_espeak(ipa, word=""):
     # Duden -ig: ɪç (Wiktionary often gives the southern ɪk)
     lw = word.lower()
     if "ig" in lw and "ik" not in lw:
-        s = re.sub(r"ɪk(?=$|t|s|ʦ)", "ɪç", s)
+        s = re.sub(r"(?<!a)ɪk(?=$|t|s|ʦ)", "ɪç", s)  # not the diphthong of Teig, Steig
     # espeak writes the stress mark right before the vowel, Wiktionary at syllable onset
     s = re.sub(r"([ˈˌ])([^aeiouyøɛɪʊʏœəɔɐæɑ]*)", r"\2\1", s)
     s = s.replace("tʃ", "ʧ").replace("dʒ", "ʤ")

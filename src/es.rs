@@ -56,10 +56,25 @@ pub struct EsWord {
 
 /// Phonemize one lower-case word (no context). Initial b/d/g are written as stops;
 /// the sentence pass softens them after vowels.
+/// Loanwords and foreign names read the way Spanish speakers say them (WikiPron).
+const LOAN: &[(&str, &str)] = &[
+    ("facebook", "fˈeɪsβuk"), ("software", "sˈoftweɾ"), ("hardware", "xˈaɾdweɾ"), ("hitler", "xˈitleɾ"), ("flash", "flˈaʃ"),
+    ("squash", "skwˈaʃ"), ("photoshop", "fˈotoʃop"), ("barça", "bˈaɾsa"), ("pashtún", "paʃtˈun"), ("down", "dˈawn"),
+    ("txalaparta", "tʃˌalapˈaɾta"), ("mustang", "mˈustaŋ"), ("fang", "fˈaŋ"), ("ring", "rˈiŋ"), ("swing", "swˈiŋ"),
+    ("marketing", "mˈaɾketiŋ"), ("camping", "kˈampiŋ"), ("cámping", "kˈampiŋ"), ("living", "lˈiβiŋ"), ("balconing", "balkˈoniŋ"),
+    ("parking", "pˈaɾkiŋ"), ("feeling", "fˈiliŋ"), ("casting", "kˈastiŋ"), ("ranking", "rˈaŋkiŋ"), ("meeting", "mˈitiŋ"),
+    ("smoking", "esmˈokiŋ"), ("camping", "kˈampiŋ"), ("whisky", "wˈiski"), ("whiskey", "wˈiski"), ("jazz", "ʝˈas"),
+    ("sandwich", "sˈanɡwitʃ"), ("sándwich", "sˈanɡwitʃ"), ("hobby", "xˈoβi"), ("hockey", "xˈokeɪ"), ("show", "ʃˈoʊ"),
+    ("shock", "ʃˈok"), ("sheriff", "ʃˈeɾif"), ("sexy", "sˈeksi"), ("pizza", "pˈitsa"), ("pizzas", "pˈitsas"),
+];
+
 pub fn word(w: &str) -> String {
     let lw: String = w.to_lowercase().chars().filter(|c| c.is_alphabetic()).collect();
     if lw.is_empty() {
         return String::new();
+    }
+    if let Some((_, p)) = LOAN.iter().find(|(k, _)| *k == lw) {
+        return p.to_string();
     }
     // x read as /x/ in a few names (México, Texas, Oaxaca)
     for (pre, rep) in [("méxic", "méjic"), ("mexic", "mejic"), ("oaxac", "oajac"), ("texa", "teja"), ("xavier", "javier")] {

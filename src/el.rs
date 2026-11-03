@@ -399,9 +399,9 @@ fn parse(ls: &[L]) -> Vec<Seg> {
                 i += 2;
             }
             ('γ', 'γ') => {
-                // γγ: ŋɡ before a vowel (άγγελος), ŋɣ before a consonant (συγγραφέας, έγγραφο)
+                // γγ: ŋɣ before ρ/ν (συγγραφέας, έγγραφο, συγγνώμη), else ŋɡ (άγγελος, Αγγλία)
                 let after = at(i + 2).map(|l| l.b).unwrap_or(' ');
-                segs.push(cons(if is_vowel_letter(after) { "ŋɡ" } else { "ŋɣ" }));
+                segs.push(cons(if matches!(after, 'ρ' | 'ν') { "ŋɣ" } else { "ŋɡ" }));
                 i += 2;
             }
             ('γ', 'χ') | ('γ', 'ξ') => {

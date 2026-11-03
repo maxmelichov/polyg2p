@@ -45,13 +45,15 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | English, strict | **97.9%** | 96.7% |
 | English, unstressed ɪ = ə ² | **98.6%** | 97.6% |
 | Spanish | **99.5%** | 99.3% |
-| Italian, with `it.lex` | **99.7%** | 87.1% |
+| Italian, with `it.lex` | **99.8%** | 87.1% |
 | Italian, rules only | **93.0%** | 87.1% |
 | German, with `de.lex` ¹ | **98.7%** | 96.4% |
 | German, rules only | 92.1% | 96.4% |
-| French (nasals scored) | **98.9%** | 97.7% |
+| French (nasals scored) | **99.0%** | 97.7% |
+| Dutch, with `nl.lex` ¹ | **99.9%** | 96.8% |
 | Dutch, rules only | **99.1%** | 96.8% |
-| Portuguese (BR) | **99.6%** | 96.9% |
+| Portuguese (BR), with `pt.lex` ¹ | **99.7%** | 96.9% |
+| Portuguese (BR), rules only | **99.6%** | 96.9% |
 | Polish | **99.8%** | 91.5% |
 | Romanian | **98.0%** | 97.8% |
 | Catalan (Central gold from `tools/ca_gold.py`) | **93.9%** | 93.2% |
@@ -62,9 +64,14 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | Turkish | 99.7% | 99.7% |
 | Indonesian | **99.6%** | 88.4% |
 | Finnish | 99.5% | 99.5% |
-| Swedish (3.4k gold words) | **97.9%** | 95.6% |
+| Swedish (3.4k gold words), with `sv.lex` ¹ | **99.3%** | 95.6% |
+| Swedish, rules only | **98.0%** | 95.6% |
+| Russian (stress scored through vowel reduction, `ru_*.lex` + context student) | **98.9%** | 62.4% |
 
-¹ These lexicons come from Wiktionary too, so the numbers are optimistic.
+¹ These lexicons come from Wiktionary too, so the numbers are optimistic. Held out
+(lexicon built from 90% of WikiPron, the other 10% scored): Dutch 82.1% → 83.9%,
+Swedish 68.7% → 71.7%, Portuguese 94.2% → 94.2% (its lexicon only stores the
+open/closed e and o of words the rules misjudge; see the sentence table).
 ² CMUdict and Wiktionary disagree mostly on how reduced vowels are written.
 
 **Every word in WikiPron, not just the frequent ones** (`tools/eval_acc.py <lang> --all`;
@@ -72,23 +79,24 @@ uniform weights, so rare words, names and abbreviations count as much as "the"):
 
 | | words | polyg2p | espeak-ng |
 |---|---|---|---|
-| English (mostly rare words and acronyms; the OOV model does the work) | 80,992 | 62.2% (PER 10.5%) | 61.8% (PER 9.7%) |
-| Spanish | 132,191 | 97.1% | 97.1% |
+| English (mostly rare words and acronyms; the OOV model does the work) | 80,992 | 62.3% (PER 10.5%) | 61.8% (PER 9.7%) |
+| Spanish | 132,191 | **97.2%** | 97.1% |
 | Italian | 82,280 | **96.8%** | 89.2% |
-| German, with `de.lex` ¹ | 53,011 | **97.5%** | 71.5% |
-| French | 85,516 | **93.8%** | 89.9% |
-| Portuguese (BR) | 57,900 | **94.3%** | 93.2% |
+| German, with `de.lex` ¹ | 53,011 | **97.6%** | 71.5% |
+| French | 85,516 | **94.0%** | 89.9% |
+| Portuguese (BR), with `pt.lex` ¹ / rules only | 57,900 | **96.9%** / **94.3%** | 93.2% |
 | Polish | 148,992 | **99.0%** | 97.5% |
-| Ukrainian, `uk.lex` ¹ | 51,646 | **98.8%** | 61.3% |
+| Ukrainian, `uk.lex` ¹ | 51,646 | **98.9%** | 61.3% |
 | Turkish | 11,582 | 98.8% | 98.7% |
-| Dutch | 45,872 | **81.9%** | 67.9% |
+| Dutch, with `nl.lex` ¹ / rules only | 45,872 | **99.9%** / **82.0%** | 67.9% |
 | Czech | 64,350 | **97.9%** | 94.2% |
-| Greek | 19,108 | **98.1%** | 93.1% |
+| Greek | 19,108 | **98.3%** | 93.1% |
 | Romanian | 8,978 | **98.6%** | 97.3% |
 | Hungarian | 64,286 | **98.8%** | 91.3% |
 | Finnish | 168,814 | 99.3% | 99.2% |
-| Swedish | 5,082 | **70.0%** | 58.5% |
-| Indonesian | 17,967 | **90.2%** | 78.8% |
+| Swedish, with `sv.lex` ¹ / rules only | 5,082 | **98.3%** / **70.1%** | 58.5% |
+| Russian (stress scored through vowel reduction) | 403,834 | **94.4%** | 31.2% |
+| Indonesian | 17,967 | **90.6%** | 78.8% |
 | Catalan | 42,559 | **94.5%** | 92.5% |
 
 **Whole sentences, whole corpora** (`tools/sentence_cmp.py`; every Tatoeba sentence
@@ -98,31 +106,32 @@ the same collapse; where the two disagree, WikiPron decides who is right):
 
 | | sentences | words | words that differ | polyg2p right, espeak wrong | espeak right, polyg2p wrong |
 |---|---|---|---|---|---|
-| English | 2,018,803 | 15,002,702 | 4.55% | 217,762 | 44,238 |
-| Spanish | 437,127 | 3,083,117 | 1.25% | 28,070 | 264 |
-| Italian | 984,011 | 5,845,851 | 8.25% | 309,283 | 812 |
-| German | 773,746 | 5,781,616 | 3.67% | 84,919 | 3,319 |
-| French | 721,913 | 5,179,252 | 3.69% | 101,506 | 5,568 |
-| Portuguese | 433,944 | 3,048,347 | 1.49% | 19,732 | 2,388 |
+| English | 2,018,803 | 15,002,702 | 4.35% | 219,339 | 24,973 |
+| Spanish | 437,127 | 3,083,117 | 1.24% | 28,195 | 26 |
+| Italian | 984,011 | 5,845,851 | 8.24% | 309,296 | 425 |
+| German | 773,746 | 5,781,616 | 3.50% | 83,273 | 2,240 |
+| French | 721,913 | 5,179,252 | 3.61% | 101,519 | 1,898 |
+| Portuguese (`pt.lex`) | 433,944 | 3,048,347 | 1.47% | 21,096 | 634 |
 | Polish | 135,463 | 714,336 | 3.94% | 22,597 | 774 |
-| Ukrainian | 186,162 | 914,147 | 22.48% | 148,364 | 1,485 |
+| Ukrainian | 186,162 | 914,147 | 22.34% | 148,398 | 274 |
 | Turkish | 746,747 | 3,712,308 | 0.03% | 54 | 2 |
-| Dutch | 199,250 | 1,285,739 | 10.94% | 66,644 | 4,044 |
+| Dutch (`nl.lex`) | 199,250 | 1,285,739 | 11.21% | 71,912 | 102 |
 | Czech | 89,023 | 457,561 | 2.67% | 9,170 | 1,244 |
-| Greek | 42,314 | 243,900 | 4.50% | 5,233 | 666 |
+| Greek | 42,314 | 243,900 | 4.41% | 5,233 | 635 |
 | Romanian | 41,083 | 277,562 | 0.61% | 405 | 21 |
 | Hungarian | 437,246 | 2,330,269 | 3.86% | 55,212 | 411 |
 | Finnish ³ | 152,839 | 749,768 | 2.66% | 1,215 | 11,193 |
-| Swedish | 56,357 | 317,717 | 17.56% | 14,181 | 1,405 |
+| Swedish (`sv.lex`) | 56,357 | 317,717 | 17.94% | 15,350 | 78 |
 | Indonesian | 27,927 | 153,974 | 9.41% | 10,917 | 24 |
 | Catalan | 10,659 | 76,516 | 6.62% | 1,117 | 211 |
 
 Most differences are ones WikiPron cannot settle (names, loanwords, notation); the two
-right-hand columns count only the words it can. All rows but Italian were measured before the fixes
-this run produced (Italian elision and verb stress, German pronominal adverbs, English
-secondary stress, the Dutch and Portuguese apostrophe clitics), so polyg2p's column is
-if anything understated; the Italian row was re-run after its fixes. Speed on the same run, single process: polyg2p 4–12 µs per
-sentence, espeak-ng 8–30 µs per sentence with four worker processes.
+right-hand columns count only the words it can. The rows were re-run after the fixes
+of each pass (the last one: German lexicon conversion, the Portuguese, Dutch and
+Swedish lexicons, Ukrainian г, Greek γγ, loanword tables for Spanish, French and
+Italian, English corrections); Polish, Turkish, Czech, Romanian, Hungarian, Finnish,
+Indonesian and Catalan are unchanged since their last run. Speed on the same run, single process: polyg2p 2–3 µs per
+sentence, espeak-ng 8–17 µs per sentence with four worker processes.
 
 ³ Finnish writes boundary gemination and nasal assimilation across words
 (*tehdä seuraavaksi* → `tˈehdæs sˈeuraavaksi`, *on kaunis* → `oŋ kˈaunis`), which a
@@ -247,7 +256,7 @@ CLI: `cargo build --release && echo "La città è bella." | target/release/g2p i
 | `ru_*.lex` | RUAccent dictionaries (`tools/ru_build_lex.py ru_lexicon/ out/`) | Apache-2.0 | Russian uses its suffix fallback (stress often wrong) |
 | `ru-ctx.g2p` (`ru-ctx-small.g2p`) | distilled from RUAccent's homograph and ё models on Tatoeba (`tools/ru_distill.py`, `tools/train_ru.py`) | Apache-2.0 | homographs take the dictionary's first candidate, все/всё by rule |
 | `he.g2p` (`he-int8.g2p`, `he-small.g2p`) | distilled from RenikudPlus on 1M Knesset sentences (`tools/he_distill.py`, `tools/train_he.py`) | Apache-2.0 | Hebrew falls back to renikud-onnx in Python |
-| `uk.lex`, `nl.lex`, `sv.lex` | WikiPron (Wiktionary) | CC BY-SA | rules only |
+| `uk.lex`, `nl.lex`, `sv.lex`, `pt.lex` | WikiPron (Wiktionary; `tools/nl_build_lex.py`, `tools/sv_lex.py`, `tools/pt_build_lex.py`) | CC BY-SA | rules only |
 
 Rebuild everything from the public sources:
 

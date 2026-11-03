@@ -536,13 +536,13 @@ fn realize(lw: &str, nv: usize, st_from_end: usize, level: u8) -> String {
             segs[ix].stressed = true;
         }
     }
-    assimilate(&mut segs);
+    assimilate(lw, &mut segs);
     render(&segs)
 }
 
 /// Regressive assimilations: softness through dental clusters, voicing before
 /// voiced obstruents, sibilant clusters, and the reflexive -ться/-шся.
-fn assimilate(segs: &mut Vec<Seg>) {
+fn assimilate(lw: &str, segs: &mut Vec<Seg>) {
     let n = segs.len();
     // softness spreads leftwards from a soft or semi-soft consonant through dentals
     // (пісня, кістці, Дніпро, світ, свято)
@@ -565,10 +565,14 @@ fn assimilate(segs: &mut Vec<Seg>) {
             }
         }
     }
-    // г devoices before a voiceless obstruent in легко, вогко, нігті, кігті, дьогтю
-    for i in 0..n.saturating_sub(1) {
-        if segs[i].p == "h" && segs[i + 1].k == K::Cons && matches!(segs[i + 1].p, "k" | "t") {
-            segs[i].p = "x";
+    // г devoices before a voiceless obstruent only in легко, вогко, нігті, кігті,
+    // дьогтю and their derivatives (легкий, полегшено); elsewhere it stays ɦ
+    // (допомогти, бігти, могти)
+    if ["легк", "вогк", "нігт", "кігт", "дьогт"].iter().any(|s| lw.contains(s)) {
+        for i in 0..n.saturating_sub(1) {
+            if segs[i].p == "h" && segs[i + 1].k == K::Cons && matches!(segs[i + 1].p, "k" | "t") {
+                segs[i].p = "x";
+            }
         }
     }
     // initial з- before a voiceless obstruent: с (зсунути, зцілити)
