@@ -203,7 +203,7 @@ fn expand_plain(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<Str
     if let Some(f) = frac {
         out.push(match lang {
             Lang::En => "point",
-            Lang::Es => "coma",
+            Lang::Es | Lang::EsLa => "coma",
             Lang::It => "virgola",
             Lang::De => "Komma",
             Lang::Ru => "запятая",
@@ -332,7 +332,7 @@ fn year(n: u128, lang: Lang) -> Option<Vec<String>> {
 pub fn cardinal(n: u128, lang: Lang) -> Vec<String> {
     match lang {
         Lang::En => en_card(n),
-        Lang::Es => es_card(n, true),
+        Lang::Es | Lang::EsLa => es_card(n, true),
         Lang::It => it_card(n),
         Lang::De => de_card(n),
         // Russian text never reaches this module (ru.rs normalizes its own numbers)

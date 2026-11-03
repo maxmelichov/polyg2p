@@ -8,7 +8,7 @@ retraining. It contains no espeak code or data.
 | Language | Engine | What it does |
 |---|---|---|
 | English (en) | Rust | CMUdict lexicon in espeak notation (spelling-aware reduced vowels), context rules for homographs (read/read, record/record, live/live, …), weak forms and word joining, affix/compound decomposition, title abbreviations, ordinals, currency, tiny transformer for unknown words |
-| Spanish (es) | Rust | Rules only: syllabification, orthographic stress, β/ð/ɣ allophones and cross-word effects |
+| Spanish (es, es-419) | Rust | Rules only: syllabification, orthographic stress, β/ð/ɣ allophones and cross-word effects; `es-419` (also `es-mx`, `es-ar`, …) writes Latin American seseo and yeísmo the way espeak's es-419 does (sjˈelo, ʝˈaβe, kˈajje) |
 | Italian (it) | Rust | Rules + stress and open/closed-vowel statistics, optional lexicon |
 | German (de) | Rust | Lexicon (optional pack) + compound splitting + rules |
 | French (fr) | Rust | Rules + ~900-entry exception lexicon: silent finals, e-caduc, nasal vowels, liaison and sandhi in `join` |
@@ -311,7 +311,8 @@ clock times (`14:30`, German says Uhr once even when the text writes it),
 dates (`12/03/2021`, `3.10.2021`, German `am 3. Oktober` → am dritten Oktober),
 ordinals, abbreviations written with a period (`Dr.`, `z.B.`, `bzw.`, `Sr.`,
 `dott.`, `sig.ra`, `Mme`), single letters (`la h y la ñ` → hache, eñe) and
-web addresses (`www.example.com` → double-u … dot example dot com). English
+web addresses (`www.example.com` → double-u … dot example dot com). Bracketed
+tags such as `[laughs]` or `[sighs]` pass through unchanged in every language. English
 also picks `read` past or present from the sentence (he read, read … yesterday)
 and `St.` street vs saint from the capitalization around it.
 

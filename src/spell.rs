@@ -17,7 +17,7 @@ fn names(lang: Lang) -> Option<&'static [&'static str; 26]> {
         "kuː", "ɛɾ", "ɛs", "teː", "uː", "faʊ", "veː", "ɪks", "ʏpsilɔn", "tsɛt",
     ];
     match lang {
-        Lang::Es => Some(&ES),
+        Lang::Es | Lang::EsLa => Some(&ES),
         Lang::It => Some(&IT),
         Lang::De => Some(&DE),
         Lang::En | Lang::Ru | Lang::He => None,

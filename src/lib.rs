@@ -66,6 +66,8 @@ pub enum Lang {
     Id,
     Ca,
     Ar,
+    /// Latin American Spanish (espeak's es-419): seseo, yeísmo
+    EsLa,
 }
 
 impl Lang {
@@ -73,6 +75,7 @@ impl Lang {
         match s.to_ascii_lowercase().as_str() {
             "en" | "en-us" | "en_us" | "eng" => Some(Lang::En),
             "es" | "es-es" | "spa" => Some(Lang::Es),
+            "es-419" | "es-la" | "es-mx" | "es-ar" | "es-us" | "es-co" | "es-cl" | "es-pe" | "es-ve" | "es-419-sys" => Some(Lang::EsLa),
             "it" | "it-it" | "ita" => Some(Lang::It),
             "de" | "ge" | "de-de" | "deu" | "ger" => Some(Lang::De),
             "ru" | "ru-ru" | "rus" => Some(Lang::Ru),
@@ -99,12 +102,21 @@ impl Lang {
 
 impl Lang {
     /// Every language code the crate knows, in a stable order.
-    pub const ALL: &[Lang] = &[Lang::En, Lang::Es, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar];
+    /// The engine a dialect code runs on (es-419 uses the Spanish rules).
+    pub fn base(self) -> Lang {
+        match self {
+            Lang::EsLa => Lang::Es,
+            l => l,
+        }
+    }
+
+    pub const ALL: &[Lang] = &[Lang::En, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar];
 
     pub fn code(self) -> &'static str {
         match self {
             Lang::En => "en",
             Lang::Es => "es",
+            Lang::EsLa => "es-419",
             Lang::It => "it",
             Lang::De => "de",
             Lang::Ru => "ru",
@@ -130,7 +142,7 @@ impl Lang {
     /// Does this build have a working engine for the language (stubs return false)?
     pub fn implemented(self) -> bool {
         match self {
-            Lang::En | Lang::Es | Lang::It | Lang::De | Lang::Ru => true,
+            Lang::En | Lang::Es | Lang::EsLa | Lang::It | Lang::De | Lang::Ru => true,
             Lang::He => he::IMPLEMENTED,
             Lang::Fr => fr::IMPLEMENTED,
             Lang::Pt => pt::IMPLEMENTED,
@@ -217,8 +229,54 @@ impl G2p {
         self.he.get_or_init(|| he::Hebrew::load(self.data_dir.as_deref()))
     }
 
-    /// Phonemize running text.
+    /// Phonemize running text. Bracketed tags (`[laughs]`, `[sighs]`) pass through unchanged.
     pub fn phonemize(&self, text: &str, lang: Lang) -> String {
+        if text.contains('[') {
+            if let Some(out) = self.phonemize_with_tags(text, lang) {
+                return out;
+            }
+        }
+        let out = self.phonemize_plain(text, lang.base());
+        match lang {
+            Lang::EsLa => es::latin_american(&out),
+            _ => out,
+        }
+    }
+
+    /// Split around `[tag]` spans, phonemize the text between them, keep the tags.
+    fn phonemize_with_tags(&self, text: &str, lang: Lang) -> Option<String> {
+        let mut parts: Vec<String> = Vec::new();
+        let mut rest = text;
+        let mut found = false;
+        while let Some(a) = rest.find('[') {
+            let Some(len) = rest[a..].find(']') else { break };
+            let tag = &rest[a..a + len + 1];
+            let inner = &tag[1..tag.len() - 1];
+            if inner.is_empty() || inner.len() > 40 || !inner.chars().all(|c| c.is_alphanumeric() || matches!(c, ' ' | '_' | '-' | '.' | '\'')) {
+                break;
+            }
+            found = true;
+            let before = self.phonemize(rest[..a].trim(), lang);
+            if !before.is_empty() {
+                parts.push(before);
+            }
+            rest = &rest[a + len + 1..];
+            // punctuation glued to the tag stays with it: "[laughter]."
+            let punct: String = rest.chars().take_while(|c| text::KEPT_PUNCT.contains(c)).collect();
+            rest = &rest[punct.len()..];
+            parts.push(format!("{tag}{punct}"));
+        }
+        if !found {
+            return None;
+        }
+        let after = self.phonemize(rest.trim(), lang);
+        if !after.is_empty() {
+            parts.push(after);
+        }
+        Some(parts.join(" "))
+    }
+
+    fn phonemize_plain(&self, text: &str, lang: Lang) -> String {
         if lang == Lang::Ru {
             return self.russian().phonemize(text);
         }
@@ -363,7 +421,7 @@ impl G2p {
             }
         }
         match lang {
-            Lang::Es => es::join(&mut outs),
+            Lang::Es | Lang::EsLa => es::join(&mut outs),
             Lang::En => self.english().join(&mut outs),
             Lang::It => it::join(&mut outs),
             Lang::De | Lang::Ru | Lang::He => {}
@@ -447,7 +505,7 @@ impl G2p {
             }
         }
         let ph = match lang {
-            Lang::Es => es::word(&lw),
+            Lang::Es | Lang::EsLa => es::word(&lw),
             Lang::En => self.english().word(w, outs),
             Lang::It => self.italian().word(&lw),
             Lang::De => self.german().word(w),

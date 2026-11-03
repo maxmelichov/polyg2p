@@ -68,6 +68,22 @@ const LOAN: &[(&str, &str)] = &[
     ("shock", "ʃˈok"), ("sheriff", "ʃˈeɾif"), ("sexy", "sˈeksi"), ("pizza", "pˈitsa"), ("pizzas", "pˈitsas"),
 ];
 
+/// Latin American Spanish as espeak's es-419 writes it: seseo (θ → s) and
+/// yeísmo (ʎ → ʝ at the start of a word, jj between sounds).
+pub fn latin_american(ph: &str) -> String {
+    let mut out = String::with_capacity(ph.len());
+    let mut word_start = true;
+    for c in ph.chars() {
+        match c {
+            'θ' => out.push('s'),
+            'ʎ' => out.push_str(if word_start { "ʝ" } else { "jj" }),
+            c => out.push(c),
+        }
+        word_start = c.is_whitespace();
+    }
+    out
+}
+
 pub fn word(w: &str) -> String {
     let lw: String = w.to_lowercase().chars().filter(|c| c.is_alphabetic()).collect();
     if lw.is_empty() {
