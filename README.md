@@ -48,7 +48,7 @@ differences count, not notation; per-language collapse rules in `tools/collapse_
 | Italian, with `it.lex` | **99.8%** | 87.1% |
 | Italian, rules only | **98.6%** | 87.1% |
 | German, with `de.lex` ¹ | **98.7%** | 96.4% |
-| German, rules only | 96.3% | 96.4% |
+| German, rules only | 96.5% | 96.4% |
 | French (nasals scored) | **99.0%** | 97.7% |
 | Dutch, with `nl.lex` ¹ | **99.9%** | 96.8% |
 | Dutch, rules only | **99.1%** | 96.8% |

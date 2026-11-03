@@ -46,6 +46,7 @@ pub fn abbrev(lang: Lang, key: &str) -> Option<&'static str> {
             ("d.c", "dopo Cristo"), ("c.a", "circa"), ("spa", "S p A"), ("srl", "S r l"), ("ass", "associazione"),
             ("max", "massimo"), ("min", "minimo"), ("km", "chilometri"), ("kg", "chilogrammi"),
         ],
+        Lang::En => &[("e.g", "for example"), ("i.e", "that is"), ("et al", "et al"), ("cf", "compare"), ("viz", "namely")],
         Lang::Pt => &[
             ("sr", "senhor"), ("sra", "senhora"), ("srta", "senhorita"), ("dr", "doutor"), ("dra", "doutora"),
             ("prof", "professor"), ("profa", "professora"), ("av", "avenida"), ("pág", "página"), ("etc", "etcétera"),

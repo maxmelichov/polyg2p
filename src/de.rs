@@ -282,7 +282,11 @@ const FREQUENT: &[(&str, &str)] = &[
     ("bekam", "bəkˈɑːm"),
     ("bekommen", "bəkˈɔmən"),
     ("bekommt", "bəkˈɔmt"),
-    ("belgien", "bˈɛlɡjən"),
+    ("belgien", "bˈɛlɡiən"),
+    ("belgier", "bˈɛlɡiɜ"),
+    ("belgisch", "bˈɛlɡɪʃ"),
+    ("belgische", "bˈɛlɡɪʃə"),
+    ("belgischen", "bˈɛlɡɪʃən"),
     ("berlin", "bɛɾlˈiːn"),
     ("berliner", "bɛɾlˈiːnɜ"),
     ("beruf", "bərˈuːf"),
@@ -298,9 +302,12 @@ const FREQUENT: &[(&str, &str)] = &[
     ("besten", "bˈɛstən"),
     ("bester", "bˈɛstɜ"),
     ("bestes", "bˈɛstəs"),
+    ("bestie", "bˈɛstiə"),
+    ("bestien", "bˈɛstiən"),
     ("besuch", "bəzˈuːx"),
     ("besuchen", "bəzˈuːxən"),
     ("besucht", "bəzˈuːxt"),
+    ("beton", "beːtˈɔŋ"),
     ("bevor", "bəfˈoːɾ"),
     ("bezug", "bətsˈuːk"),
     ("bisher", "bɪshˈeːɾ"),
@@ -366,6 +373,8 @@ const FREQUENT: &[(&str, &str)] = &[
     ("einzelne", "ˈaɪntsəlnə"),
     ("einzelnen", "ˈaɪntsəlnən"),
     ("element", "eːləmˈɛnt"),
+    ("emphase", "ɛmfˈɑːzə"),
+    ("emphatisch", "ɛmfˈɑːtɪʃ"),
     ("energie", "eːnɛɾɡˈiː"),
     ("englisch", "ˈɛŋlɪʃ"),
     ("enthalten", "ɛnthˈaltən"),
@@ -382,6 +391,10 @@ const FREQUENT: &[(&str, &str)] = &[
     ("erklären", "ɛɾklˈɛːrən"),
     ("erklärt", "ɛɾklˈɛːɾt"),
     ("erklärte", "ɛɾklˈɛːɾtə"),
+    ("erotik", "eːrˈoːtɪk"),
+    ("erotisch", "eːrˈoːtɪʃ"),
+    ("erotische", "eːrˈoːtɪʃə"),
+    ("erotischen", "eːrˈoːtɪʃən"),
     ("erst", "ˈeːɾst"),
     ("erste", "ˈeːɾstə"),
     ("ersten", "ˈeːɾstən"),
@@ -446,7 +459,16 @@ const FREQUENT: &[(&str, &str)] = &[
     ("genau", "ɡənˈaʊ"),
     ("genauso", "ɡənˈaʊzoː"),
     ("general", "ɡeːnərˈɑːl"),
+    ("generale", "ɡeːnərˈɑːlə"),
     ("generation", "ɡeːnəratsjˈoːn"),
+    ("generell", "ɡeːnərˈɛl"),
+    ("generelle", "ɡeːnərˈɛlə"),
+    ("generellen", "ɡeːnərˈɛlən"),
+    ("genereller", "ɡeːnərˈɛlɜ"),
+    ("generäle", "ɡeːnərˈɛːlə"),
+    ("genial", "ɡeːniˈɑːl"),
+    ("geniale", "ɡeːniˈɑːlə"),
+    ("genialen", "ɡeːniˈɑːlən"),
     ("genommen", "ɡənˈɔmən"),
     ("genug", "ɡənˈuːk"),
     ("gerade", "ɡəɾˈɑːdə"),
@@ -736,7 +758,7 @@ const FREQUENT: &[(&str, &str)] = &[
     ("sagten", "zˈɑːktən"),
     ("saison", "zɛzˈɔ̃"),
     ("samstag", "zˈamstɑːk"),
-    ("schlussendlich", "ʃlʊsˈɛntlɪç"),
+    ("schlussendlich", "ʃlˈʊsəntlɪç"),
     ("schweiz", "ʃvˈaɪts"),
     ("sehr", "zˈeːɾ"),
     ("september", "zɛptˈɛmbɜ"),
@@ -785,7 +807,7 @@ const FREQUENT: &[(&str, &str)] = &[
     ("technik", "tˈɛçnɪk"),
     ("teilnehmer", "tˈaɪlneːmɜ"),
     ("telefon", "tˈeːləfoːn"),
-    ("telefonieren", "teːləfoːnˈiːrən"),
+    ("telefonieren", "teːleːfoːnˈiːrən"),
     ("termin", "tɛɾmˈiːn"),
     ("termine", "tɛɾmˈiːnə"),
     ("theater", "teːˈɑːtɜ"),
@@ -816,6 +838,9 @@ const FREQUENT: &[(&str, &str)] = &[
     ("unterschied", "ʊntɜʃˈiːt"),
     ("unterstützung", "ʊntɜʃtˈʏtsʊŋ"),
     ("unterwegs", "ʊntɜvˈeːks"),
+    ("urban", "ʊɾbˈɑːn"),
+    ("urbane", "ʊɾbˈɑːnə"),
+    ("urbanen", "ʊɾbˈɑːnən"),
     ("urteil", "ˈʊɾtaɪl"),
     ("van", "vˈɛn"),
     ("vegetarier", "veːɡeːtˈɑːrjɜ"),
@@ -864,7 +889,7 @@ const FREQUENT: &[(&str, &str)] = &[
     ("zeremonie", "tseːreːmoːnˈiː"),
     ("zudem", "tsuːdˈeːm"),
     ("zuerst", "tsuːˈeːɾst"),
-    ("zufolge", "tsʊfˈɔlɡə"),
+    ("zufolge", "tsuːfˈɔlɡə"),
     ("zufrieden", "tsuːfɾˈiːdən"),
     ("zuletzt", "tsuːlˈɛtst"),
     ("zumindest", "tsuːmˈɪndəst"),
@@ -889,13 +914,40 @@ const OVERRIDE: &[(&str, &str)] = &[
     ("warum", "vaːrˈʊm"),
 ];
 
+/// -em / -eme words stressed on that syllable (System); adjective -em is not (meistem).
+const EM_LOANS: &[&str] = &["system", "problem", "extrem", "bequem", "theorem", "emblem", "diadem", "harem", "totem", "modem", "tandem", "requiem", "systeme", "probleme", "extreme", "bequeme", "theoreme", "embleme"];
+
+/// Word starts that are not prefix + stem whatever follows (geologisch, georgisch).
+const NOT_PREFIXED_STEM: &[&str] = &[
+    "geolog", "geograph", "geograf", "geometr", "georg", "geotherm", "geopolit", "geophys", "geodät", "erotik", "erotisch",
+    "benzin", "berlin", "belgi", "berg", "bett", "becher", "becken", "gelb", "geld", "geist", "gegen", "ernst", "ernte",
+    "urteil", "urban", "entweder", "empor", "gelee", "genf", "abenteuer",
+];
+
+/// Can `rest` start a German stem (a vowel or a pronounceable onset)?
+fn legal_onset(rest: &str) -> bool {
+    let c: Vec<char> = rest.chars().take_while(|&ch| !is_v(ch)).collect();
+    if c.is_empty() {
+        return true;
+    }
+    let run: String = c.iter().collect();
+    match run.len() {
+        1 => true,
+        _ => {
+            const OK: &[&str] = &[
+                "bl", "br", "dr", "fl", "fr", "gl", "gr", "kl", "kr", "pl", "pr", "tr", "vl", "vr", "wr", "sp", "st", "sk", "sl", "sm", "sn", "sw",
+                "sch", "ch", "pf", "ts", "tz", "zw", "kn", "gn", "kw", "ph", "th", "qu", "ps", "pn", "dw", "tw", "schl", "schr", "schm",
+                "schn", "schw", "spl", "spr", "str", "skr", "chr", "chl", "pfl", "pfr", "tsch", "zw", "phr", "thr", "sz", "sph", "sth",
+            ];
+            OK.contains(&run.as_str())
+        }
+    }
+}
+
 const SHORT_PREFIX: &[&str] = &["an", "ab", "um", "un", "mit", "hin", "in"];
 /// Words that look like unstressed-prefix + stem but are not (besser, Geld, Erde).
 const NOT_PREFIXED: &[&str] = &[
-    "bett", "berg", "bern", "beten", "besen", "beere", "beeren", "gelb", "geld", "gern", "gerne", "geist",
-    "geier", "gelten", "geben", "gegen", "ernst", "erbe", "erben", "ernte", "erz", "vers", "verse", "ente", "enten",
-    "urteil",
-    "entweder", "ende", "enden", "zerren", "empor",
+    "bern", "berner", "beten", "betet", "betete", "besen", "beere", "beeren", "gern", "gerne", "geier", "geiern", "gelten", "geltend", "geben", "gebend", "erbe", "erben", "erbt", "erbte", "erz", "erze", "erzes", "vers", "verse", "versen", "ente", "enten", "beet", "beete", "beeten", "beugen", "beugt", "beugte", "beugst", "beutel", "beuteln", "beute", "beule", "beulen", "geiz", "geizig", "geizige", "geizigen", "beton", "betons", "ende", "enden", "endet", "endete", "genus", "genuss", "genüsse", "zerren", "zerrt", "zerrte", "zerrten",
 ];
 
 /// Basic German letter-to-sound rules (used only without the lexicon/model).
@@ -904,28 +956,49 @@ pub fn rules(w: &str) -> String {
         return FREQUENT[k].1.to_string();
     }
     let n = w.chars().count();
-    let not_prefixed = NOT_PREFIXED.iter().any(|x| w.starts_with(x) && x.len() + 3 >= w.len())
-        || SUFFIX_STRESSED.iter().any(|suf| w.len() > suf.len() + 3 && w.ends_with(suf) && !matches!(*suf, "ei" | "erei" | "en" | "ung"));
+    let not_prefixed = NOT_PREFIXED.contains(&w)
+        || NOT_PREFIXED_STEM.iter().any(|x| w.starts_with(x));
+    // a foreign stressed suffix (Generation, Erosion, Animation): the word is a loan,
+    // not prefix + stem, unless the stem is short and native-looking (geplant, vereist)
+    let loan_any = SUFFIX_STRESSED.iter().any(|suf| w.len() > suf.len() + 3 && w.ends_with(suf) && !matches!(*suf, "ei" | "erei" | "en" | "ung" | "em" | "eme"));
+    let loan_suf = !w.ends_with("eisten") && !w.ends_with("eist") && SUFFIX_STRESSED.iter().any(|suf| {
+        w.len() > suf.len() + 3
+            && w.ends_with(suf)
+            && !(*suf == "ien" && w.ends_with("eien"))
+            && !matches!(*suf, "ei" | "erei" | "en" | "ung" | "em" | "eme" | "ekt" | "ekte" | "ekten" | "ept" | "epte" | "akt" | "akte" | "akten" | "abel" | "ibel")
+    });
     for (p, ph) in PREFIX_UNSTRESSED_PH {
         if !w.starts_with(p) || n < p.len() + 4 || not_prefixed {
             continue;
         }
         let rest = &w[p.len()..];
         let rc: Vec<char> = rest.chars().take(2).collect();
-        // be-/ge- take a consonant-initial stem (bei-, best-, bess- are not prefixed)
-        if matches!(*p, "be" | "ge") && (is_v(rc[0]) || rc[0] == 'h' || rc.len() == 2 && rc[0] == rc[1]) {
+        let rest_vowels = rest.chars().filter(|&c| is_v(c)).count();
+        if loan_suf && matches!(*p, "be" | "ge" | "er") && rest_vowels >= 3 {
             continue;
         }
-        if rest.starts_with('h') && *p != "be" && *p != "ge" {
-            // er-/ver-/ent- + h-stem is fine (erhalten); the stem must still have a vowel
+        if matches!(*p, "be" | "ge") {
+            // bei-, beu-, best-, bess- are not be- + stem; vowel stems otherwise are (beobachten, geeignet)
+            let allowed_iu = ["irr", "inhalt", "unruh", "urteil", "urlaub", "urkund"].iter().any(|s| rest.starts_with(s));
+            if matches!(rc[0], 'i' | 'u') && !allowed_iu || rc.len() == 2 && rc[0] == rc[1] && rc[0] != 'e' {
+                continue;
+            }
         }
-        if !rest.chars().any(is_v) {
+        if *p == "emp" && rc[0] != 'f' {
+            continue; // empfangen, but Emphase
+        }
+        if rest_vowels == 0 || !legal_onset(rest) {
             continue;
         }
         return format!("{ph}{}", core(rest, true));
     }
     for p in PREFIX_STRESSED {
-        if w.starts_with(p) && n >= p.chars().count() + 4 && !not_prefixed {
+        if !w.starts_with(p) || n < p.chars().count() + 4 || not_prefixed {
+            continue;
+        }
+        let rest = &w[p.len()..];
+        let doubled = rest.starts_with(p.chars().last().unwrap_or('#')) && loan_any; // annektieren, annullieren
+        if !(loan_any && rest.starts_with(is_v)) && legal_onset(rest) && !doubled {
             let rest = &w[p.len()..];
             let mut head = core(p, true);
             if SHORT_PREFIX.contains(p) {
@@ -950,7 +1023,7 @@ fn core(w: &str, stem_initial: bool) -> String {
             if matches!(*suf, "ik" | "ikum") && !IK_STRESSED.contains(&w) {
                 break;
             }
-            if *suf == "em" && !w.ends_with("blem") && !w.ends_with("stem") && !w.ends_with("trem") && !w.ends_with("quem") {
+            if (*suf == "em" || *suf == "eme") && !EM_LOANS.iter().any(|x| w.ends_with(x)) {
                 break;
             }
             let start = n - suf.chars().count();
@@ -988,7 +1061,7 @@ fn core(w: &str, stem_initial: bool) -> String {
             let two: String = [ch, nx].iter().collect();
             let n3 = at(i as isize + 3);
             let (ph, used) = match two.as_str() {
-                "ie" if (n2 == 'l' && n3 == 'l') || (n2 == 'n' && matches!(n3, 't' | 'z')) => ("", 0),
+                "ie" if (n2 == 'l' && n3 == 'l') || (n2 == 'n' && matches!(n3, 't' | 'z') && at(i as isize - 1) != 'd') => ("", 0),
                 "ie" => ("iː", 2),
                 "ei" | "ai" | "ey" | "ay" => ("aɪ", 2),
                 "eu" | "äu" => ("ɔø", 2),
@@ -1010,8 +1083,8 @@ fn core(w: &str, stem_initial: bool) -> String {
                 true
             } else if stressed && loan && i == sp && !is_v(nx) && i + 2 == n && matches!(ch, 'a' | 'o' | 'u' | 'i' | 'ü' | 'ä') {
                 true // final-stressed loan: Person, normal, Natur, aktiv
-            } else if ch == 'i' && nx == 'g' && is_v(n2) && !stressed {
-                false // -ig- before a vowel: wenige, richtige
+            } else if ch == 'i' && nx == 'g' && is_v(n2) && !stressed && !loan && matches!(n2, 'e' | 'u') {
+                false // native -ig- suffix: heiligen, bestätigen (not korrigieren, digital)
             } else if !stressed && matches!(ch, 'i' | 'u' | 'o' | 'e' | 'ü' | 'ö') {
                 // espeak keeps unstressed tense vowels long in open syllables
                 long_vowel(&c[..bound.max(i + 1)], i) && is_v(c.get(i + 2).copied().unwrap_or('#'))
@@ -1021,7 +1094,11 @@ fn core(w: &str, stem_initial: bool) -> String {
                 long_vowel(&c[..bound.max(i + 1)], i)
             };
             let unstressed_e = ch == 'e' && !stressed;
-            if unstressed_e && is_v(nx) && nx != 'i' && nx != 'u' {
+            // Theater, Video keep a full e before a vowel; a schwa before a compound seam (geradeaus)
+            let seam = matches!(nx, 'ä' | 'ö' | 'ü')
+                || (nx == 'a' || nx == 'e') && matches!(n2, 'u' | 'i')
+                || nx == 'a' && ["rti", "rm", "lt", "bend", "nfang", "ch", "us"].iter().any(|s| c[i + 2..].iter().collect::<String>().starts_with(s));
+            if unstressed_e && is_v(nx) && nx != 'i' && nx != 'u' && !seam {
                 out.push('e');
                 i += 1;
                 continue;
@@ -1159,7 +1236,7 @@ fn core(w: &str, stem_initial: bool) -> String {
             'w' => out.push('v'),
             'j' => out.push('j'),
             'b' => out.push(if last || (!is_v(nx) && !matches!(nx, 'l' | 'r') && nx != 'b') { 'p' } else { 'b' }),
-            'd' if nx == 't' => {} // Stadt, verwandt: dt is one t
+            'd' if nx == 't' && !(matches!(n2, 'ä' | 'ö' | 'ü') || matches!(n2, 'a' | 'e' | 'i') && matches!(at(i as isize + 3), 'u' | 'i' | 'e')) => {} // Stadt, Städte, städtisch: dt is one t (not mildtätig, sündteuer, abgrundtief)
             'd' => out.push(if last || (!is_v(nx) && !matches!(nx, 'l' | 'r') && nx != 'd') { 't' } else { 'd' }),
             'g' => {
                 if at(i as isize - 1) == 'i' && at(i as isize - 2) != 'e' && (last || !is_v(nx)) && !matches!(nx, 'l' | 'r') {
@@ -1242,11 +1319,11 @@ fn long_vowel(c: &[char], i: usize) -> bool {
     }
     let tail: String = c[i + 1..k.min(c.len())].iter().collect();
     // a voiced plosive before an inflectional -t/-st/-te (sagt, gibt, lebt, fragst) keeps the stem's long vowel
-    if k >= c.len() && matches!(tail.as_str(), "bt" | "dt" | "gt" | "bst" | "gst" | "bte" | "gte" | "bten" | "gten") && !tail.starts_with("dt") {
+    if k >= c.len() && matches!(tail.as_str(), "bt" | "dt" | "gt" | "bst" | "gst" | "bte" | "gte" | "bten" | "gten") && !tail.starts_with("dt") && c[i] != 'i' {
         return true;
     }
-    if c[i] == 'u' && tail.starts_with("ch") && !tail.starts_with("cht") {
-        return true; // Buch, suchen, Versuch (not Bucht, Frucht)
+    if c[i] == 'u' && tail == "ch" {
+        return true; // Buch, suchen, Versuch (not Bucht, Frucht, Fuchs)
     }
     if k >= c.len() {
         // word-final: monosyllables with one consonant are long (Tag, gut), else short
