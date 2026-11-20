@@ -72,17 +72,17 @@ fn dot(a: &[f32], b: &[f32]) -> f32 {
 /// 4 rows of A × 4 rows of B over `k` elements (k % 4 == 0): `out[r * 4 + c] = a[r] · b[c]`.
 #[inline(always)]
 fn tile4x4(a: [&[f32]; 4], b: [&[f32]; 4], k: usize) -> [f32; 16] {
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(all(target_arch = "aarch64", not(polyg2p_portable)))]
     // SAFETY: NEON is baseline on aarch64; every slice holds at least `k`
     // elements (k is a multiple of 4) and is only read.
     unsafe {
         tile4x4_neon(a, b, k)
     }
-    #[cfg(not(target_arch = "aarch64"))]
+    #[cfg(any(not(target_arch = "aarch64"), polyg2p_portable))]
     tile4x4_generic(a, b, k)
 }
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_arch = "aarch64", not(polyg2p_portable)))]
 #[inline(always)]
 unsafe fn tile4x4_neon(x: [&[f32]; 4], w: [&[f32]; 4], k: usize) -> [f32; 16] {
     use std::arch::aarch64::*;
@@ -131,7 +131,7 @@ unsafe fn tile4x4_neon(x: [&[f32]; 4], w: [&[f32]; 4], k: usize) -> [f32; 16] {
     }
 }
 
-#[cfg(not(target_arch = "aarch64"))]
+#[cfg(any(not(target_arch = "aarch64"), polyg2p_portable))]
 #[inline(always)]
 fn tile4x4_generic(x: [&[f32]; 4], w: [&[f32]; 4], k: usize) -> [f32; 16] {
     let mut a = [[0f32; 4]; 16];
@@ -401,12 +401,12 @@ type Tensors = HashMap<String, (Vec<usize>, Vec<f32>)>;
 
 /// Does this machine run the int8 kernel? (aarch64 with the dot-product extension)
 fn int8_kernel() -> bool {
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(all(target_arch = "aarch64", not(polyg2p_portable)))]
     {
         !matches!(std::env::var("POLYG2P_INT8").as_deref(), Ok("0" | "off" | "false"))
             && std::arch::is_aarch64_feature_detected!("dotprod")
     }
-    #[cfg(not(target_arch = "aarch64"))]
+    #[cfg(any(not(target_arch = "aarch64"), polyg2p_portable))]
     {
         false
     }
