@@ -145,6 +145,19 @@ batch mode.
 Russian and Hebrew run a neural model over the sentence. On aarch64 CPUs with
 the dot-product extension it uses an int8 kernel; `POLYG2P_INT8=0` forces f32.
 
+The aarch64 kernels (NEON f32 tiles and the int8 `sdot` kernel) round
+differently from x86_64, so a default arm64 build phonemizes a few sentences
+differently (42 of 200,000 Russian Tatoeba sentences, 3 of 300 Hebrew ones).
+Build with `RUSTFLAGS="--cfg polyg2p_portable"` to turn them off and get output
+identical to x86_64 on every platform. Russian then runs about 2.5× slower on
+arm64:
+
+```console
+cd bindings/python && RUSTFLAGS="--cfg polyg2p_portable" maturin build --release -o ../../dist
+```
+
+The flag has no effect on other architectures.
+
 ## Text normalization
 
 Raw text can go straight in:

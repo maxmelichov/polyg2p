@@ -10,6 +10,11 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 unicode-normalization = "0.1.26"
 
+[lints.rust]
+# `--cfg polyg2p_portable` (via RUSTFLAGS) disables the aarch64 NEON/int8 tagger
+# kernels so arm64 builds match x86_64 output bit for bit.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(polyg2p_portable)"] }
+
 [dev-dependencies]
 criterion = "0.8.2"
 

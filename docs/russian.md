@@ -61,6 +61,10 @@ int8 weights run an inline-assembly `sdot` kernel. It is 3× faster than the
 f32 math and changes 5 of 20,000 Tatoeba sentences. `POLYG2P_INT8=0` forces
 f32. The Hebrew tagger (`he-int8.g2p`) uses the same kernel.
 
+Building with `RUSTFLAGS="--cfg polyg2p_portable"` removes both the int8 kernel
+and the NEON f32 tiles, so arm64 output matches x86_64 bit for bit (see
+[Speed](../README.md#speed) in the README).
+
 ## Data
 
 The stress dictionaries (`ru_*.lex`) are built from RUAccent's dictionaries,
