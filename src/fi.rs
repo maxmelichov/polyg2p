@@ -120,7 +120,6 @@ const DOUBLE: &[&str] = &[
     "tee",
     "käy",
     "juo",
-    "tuo",
     "vie",
     "lue",
     "istu",
@@ -211,24 +210,14 @@ const DOUBLE: &[&str] = &[
     "taa",
     "terve",
     "tuore",
-    "kolme",
-    "itse",
     "tänne",
     "sinne",
     "minne",
     "luokse",
     "taakse",
-    "kotiin",
-    "ulos",
-    "sisään",
-    "pois",
-    "eteen",
     "alle",
     "ylle",
     "päälle",
-    "kauas",
-    "tänään",
-    "huomenna",
 ];
 /// Words in -lle / -nne that are not allative / adverb forms (names).
 const NO_DOUBLE: &[&str] = &[
@@ -236,6 +225,8 @@ const NO_DOUBLE: &[&str] = &[
     "janne", "manne", "marianne", "susanne", "wille", "elle", "belle", "google", "apple", "mike",
     "nike", "one", "some", "line", "online", "home", "office", "service", "jatte", "kate", "me",
     "te", "he", "se", "ne", "ehkä",
+    // -e words without the historical final consonant (VISK § 34)
+    "kolme", "itse", "nukke",
 ];
 
 /// Frequent foreign words and abbreviations, respelled in Finnish orthography
@@ -1313,6 +1304,10 @@ fn doubles(src: &str) -> bool {
     if NO_DOUBLE.contains(&src) {
         return false;
     }
+    // only a vowel-final word can lengthen the next consonant (tänään, kotiin, pois never do)
+    if !src.chars().last().is_some_and(is_vowel) {
+        return false;
+    }
     if DOUBLE.contains(&src) {
         return true;
     }
@@ -1594,12 +1589,31 @@ mod tests {
             "kˈone tːˈoimɪː"
         );
         assert_eq!(
-            g.phonemize("kolme miestä", crate::Lang::Fi),
-            "kˈolmem mˈiestæ"
-        );
-        assert_eq!(
             g.phonemize("3,5", crate::Lang::Fi),
-            "kˈolme pːˈilkːu vˈiːsɪ"
+            "kˈolme pˈilkːu vˈiːsɪ"
         );
+    }
+
+    /// Boundary gemination needs a vowel-final trigger word (Wikipedia, "Finnish
+    /// phonology", Sandhi); kolme, itse and nukke are the -e words without it
+    /// (VISK § 34), and the essive adverb huomenna and the pronoun tuo have none.
+    #[test]
+    fn no_false_boundary_gemination() {
+        let g = crate::G2p::new(None);
+        for (s, p) in [
+            ("tänään kotona", "tˈænæːŋ kˈotona"),
+            ("pois kotoa", "pˈois kˈotoa"),
+            ("ulos talosta", "ˈulos tˈalosta"),
+            ("huomenna tulen", "hˈuomenna tˈulen"),
+            ("kolme koiraa", "kˈolme kˈoiraː"),
+            ("kolme miestä", "kˈolme mˈiestæ"),
+            ("itse tehty", "ˈitse tˈehty"),
+            ("tuo poika", "tˈuo pˈoika"),
+            // real triggers still geminate: imperative, -e noun
+            ("tule tänne", "tˈule tːˈænne"),
+            ("kone toimii", "kˈone tːˈoimɪː"),
+        ] {
+            assert_eq!(g.phonemize(s, crate::Lang::Fi), p, "{s}");
+        }
     }
 }

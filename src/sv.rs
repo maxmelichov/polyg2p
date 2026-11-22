@@ -420,7 +420,7 @@ const SUFFIX_STRESSED: &[&str] = &[
     "Erat", "Erar", "Eras", "Erad", "Era", "Iken", "Ikens", "Ik", "Isterna", "Isten", "Ister", "Ists", "Ist", "Ismen",
     "Ismer", "Ism", "Ellt", "Ella", "Ellen", "Eller", "Ell", "Enterna", "Enten", "Enter", "Ents", "Ent", "Anterna",
     "Anten", "Anter", "Ants", "Ant", "Ansen", "Anser", "Ans", "Uren", "Urer", "Urerna", "Ur", "Yren", "Yrer", "Yr",
-    "Ören", "Örer", "Örerna", "Ör", "Ösa", "Öst", "Ös", "tEten", "tEter", "tEt", "erI", "erIer", "erIet", "erIerna",
+    "Ören", "Örer", "Örerna", "Ör", "Ösa", "Öst", "Ös", "itEten", "itEter", "itEt", "ultEten", "ultEter", "ultEt", "Etet", "Entet", "erI", "erIer", "erIet", "erIerna",
     "I", "Ier", "Iet", "In", "Inen", "Iner", "Inerna", "It", "Iten", "Iter", "Iv", "Ivt", "Iva", "Ivet", "Age", "Aget",
     "Al", "Alt", "Ala", "Alen", "Aler", "Alerna", "Är", "Ärt", "Ära", "Ären", "Ess", "Essen", "Esser", "Ett", "Etten",
     "Etter", "É", "Én", "Éer", "Itt", "Att", "Atten", "Atter", "Ea", "Ean", "Inas", "Ut", "Uten", "Uter", "Og", "Ogen", "Oger", "Os", "Osen", "Oser",
@@ -885,6 +885,17 @@ fn devoice(segs: &mut [Seg]) {
 }
 
 /// Which vowel segment carries the stress of a part (index into segs).
+/// Two-syllable loans in stressed -it; longer ones are loans unless they start with a verb prefix.
+const IT_LOANS: &[&str] = &["bandit", "granit", "kredit", "profit", "visit", "merit", "elit", "petit", "grafit", "sulfit", "nitrit", "termit"];
+const VERB_PREFIX: &[&str] = &[
+    "för", "be", "an", "av", "upp", "ut", "in", "om", "över", "under", "er", "till", "åter", "med", "fram", "bort", "sam",
+    "före", "efter", "ned", "ner", "mot", "på", "bi", "um",
+];
+
+fn it_loan(s: &str, vowels: usize) -> bool {
+    IT_LOANS.contains(&s) || s.ends_with("sprit") || (vowels >= 3 && !VERB_PREFIX.iter().any(|p| s.starts_with(p)))
+}
+
 fn stressed_vowel(segs: &[Seg], c: &[char], part: &Part, last: bool) -> Option<usize> {
     let vowels: Vec<usize> = segs.iter().enumerate().filter(|(_, s)| s.vowel && s.part_eq(part)).map(|(i, _)| i).collect();
     if vowels.is_empty() {
@@ -916,6 +927,11 @@ fn stressed_vowel(segs: &[Seg], c: &[char], part: &Part, last: bool) -> Option<u
             }
         };
         for suf in SUFFIX_STRESSED {
+            // -it is the unstressed supine ending of strong verbs (kommit, skrivit, försvunnit)
+            // far more often than the loan suffix (bandit, favorit)
+            if *suf == "It" && !it_loan(&s, nv) {
+                continue;
+            }
             consider(suf, &mut best);
         }
         if nv >= 3 && !s.ends_with("son") && !s.ends_with("sson") {
@@ -1137,7 +1153,42 @@ fn spell(c: &[char]) -> String {
 }
 
 /// Phonemize one lower-case word (no sentence context).
+/// Retroflex assimilation (supradentals): /r/ merges with a following dental
+/// stop or nasal into one retroflex consonant, `rt rd rn` -> `ʈ ɖ ɳ`, within
+/// words and across compound joints (karta `kˈɑːʈa`, nord `nˈuːɖ`, barn
+/// `bˈɑːɳ`), as `rs` -> `ʂ` already is. `rl` is left alone: it "does not
+/// uniformly cause retroflexion" (Wikipedia, Swedish phonology, Retroflex
+/// consonants).
+fn retroflex(ph: String) -> String {
+    if !ph.contains('r') {
+        return ph;
+    }
+    let mut out = String::with_capacity(ph.len());
+    let mut it = ph.chars().peekable();
+    while let Some(ch) = it.next() {
+        if ch == 'r' {
+            let rep = match it.peek() {
+                Some('t') => Some('ʈ'),
+                Some('d') => Some('ɖ'),
+                Some('n') => Some('ɳ'),
+                _ => None,
+            };
+            if let Some(r) = rep {
+                it.next();
+                out.push(r);
+                continue;
+            }
+        }
+        out.push(ch);
+    }
+    out
+}
+
 pub fn word(w: &str) -> String {
+    retroflex(word_plain(w))
+}
+
+fn word_plain(w: &str) -> String {
     let lw = w.to_lowercase();
     if lw.contains('-') {
         let parts: Vec<String> = lw.split('-').filter(|p| !p.is_empty()).map(word).filter(|p| !p.is_empty()).collect();
@@ -1255,7 +1306,15 @@ fn compound(lw: &str) -> Option<String> {
             if i + link.len() + 2 > n {
                 continue;
             }
+            // the linking letter has to be an actual `s` (gård+a+gen is not gård-s-gen)
+            if !link.is_empty() && c[i] != 's' {
+                continue;
+            }
             let right: String = c[i + link.len()..].iter().collect();
+            // -tion is the Romance suffix (lek-tion), never the numeral tio + n
+            if right.starts_with("tion") {
+                continue;
+            }
             // a two-letter right part needs a real word on the left: vän+ta is vänta, not vän + ta
             if right.chars().count() == 2 && (!SHORT_WORDS.contains(&right.as_str()) || i < 4) {
                 continue;
@@ -1382,7 +1441,7 @@ mod tests {
             ("snabbt", "snˈapt"),
             // sj-sound, tj-sound, softening
             ("sju", "sxˈʉ"),
-            ("stjärna", "sxˈɛːrna"),
+            ("stjärna", "sxˈɛːɳa"),
             ("skina", "sxˈiːna"),
             ("skola", "skˈuːla"),
             ("station", "stasxˈuːn"),
@@ -1398,10 +1457,10 @@ mod tests {
             ("helg", "hˈɛlj"),
             ("lugn", "lˈɵŋn"),
             // retroflexes / r clusters
-            ("bord", "bˈuːrd"),
-            ("barn", "bˈɑːrn"),
+            ("bord", "bˈuːɖ"),
+            ("barn", "bˈɑːɳ"),
             ("fors", "fˈɔʂ"),
-            ("kort", "kˈɔrt"),
+            ("kort", "kˈɔʈ"),
             ("förstå", "fœʂtˈoː"),
             // stress: loan suffixes, unstressed prefixes, particles, compounds
             ("studera", "stɵdˈeːra"),
@@ -1418,7 +1477,7 @@ mod tests {
             ("skönhet", "sxˈøːnheːt"),
             ("ungdom", "ˈɵŋdˌʊm"),
             ("medarbetare", "mˈeːdˌarbeːtarə"),
-            ("bilarna", "bˈiːlarna"),
+            ("bilarna", "bˈiːlaɳa"),
             ("personlig", "pɛʂˈuːnlɪɡ"),
             ("flickor", "flˈɪkːʊr"),
             // function words and lexicon
@@ -1442,6 +1501,70 @@ mod tests {
         assert_eq!(cardinal(3_000_000_000).join(" "), "tre miljarder");
         assert_eq!(word("tjugoett"), "ɕˈʉɡʊˌɛt");
         assert_eq!(word("trettiofem"), "trˈɛtɪʊfˌɛm");
+    }
+
+    /// Retroflex assimilation: /r/ + /t d n/ -> [ʈ ɖ ɳ]; karta [kɑːʈa], nord [nuːɖ] and
+    /// Vänern [vɛːnɛɳ] are the examples of Wikipedia, "Swedish phonology", Retroflex
+    /// consonants. /rl/ "does not uniformly cause retroflexion" (same section) and stays.
+    #[test]
+    fn retroflexes() {
+        for (w, p) in [
+            ("karta", "kˈɑːʈa"),
+            ("nord", "nˈuːɖ"),
+            ("bord", "bˈuːɖ"),
+            ("hört", "hˈøːʈ"),
+            ("barn", "bˈɑːɳ"),
+            ("kort", "kˈɔʈ"),
+            ("gjorde", "jˈʊɖə"),
+            ("sorl", "sˈuːrl"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
+        assert!(word("vänern").ends_with('ɳ'));
+        // the older rs -> ʂ is untouched
+        assert_eq!(word("fors"), "fˈɔʂ");
+    }
+
+    /// A compound is only split around a linking s that is really spelled (the letter
+    /// between the parts used to be replaced by s: biljett came out as bil-s-ett), and
+    /// -tion is the suffix /ɧuːn/ (written sx here), not the numeral tio + n.
+    #[test]
+    fn compound_joints() {
+        assert_eq!(word("biljett"), "bɪljˈɛt");
+        assert_eq!(word("lektion"), "lɛksxˈuːn");
+        for w in ["gårdagen", "skelett", "storebror", "vinäger", "talesätt", "handklovar"] {
+            let p = word(w);
+            assert_eq!(p.matches('s').count(), w.matches('s').count(), "{w}: {p}");
+        }
+        // a spelled linking s still joins two words
+        assert!(word("arbetsdag").contains("sd"));
+    }
+
+    /// Root stress in strong-verb supines in -it and in definite neuters in -(t)et
+    /// (Wikipedia, "Swedish grammar": supine -it, definite suffix -et; both are unstressed
+    /// endings). The loan suffixes -it and -itet keep their final stress.
+    #[test]
+    fn unstressed_endings_it_et() {
+        for (w, p) in [
+            ("kommit", "kˈɔmɪt"),
+            ("skrivit", "skrˈiːvɪt"),
+            ("ätit", "ˈɛːtɪt"),
+            ("slagit", "slˈɑːɡɪt"),
+            ("funnit", "fˈɵnɪt"),
+            ("gripit", "ɡrˈiːpɪt"),
+            ("mötet", "mˈøːtət"),
+            ("bytet", "bˈyːtət"),
+            ("nätet", "nˈɛːtət"),
+            ("staketet", "stakˈeːtət"),
+            ("dokumentet", "dʊkɵmˈɛntət"),
+            // loans
+            ("bandit", "bandˈiːt"),
+            ("favorit", "favʊrˈiːt"),
+            ("kvalitet", "kvalɪtˈeːt"),
+            ("fakultet", "fakɵltˈeːt"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
     }
 
     #[test]

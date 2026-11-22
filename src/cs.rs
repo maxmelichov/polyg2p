@@ -794,6 +794,10 @@ pub fn join(outs: &mut [Out]) {
                     if !weak {
                         cons = if voiced { voiced_of(&p).to_string() } else { voiceless_of(&p).to_string() };
                     }
+                } else if seg_kind(f) == Kind::Son && matches!(src, "v" | "z") {
+                    // a sonorant does not devoice: the preposition and its word are one
+                    // phonological word, so z lesa is zlesa and v lese is vlese
+                    cons = src.to_string();
                 }
             }
             format!("{cons}{rest}")
@@ -813,6 +817,8 @@ pub fn join(outs: &mut [Out]) {
             let s = if let Some(f) = first_phone(&rest) {
                 match obstruent_voicing(f) {
                     Some((true, false)) => voice_final(&s),
+                    // before a sonorant the spelled voicing stays (od nás, bez nás, nad městem)
+                    None if seg_kind(f) == Kind::Son && src.ends_with(['d', 'z', 'b']) => voice_final(&s),
                     _ => s,
                 }
             } else {
@@ -1027,5 +1033,25 @@ mod tests {
         assert_eq!(g.phonemize("k domu", crate::Lang::Cs), "ɡdˈomu");
         assert_eq!(g.phonemize("hrad byl", crate::Lang::Cs), "hrˈad bˈil");
         assert_eq!(g.phonemize("bez vody", crate::Lang::Cs), "bˈesvodi");
+        // A preposition and its word are one phonological word, and a sonorant does not
+        // devoice the obstruent before it (Wikipedia, "Czech phonology", Consonant
+        // assimilation: sonorants neither trigger nor undergo voicing assimilation).
+        for (s, p) in [
+            ("z lesa", "zlˈesa"),
+            ("z města", "zmɲˈesta"),
+            ("z roku", "zrˈoku"),
+            ("v lese", "vlˈese"),
+            ("v noci", "vnˈotsi"),
+            ("od nás", "ˈodnaːs"),
+            ("bez nás", "bˈeznaːs"),
+            ("nad městem", "nˈadmɲestem"),
+            ("pod lampou", "pˈodlampoʊ"),
+            // unchanged: voiceless prepositions and obstruent assimilation
+            ("k mostu", "kmˈostu"),
+            ("s námi", "snˈaːmi"),
+            ("z papíru", "spˈapiːru"),
+        ] {
+            assert_eq!(g.phonemize(s, crate::Lang::Cs), p, "{s}");
+        }
     }
 }

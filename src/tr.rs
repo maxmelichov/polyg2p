@@ -3,8 +3,9 @@
 //! Turkish spelling is close to phonemic, so this is rules only. The symbol
 //! conventions follow espeak-ng's `tr` voice (its allophones are written out):
 //!
-//! * `i u o e ü` are written lax (`ɪ ʊ ɔ ɛ ø`) in a closed syllable and in the
-//!   last syllable of the word; `e` becomes `æ` before a coda nasal or `l`;
+//! * `i u o e ü` are written lax (`ɪ ʊ ɔ ɛ ʏ`) in a closed syllable and in the
+//!   last syllable of the word (lowered /y/ is near-close `ʏ`; `ø` would be the
+//!   mid vowel that other languages use for their ö); `e` becomes `æ` before a coda nasal or `l`;
 //!   `ö` is always `œ`, `ı` is `ɯ`, `a` is `a`.
 //! * `l` is dark `ɫ` next to back vowels, `r` is a tap `ɾ` between vowels,
 //!   `g` is palatal `ɟ` next to front vowels (espeak writes `k` plain).
@@ -26,7 +27,7 @@ pub const IMPLEMENTED: bool = true;
 pub const DECIMAL: &str = "virgül";
 /// Letter names a..z (phonemes).
 pub const LETTERS: Option<&[&str; 26]> = Some(&[
-    "a", "bɛ", "ʤɛ", "dɛ", "ɛ", "fɛ", "ɟɛ", "hɛ", "i", "ʒɛ", "kɛ", "lɛ", "mɛ", "nɛ", "o", "pɛ", "kø", "ɾɛ", "sɛ",
+    "a", "bɛ", "ʤɛ", "dɛ", "ɛ", "fɛ", "ɟɛ", "hɛ", "i", "ʒɛ", "kɛ", "lɛ", "mɛ", "nɛ", "o", "pɛ", "kʏ", "ɾɛ", "sɛ",
     "tɛ", "u", "vɛ", "ʧiftvɛ", "iks", "jɛ", "zɛ",
 ]);
 
@@ -291,11 +292,11 @@ fn spell_consonants(chars: &[char]) -> String {
         let name = match ch {
             'b' => "bɛ", 'c' => "ʤɛ", 'ç' => "ʧɛ", 'd' => "dɛ", 'f' => "fɛ", 'g' => "ɟɛ", 'ğ' => "ɟɛ", 'h' => "hɛ",
             'j' => "ʒɛ", 'k' => "kɛ", 'l' => "lɛ", 'm' => "mɛ", 'n' => "nɛ", 'p' => "pɛ", 'r' => "ɾɛ", 's' => "sɛ",
-            'ş' => "ʃɛ", 't' => "tɛ", 'v' => "vɛ", 'y' => "jɛ", 'z' => "zɛ", 'x' => "iks", 'q' => "kø", 'w' => "ʧiftvɛ",
+            'ş' => "ʃɛ", 't' => "tɛ", 'v' => "vɛ", 'y' => "jɛ", 'z' => "zɛ", 'x' => "iks", 'q' => "kʏ", 'w' => "ʧiftvɛ",
             _ => continue,
         };
         let mark = if k + 1 == n { "ˈ" } else { "ˌ" };
-        let pos = name.find(|c: char| "aeiouɛøɔɪʊ".contains(c)).unwrap_or(0);
+        let pos = name.find(|c: char| "aeiouɛʏɔɪʊ".contains(c)).unwrap_or(0);
         out.push_str(&name[..pos]);
         out.push_str(mark);
         out.push_str(&name[pos..]);
@@ -433,7 +434,7 @@ fn realize(chars: &[char], stress: Stress) -> String {
                     "i" if closed || final_v => "ɪ",
                     "u" if closed || final_v => "ʊ",
                     "o" if closed || final_v => "ɔ",
-                    "y" if closed || final_v => "ø",
+                    "y" if closed || final_v => "ʏ",
                     other => other,
                 }
             }
@@ -543,6 +544,25 @@ pub fn symbol(c: char) -> Option<&'static str> {
 mod tests {
     use super::{cardinal, word};
 
+    /// Lowered /y/ is near-close [ʏ] (Wikipedia, "Turkish phonology", Vowels: /i y u e ø/
+    /// lower to [ɪ ʏ ʊ ɛ œ]); it must not be written with the mid vowel `ø`.
+    #[test]
+    fn lax_u_umlaut() {
+        for (w, p) in [
+            ("gün", "ɟˈʏn"),
+            ("üç", "ˈʏʧ"),
+            ("yüz", "jˈʏz"),
+            ("türk", "tˈʏrk"),
+            ("güçlü", "ɟʏʧlˈʏ"),
+            ("mümkün", "mʏmkˈʏn"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
+        for w in ["gördün", "ülkedeki", "düşman", "söz", "göz"] {
+            assert!(!word(w).contains('ø'), "{w}");
+        }
+    }
+
     #[test]
     fn basics() {
         for (w, p) in [
@@ -557,7 +577,7 @@ mod tests {
             ("ben", "bˈæn"),
             ("her", "hˈɛr"),
             ("evler", "ɛvlˈɛr"),
-            ("büyük", "byjˈøk"),
+            ("büyük", "byjˈʏk"),
             ("göre", "ɟœɾˈɛ"),
             ("üniversite", "ynivɛrsitˈɛ"),
             ("kalp", "kˈaɫp"),
@@ -629,7 +649,7 @@ mod tests {
             ("millî", "mɪllˈiː"),
             ("hikâye", "hikaːjˈɛ"),
             ("tv", "tˌɛvˈɛ"),
-            ("türk-islam", "tˈørk ɪsɫˈam"),
+            ("türk-islam", "tˈʏrk ɪsɫˈam"),
         ] {
             assert_eq!(word(w), p, "{w}");
         }
