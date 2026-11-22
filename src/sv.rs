@@ -1137,7 +1137,42 @@ fn spell(c: &[char]) -> String {
 }
 
 /// Phonemize one lower-case word (no sentence context).
+/// Retroflex assimilation (supradentals): /r/ merges with a following dental
+/// stop or nasal into one retroflex consonant, `rt rd rn` -> `ʈ ɖ ɳ`, within
+/// words and across compound joints (karta `kˈɑːʈa`, nord `nˈuːɖ`, barn
+/// `bˈɑːɳ`), as `rs` -> `ʂ` already is. `rl` is left alone: it "does not
+/// uniformly cause retroflexion" (Wikipedia, Swedish phonology, Retroflex
+/// consonants).
+fn retroflex(ph: String) -> String {
+    if !ph.contains('r') {
+        return ph;
+    }
+    let mut out = String::with_capacity(ph.len());
+    let mut it = ph.chars().peekable();
+    while let Some(ch) = it.next() {
+        if ch == 'r' {
+            let rep = match it.peek() {
+                Some('t') => Some('ʈ'),
+                Some('d') => Some('ɖ'),
+                Some('n') => Some('ɳ'),
+                _ => None,
+            };
+            if let Some(r) = rep {
+                it.next();
+                out.push(r);
+                continue;
+            }
+        }
+        out.push(ch);
+    }
+    out
+}
+
 pub fn word(w: &str) -> String {
+    retroflex(word_plain(w))
+}
+
+fn word_plain(w: &str) -> String {
     let lw = w.to_lowercase();
     if lw.contains('-') {
         let parts: Vec<String> = lw.split('-').filter(|p| !p.is_empty()).map(word).filter(|p| !p.is_empty()).collect();
@@ -1255,7 +1290,15 @@ fn compound(lw: &str) -> Option<String> {
             if i + link.len() + 2 > n {
                 continue;
             }
+            // the linking letter has to be an actual `s` (gård+a+gen is not gård-s-gen)
+            if !link.is_empty() && c[i] != 's' {
+                continue;
+            }
             let right: String = c[i + link.len()..].iter().collect();
+            // -tion is the Romance suffix (lek-tion), never the numeral tio + n
+            if right.starts_with("tion") {
+                continue;
+            }
             // a two-letter right part needs a real word on the left: vän+ta is vänta, not vän + ta
             if right.chars().count() == 2 && (!SHORT_WORDS.contains(&right.as_str()) || i < 4) {
                 continue;
@@ -1382,7 +1425,7 @@ mod tests {
             ("snabbt", "snˈapt"),
             // sj-sound, tj-sound, softening
             ("sju", "sxˈʉ"),
-            ("stjärna", "sxˈɛːrna"),
+            ("stjärna", "sxˈɛːɳa"),
             ("skina", "sxˈiːna"),
             ("skola", "skˈuːla"),
             ("station", "stasxˈuːn"),
@@ -1398,10 +1441,10 @@ mod tests {
             ("helg", "hˈɛlj"),
             ("lugn", "lˈɵŋn"),
             // retroflexes / r clusters
-            ("bord", "bˈuːrd"),
-            ("barn", "bˈɑːrn"),
+            ("bord", "bˈuːɖ"),
+            ("barn", "bˈɑːɳ"),
             ("fors", "fˈɔʂ"),
-            ("kort", "kˈɔrt"),
+            ("kort", "kˈɔʈ"),
             ("förstå", "fœʂtˈoː"),
             // stress: loan suffixes, unstressed prefixes, particles, compounds
             ("studera", "stɵdˈeːra"),
@@ -1418,7 +1461,7 @@ mod tests {
             ("skönhet", "sxˈøːnheːt"),
             ("ungdom", "ˈɵŋdˌʊm"),
             ("medarbetare", "mˈeːdˌarbeːtarə"),
-            ("bilarna", "bˈiːlarna"),
+            ("bilarna", "bˈiːlaɳa"),
             ("personlig", "pɛʂˈuːnlɪɡ"),
             ("flickor", "flˈɪkːʊr"),
             // function words and lexicon
@@ -1442,6 +1485,43 @@ mod tests {
         assert_eq!(cardinal(3_000_000_000).join(" "), "tre miljarder");
         assert_eq!(word("tjugoett"), "ɕˈʉɡʊˌɛt");
         assert_eq!(word("trettiofem"), "trˈɛtɪʊfˌɛm");
+    }
+
+    /// Retroflex assimilation: /r/ + /t d n/ -> [ʈ ɖ ɳ]; karta [kɑːʈa], nord [nuːɖ] and
+    /// Vänern [vɛːnɛɳ] are the examples of Wikipedia, "Swedish phonology", Retroflex
+    /// consonants. /rl/ "does not uniformly cause retroflexion" (same section) and stays.
+    #[test]
+    fn retroflexes() {
+        for (w, p) in [
+            ("karta", "kˈɑːʈa"),
+            ("nord", "nˈuːɖ"),
+            ("bord", "bˈuːɖ"),
+            ("hört", "hˈøːʈ"),
+            ("barn", "bˈɑːɳ"),
+            ("kort", "kˈɔʈ"),
+            ("gjorde", "jˈʊɖə"),
+            ("sorl", "sˈuːrl"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
+        assert!(word("vänern").ends_with('ɳ'));
+        // the older rs -> ʂ is untouched
+        assert_eq!(word("fors"), "fˈɔʂ");
+    }
+
+    /// A compound is only split around a linking s that is really spelled (the letter
+    /// between the parts used to be replaced by s: biljett came out as bil-s-ett), and
+    /// -tion is the suffix /ɧuːn/ (written sx here), not the numeral tio + n.
+    #[test]
+    fn compound_joints() {
+        assert_eq!(word("biljett"), "bɪljˈɛt");
+        assert_eq!(word("lektion"), "lɛksxˈuːn");
+        for w in ["gårdagen", "skelett", "storebror", "vinäger", "talesätt", "handklovar"] {
+            let p = word(w);
+            assert_eq!(p.matches('s').count(), w.matches('s').count(), "{w}: {p}");
+        }
+        // a spelled linking s still joins two words
+        assert!(word("arbetsdag").contains("sd"));
     }
 
     #[test]
