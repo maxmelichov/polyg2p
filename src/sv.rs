@@ -420,7 +420,7 @@ const SUFFIX_STRESSED: &[&str] = &[
     "Erat", "Erar", "Eras", "Erad", "Era", "Iken", "Ikens", "Ik", "Isterna", "Isten", "Ister", "Ists", "Ist", "Ismen",
     "Ismer", "Ism", "Ellt", "Ella", "Ellen", "Eller", "Ell", "Enterna", "Enten", "Enter", "Ents", "Ent", "Anterna",
     "Anten", "Anter", "Ants", "Ant", "Ansen", "Anser", "Ans", "Uren", "Urer", "Urerna", "Ur", "Yren", "Yrer", "Yr",
-    "Ören", "Örer", "Örerna", "Ör", "Ösa", "Öst", "Ös", "tEten", "tEter", "tEt", "erI", "erIer", "erIet", "erIerna",
+    "Ören", "Örer", "Örerna", "Ör", "Ösa", "Öst", "Ös", "itEten", "itEter", "itEt", "ultEten", "ultEter", "ultEt", "Etet", "Entet", "erI", "erIer", "erIet", "erIerna",
     "I", "Ier", "Iet", "In", "Inen", "Iner", "Inerna", "It", "Iten", "Iter", "Iv", "Ivt", "Iva", "Ivet", "Age", "Aget",
     "Al", "Alt", "Ala", "Alen", "Aler", "Alerna", "Är", "Ärt", "Ära", "Ären", "Ess", "Essen", "Esser", "Ett", "Etten",
     "Etter", "É", "Én", "Éer", "Itt", "Att", "Atten", "Atter", "Ea", "Ean", "Inas", "Ut", "Uten", "Uter", "Og", "Ogen", "Oger", "Os", "Osen", "Oser",
@@ -885,6 +885,17 @@ fn devoice(segs: &mut [Seg]) {
 }
 
 /// Which vowel segment carries the stress of a part (index into segs).
+/// Two-syllable loans in stressed -it; longer ones are loans unless they start with a verb prefix.
+const IT_LOANS: &[&str] = &["bandit", "granit", "kredit", "profit", "visit", "merit", "elit", "petit", "grafit", "sulfit", "nitrit", "termit"];
+const VERB_PREFIX: &[&str] = &[
+    "för", "be", "an", "av", "upp", "ut", "in", "om", "över", "under", "er", "till", "åter", "med", "fram", "bort", "sam",
+    "före", "efter", "ned", "ner", "mot", "på", "bi", "um",
+];
+
+fn it_loan(s: &str, vowels: usize) -> bool {
+    IT_LOANS.contains(&s) || s.ends_with("sprit") || (vowels >= 3 && !VERB_PREFIX.iter().any(|p| s.starts_with(p)))
+}
+
 fn stressed_vowel(segs: &[Seg], c: &[char], part: &Part, last: bool) -> Option<usize> {
     let vowels: Vec<usize> = segs.iter().enumerate().filter(|(_, s)| s.vowel && s.part_eq(part)).map(|(i, _)| i).collect();
     if vowels.is_empty() {
@@ -916,6 +927,11 @@ fn stressed_vowel(segs: &[Seg], c: &[char], part: &Part, last: bool) -> Option<u
             }
         };
         for suf in SUFFIX_STRESSED {
+            // -it is the unstressed supine ending of strong verbs (kommit, skrivit, försvunnit)
+            // far more often than the loan suffix (bandit, favorit)
+            if *suf == "It" && !it_loan(&s, nv) {
+                continue;
+            }
             consider(suf, &mut best);
         }
         if nv >= 3 && !s.ends_with("son") && !s.ends_with("sson") {
@@ -1522,6 +1538,33 @@ mod tests {
         }
         // a spelled linking s still joins two words
         assert!(word("arbetsdag").contains("sd"));
+    }
+
+    /// Root stress in strong-verb supines in -it and in definite neuters in -(t)et
+    /// (Wikipedia, "Swedish grammar": supine -it, definite suffix -et; both are unstressed
+    /// endings). The loan suffixes -it and -itet keep their final stress.
+    #[test]
+    fn unstressed_endings_it_et() {
+        for (w, p) in [
+            ("kommit", "kˈɔmɪt"),
+            ("skrivit", "skrˈiːvɪt"),
+            ("ätit", "ˈɛːtɪt"),
+            ("slagit", "slˈɑːɡɪt"),
+            ("funnit", "fˈɵnɪt"),
+            ("gripit", "ɡrˈiːpɪt"),
+            ("mötet", "mˈøːtət"),
+            ("bytet", "bˈyːtət"),
+            ("nätet", "nˈɛːtət"),
+            ("staketet", "stakˈeːtət"),
+            ("dokumentet", "dʊkɵmˈɛntət"),
+            // loans
+            ("bandit", "bandˈiːt"),
+            ("favorit", "favʊrˈiːt"),
+            ("kvalitet", "kvalɪtˈeːt"),
+            ("fakultet", "fakɵltˈeːt"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
     }
 
     #[test]
