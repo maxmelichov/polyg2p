@@ -29,17 +29,46 @@ en.lex (English lexicon) and en.g2p (English out-of-vocabulary model)
     LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
     CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE.
 
-data/en_gb_lex.tsv (Southern British forms of 1,535 words), data/en_gb_func.tsv
-    en_gb_lex.tsv is derived from Britfone 3.0.1 (https://github.com/JoseLlarena/Britfone):
-    The MIT License (MIT). Copyright (c) by 2017 Jose Llarena.
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction,
-    including without limitation the rights to use, copy, modify, merge, publish, distribute,
-    sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions: The above copyright notice and this
-    permission notice shall be included in all copies or substantial portions of the Software.
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
-    en_gb_func.tsv was written by the polyg2p authors.
+data/en_gb_lex.tsv (Southern British forms of about 1,000 words)
+    Derived from Britfone 3.0.1 (https://github.com/JoseLlarena/Britfone), which is
+    distributed under the following licence:
+
+    The MIT License (MIT)
+
+    Copyright (c) by 2017 Jose Llarena
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of
+    this software and associated documentation files (the "Software"), to deal in
+    the Software without restriction, including without limitation the rights to
+    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software is furnished to do so,
+    subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+    FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+    COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+    Only entries whose pronunciation Wiktionary's UK list (via WikiPron) also gives are
+    kept; Wiktionary is used as a check and none of its text is included.
+
+    Provenance, as stated by Britfone's author (README and issue #2 of that repository,
+    2023-10-23): the transcriptions were written for Britfone; published dictionaries
+    (Collins, Oxford, Cambridge, Macmillan) "were consulted rather than included", and
+    the only sources included, "after heavy modification", were computer-readable ones
+    (CMUdict, word-frequency lists from the BNC and the Google Web Corpus). polyg2p
+    relies on that statement and on the MIT licence above; it has not audited Britfone
+    entry by entry. The file can be removed without touching the code: en-gb then runs
+    on its rules and data/en_brit_words.tsv alone (see docs/english-accents.md for what
+    that costs in accuracy).
+
+data/en_gb_func.tsv, data/en_brit_words.tsv
+    Short lists of British function-word and word forms written by the polyg2p authors.
 
 data/it_suffix.tsv, data/it_open.tsv (Italian stress / vowel-openness statistics)
     Aggregate counts computed from WikiPron's Italian data, which is extracted

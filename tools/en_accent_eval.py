@@ -1,11 +1,18 @@
-"""Score an English accent variant against an independent pronunciation list.
+"""Score en-gb against a pronunciation list it was not built from.
 
-en-gb: WikiPron's UK list (Wiktionary, CC BY-SA; used for scoring only, not shipped). Reported for
-  (a) words Britfone also has (the word list can apply) and (b) words it does not (rules only),
-  next to plain `en` scored the same way, so the number shows what the variant changes.
+Reference: WikiPron's UK list (Wiktionary, CC BY-SA; not shipped). It is used twice: here for scoring, and in
+tools/en_gb_build.py as the check that decides which Britfone entries enter data/en_gb_lex.tsv (no Wiktionary text
+is copied; an entry is kept or dropped). So only the groups outside the list are independent results. Three groups:
+  list      words in data/en_gb_lex.tsv. Their entries were kept because this same reference confirms them
+            (tools/en_gb_build.py), so the full variant is right on them by construction; the "rules only" row is
+            the informative one there.
+  britfone  other words Britfone has (the rules already agreed with Britfone, or the entry was unconfirmed)
+  other     words Britfone does not have (mostly rare words and names)
+Rows: plain `en` scored as British, en-gb with the word list switched off, en-gb. Each is printed strict and
+lenient (lenient: unstressed ɪ = ə, CURE = THOUGHT).
 The other accents have no open reference; they are rule-derived and covered by tests only.
 
-usage: en_accent_eval.py WIKIPRON_UK.tsv BRITFONE.csv [--data DIR] [--lang en-gb] [--lenient]
+usage: en_accent_eval.py WIKIPRON_UK.tsv BRITFONE.csv [--data DIR] [--misses FILE]
 """
 import argparse, collections, os, re, subprocess, sys, unicodedata
 
@@ -28,14 +35,11 @@ def collapse(s, lenient=False):
     return s
 
 
-def run(words, lang, data):
-    if lang == "en":
-        cmd = [os.path.join(ROOT, "target", "release", "en_accent"), "en-gb"] + (["--data", data] if data else [])
-        out = subprocess.run(cmd, input="\n".join(words) + "\n", capture_output=True, text=True, check=True).stdout.split("\n")
-        return [o.split("\t")[1] for o in out[: len(words)]]
-    cmd = [os.path.join(ROOT, "target", "release", "en_accent"), lang] + (["--data", data] if data else [])
+def run(words, mode, data):
+    """mode: en (American form), rules (en-gb without the word list), en-gb."""
+    cmd = [os.path.join(ROOT, "target", "release", "en_accent"), "en-gb"] + (["--rules"] if mode == "rules" else []) + (["--data", data] if data else [])
     out = subprocess.run(cmd, input="\n".join(words) + "\n", capture_output=True, text=True, check=True).stdout.split("\n")
-    return [o.split("\t")[2] for o in out[: len(words)]]
+    return [o.split("\t")[1 if mode == "en" else 2] for o in out[: len(words)]]
 
 
 def main():
@@ -43,7 +47,6 @@ def main():
     ap.add_argument("gold")
     ap.add_argument("britfone")
     ap.add_argument("--data", default=os.environ.get("POLYG2P_DATA"))
-    ap.add_argument("--lang", default="en-gb")
     ap.add_argument("--misses")
     a = ap.parse_args()
     gold = collections.defaultdict(set)
@@ -51,24 +54,27 @@ def main():
         w, p = line.rstrip("\n").split("\t")
         if re.fullmatch(r"[a-z']+", w):
             gold[w].add(p)
-    listed = set()
+    britfone = set()
     for line in open(a.britfone, encoding="utf8"):
-        listed.add(re.sub(r"\(\d+\)$", "", line.split(",", 1)[0].strip()).lower())
+        britfone.add(re.sub(r"\(\d+\)$", "", line.split(",", 1)[0].strip()).lower())
+    in_list = {l.split("\t")[0] for l in open(os.path.join(ROOT, "data", "en_gb_lex.tsv"), encoding="utf8") if not l.startswith("#")}
+    group = lambda w: "list" if w in in_list else "britfone" if w in britfone else "other"
     words = sorted(gold)
     miss = []
-    for lang in ("en", a.lang):
-        outs = run(words, lang, a.data)
+    for mode, name in (("en", "plain en"), ("rules", "en-gb, rules only"), ("en-gb", "en-gb")):
+        outs = run(words, mode, a.data)
         for lenient in (False, True):
             st = collections.Counter()
             for w, o in zip(words, outs):
-                k = "listed" if w in listed else "unlisted"
+                k = group(w)
                 hit = collapse(o, lenient) in {collapse(g, lenient) for g in gold[w]}
-                st[k, "n"] += 1
-                st[k, "ok"] += hit
-                if not hit and lang != "en" and not lenient:
+                for kk in (k, "all"):
+                    st[kk, "n"] += 1
+                    st[kk, "ok"] += hit
+                if not hit and mode == "en-gb" and not lenient:
                     miss.append((k, w, o, " | ".join(sorted(gold[w]))))
-            print(f"{lang:6s} {'lenient (unstressed ɪ = ə, CURE = THOUGHT)' if lenient else 'strict':44s} " + "  ".join(
-                f"{k}: {st[k, 'ok']}/{st[k, 'n']} = {100 * st[k, 'ok'] / max(1, st[k, 'n']):.1f}%" for k in ("listed", "unlisted")))
+            print(f"{name:18s} {'lenient' if lenient else 'strict ':8s} " + "  ".join(
+                f"{k}: {st[k, 'ok']}/{st[k, 'n']} = {100 * st[k, 'ok'] / max(1, st[k, 'n']):.1f}%" for k in ("list", "britfone", "other", "all")))
     if a.misses:
         with open(a.misses, "w", encoding="utf8") as f:
             for m in miss:

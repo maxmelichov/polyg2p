@@ -46,6 +46,10 @@ def main() -> None:
         size = os.path.getsize(os.path.join(DEST, f))
         total += size
         print(f"{f:24s} {size / 1e6:6.1f} MB  {lic}")
+    # the licence texts travel with the data: LICENSE (Apache-2.0) and NOTICE (CMUdict, RUAccent, Britfone, ... notices)
+    for f in ("LICENSE", "NOTICE"):
+        shutil.copy2(os.path.join(ROOT, f), os.path.join(DEST, f))
+        print(f"{f:24s} licence text")
     print(f"{'total':24s} {total / 1e6:6.1f} MB -> {DEST}")
 
 

@@ -202,7 +202,7 @@ fn expand_plain(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<Str
     out.extend(words);
     if let Some(f) = frac {
         out.push(match lang {
-            Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnZa | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => "point",
+            Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => "point",
             Lang::Es | Lang::EsLa => "coma",
             Lang::It => "virgola",
             Lang::De => "Komma",
@@ -331,7 +331,7 @@ fn year(n: u128, lang: Lang) -> Option<Vec<String>> {
 
 pub fn cardinal(n: u128, lang: Lang) -> Vec<String> {
     match lang {
-        Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnZa | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => en_card(n),
+        Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => en_card(n),
         Lang::Es | Lang::EsLa => es_card(n, true),
         Lang::It => it_card(n),
         Lang::De => de_card(n),

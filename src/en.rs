@@ -157,6 +157,16 @@ impl English {
         }
     }
 
+    /// Is this word one whose reading the sentence pass chooses (accent tools)?
+    pub fn homograph_word(&self, lw: &str) -> bool {
+        is_homograph(lw)
+    }
+
+    /// Is `ph` this word read letter by letter (accent layer: ROI, CRO)?
+    pub(crate) fn is_spelled(&self, lw: &str, ph: &str) -> bool {
+        lw.len() <= 6 && lw.chars().all(|c| c.is_ascii_alphabetic()) && self.lookup(lw) != Some(ph) && self.spell(lw) == ph
+    }
+
     /// Is `ph` the pronunciation this word gets with no context: its lexicon
     /// entry, or what `word` returns for it (accent layer: a weak form, a
     /// homograph reading or a merged pair is not).

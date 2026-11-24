@@ -12,10 +12,13 @@
 //!   SQUARE /eə/, CURE /ʊə/, no flapping, yod kept after t d n. A word list
 //!   derived from Britfone (MIT; `data/en_gb_lex.tsv`) holds the words the rules
 //!   cannot get from the American form (BATH words, schedule, tomato, ...).
-//!   `en-au`, `en-nz`, `en-za`, `en-in` are rule sets applied to the `en-gb`
+//!   `en-au`, `en-nz`, `en-in` are rule sets applied to the `en-gb`
 //!   form; no open pronouncing dictionary with a licence that allows
 //!   redistribution exists for them, so they are rule-derived.
-//! * rhotic (`en-sc`, `en-ie`, `en-ca`): rules on the American form.
+//! * rhotic (`en-sc`, `en-ie`, `en-ca`): rules on the American form; Scottish
+//!   and Irish first take the British word forms of `data/en_brit_words.tsv`
+//!   (herb with h, tomato, schedule, ...) and keep hurry / marry / squirrel
+//!   apart from furry / merry / stirring.
 //!
 //! The variants write phonemic differences (which phoneme a word has), not
 //! fine vowel quality: Australian FACE is still written `eɪ`. A TTS model learns
@@ -29,6 +32,7 @@ use crate::Out;
 
 const GB_LEX_TSV: &str = include_str!("../data/en_gb_lex.tsv");
 const GB_FUNC_TSV: &str = include_str!("../data/en_gb_func.tsv");
+const BRIT_WORDS_TSV: &str = include_str!("../data/en_brit_words.tsv");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Accent {
@@ -38,8 +42,6 @@ pub enum Accent {
     Au,
     /// New Zealand
     Nz,
-    /// South African
-    Za,
     /// Indian
     In,
     /// Scottish
@@ -65,9 +67,27 @@ fn gb_lex() -> &'static HashMap<&'static str, &'static str> {
     T.get_or_init(|| table(GB_LEX_TSV))
 }
 
-fn gb_func() -> &'static HashMap<&'static str, &'static str> {
+/// American function-word form -> (weak British form, strong British form).
+fn gb_func() -> &'static HashMap<&'static str, (&'static str, &'static str)> {
+    static T: OnceLock<HashMap<&'static str, (&'static str, &'static str)>> = OnceLock::new();
+    T.get_or_init(|| {
+        GB_FUNC_TSV
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .filter_map(|l| {
+                let mut f = l.split('\t');
+                let (ga, weak) = (f.next()?, f.next()?);
+                Some((ga, (weak, f.next().filter(|x| !x.is_empty()).unwrap_or(weak))))
+            })
+            .collect()
+    })
+}
+
+/// British word forms shared by the rhotic accents of the British Isles, in
+/// the American notation (r kept) with `ɒ` marking LOT.
+fn brit_words() -> &'static HashMap<&'static str, &'static str> {
     static T: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-    T.get_or_init(|| table(GB_FUNC_TSV))
+    T.get_or_init(|| table(BRIT_WORDS_TSV))
 }
 
 /// One phoneme with the stress mark that precedes it.
@@ -77,7 +97,8 @@ struct Tok {
     p: String,
 }
 
-const UNITS: &[&str] = &["aɪ", "aʊ", "eɪ", "oʊ", "ɔɪ", "əʊ", "ɪə", "eə", "ʊə", "tʃ", "dʒ"];
+// affricates are single letters in the engine's output (ʧ ʤ ʦ ʣ)
+const UNITS: &[&str] = &["aɪ", "aʊ", "eɪ", "oʊ", "ɔɪ", "əʊ", "ɪə", "eə", "ʊə"];
 const VOWELS: &str = "aeiouæɑɔəɛɜɪʊʌɚᵻɐɒ";
 
 fn is_vowel(p: &str) -> bool {
@@ -98,7 +119,9 @@ fn tokenize(ph: &str) -> Vec<Tok> {
         }
         let mut p = String::new();
         let two: String = cs[i..(i + 2).min(cs.len())].iter().collect();
-        if UNITS.contains(&two.as_str()) {
+        // "ɪəʊ" is ɪ + əʊ (video), not ɪə + ʊ
+        let centring_then_goat = cs.get(i + 2) == Some(&'ʊ') && cs.get(i + 1) == Some(&'ə');
+        if UNITS.contains(&two.as_str()) && !centring_then_goat {
             p.push_str(&two);
             i += 2;
         } else {
@@ -136,13 +159,7 @@ struct Grp<'a> {
     after: &'a str,
 }
 
-/// Vowel-letter groups of a word, one per vowel phoneme when the counts agree
-/// (silent final e and the e of -es/-ed are tried as silent). `None` when the
-/// spelling cannot be lined up with the vowels.
-fn align<'a>(src: &'a str, n_vowels: usize) -> Option<Vec<Grp<'a>>> {
-    if !src.is_ascii() || n_vowels == 0 {
-        return None;
-    }
+fn vowel_groups(src: &str) -> Vec<(usize, usize)> {
     let b = src.as_bytes();
     let isv = |i: usize| match b[i] {
         b'a' | b'e' | b'i' | b'o' | b'u' => true,
@@ -160,18 +177,57 @@ fn align<'a>(src: &'a str, n_vowels: usize) -> Option<Vec<Grp<'a>>> {
                 i += 1;
             }
             // "qu": the u belongs to the consonant
-            if &src[s..i] == "u" && s > 0 && b[s - 1] == b'q' && i < b.len() && isv(i) {
-                continue;
-            }
             let s = if s > 0 && b[s - 1] == b'q' && b[s] == b'u' && i - s > 1 { s + 1 } else { s };
             g.push((s, i));
         } else {
             i += 1;
         }
     }
-    let mk = |g: &[(usize, usize)]| -> Vec<Grp<'a>> {
-        g.iter().map(|&(s, e)| Grp { letters: &src[s..e], before: &src[s.saturating_sub(2)..s], after: &src[e..(e + 2).min(src.len())] }).collect()
-    };
+    g
+}
+
+fn mk_grp(src: &str, s: usize, e: usize) -> Grp<'_> {
+    Grp { letters: &src[s..e], before: &src[s.saturating_sub(2)..s], after: &src[e..(e + 2).min(src.len())] }
+}
+
+/// Can this vowel phoneme be spelled with these letters? (alignment cost only)
+fn spells(v: &str, l: &str) -> bool {
+    let any = |xs: &[&str]| xs.contains(&l);
+    match v {
+        "ə" | "ɐ" | "ᵻ" | "ɚ" => true,
+        "ɑː" => any(&["a", "o", "au", "aw", "ou", "ea", "e", "oa", "ah", "aa"]),
+        "ɔː" | "ɔ" => any(&["o", "a", "au", "aw", "ou", "oa", "oo", "awe"]),
+        "æ" => any(&["a", "ai", "au"]),
+        "ɛ" => any(&["e", "ea", "a", "ai", "ie", "ei", "u", "ay", "ae"]),
+        "ɪ" => any(&["i", "y", "e", "u", "a", "ui", "ie", "ee", "o", "ei", "ey", "ai", "ia"]),
+        "iː" | "i" => any(&["e", "ee", "ea", "ie", "ei", "i", "y", "ey", "eo", "ae", "oe", "ay"]),
+        "ʌ" => any(&["u", "o", "ou", "oo", "oe"]),
+        "ʊ" => any(&["u", "oo", "ou", "o", "eu"]),
+        "uː" | "u" => any(&["u", "oo", "ou", "ew", "ue", "o", "ui", "eu", "oe", "eau", "ieu", "iew"]),
+        "ɜː" => any(&["e", "i", "u", "o", "ea", "ou", "y", "eu"]),
+        "eɪ" => any(&["a", "ai", "ay", "ei", "ey", "ea", "e", "ee", "au", "ae"]),
+        "aɪ" => any(&["i", "y", "ie", "ei", "uy", "ye", "ai", "ui", "ey", "eye"]),
+        "ɔɪ" => any(&["oi", "oy", "uoy"]),
+        "aʊ" => any(&["ou", "ow", "au"]),
+        "oʊ" => any(&["o", "oa", "ow", "ou", "oe", "ew", "eau", "au", "oo", "eo"]),
+        _ => false,
+    }
+}
+
+/// Vowel-letter groups of a word, one per vowel phoneme. When the counts agree
+/// the groups are taken in order (silent final e and the e of -es / -ed are
+/// tried as silent). Otherwise the cheapest line-up is searched: a group may be
+/// silent (afor-e-thought), a two-letter group may hold two vowels (vid-e-o),
+/// a vowel may have no letter (rhythm). A vowel without a letter gets an empty
+/// group. `None` when nothing plausible lines up.
+fn align<'a>(src: &'a str, vowels: &[&str]) -> Option<Vec<Grp<'a>>> {
+    let n_vowels = vowels.len();
+    if !src.is_ascii() || n_vowels == 0 || src.is_empty() {
+        return None;
+    }
+    let b = src.as_bytes();
+    let g = vowel_groups(src);
+    let mk = |g: &[(usize, usize)]| -> Vec<Grp<'a>> { g.iter().map(|&(s, e)| mk_grp(src, s, e)).collect() };
     if g.len() == n_vowels {
         return Some(mk(&g));
     }
@@ -184,7 +240,75 @@ fn align<'a>(src: &'a str, n_vowels: usize) -> Option<Vec<Grp<'a>>> {
             return Some(mk(&g[..last]));
         }
     }
-    None
+    // cheapest line-up (dynamic programme over groups x vowels)
+    let (m, n) = (g.len(), n_vowels);
+    if m == 0 || m > 24 || n > 24 {
+        return None;
+    }
+    const INF: u32 = u32::MAX / 4;
+    let fit = |s: usize, e: usize, v: &str| -> u32 { if spells(v, &src[s..e]) { 0 } else { 4 } };
+    // step: 0 match, 1 silent group, 2 group holds two vowels, 3 vowel without a letter
+    let mut cost = vec![vec![INF; n + 1]; m + 1];
+    let mut step = vec![vec![0u8; n + 1]; m + 1];
+    cost[0][0] = 0;
+    for i in 0..=m {
+        for j in 0..=n {
+            let c = cost[i][j];
+            if c >= INF {
+                continue;
+            }
+            let relax = |ii: usize, jj: usize, cc: u32, st: u8, cost: &mut Vec<Vec<u32>>, step: &mut Vec<Vec<u8>>| {
+                if cc < cost[ii][jj] {
+                    cost[ii][jj] = cc;
+                    step[ii][jj] = st;
+                }
+            };
+            if i < m && j < n {
+                relax(i + 1, j + 1, c + fit(g[i].0, g[i].1, vowels[j]), 0, &mut cost, &mut step);
+            }
+            if i < m {
+                let silent = if &src[g[i].0..g[i].1] == "e" { 1 } else { 5 };
+                relax(i + 1, j, c + silent, 1, &mut cost, &mut step);
+            }
+            if i < m && j + 1 < n && g[i].1 - g[i].0 >= 2 {
+                let mid = g[i].0 + 1;
+                relax(i + 1, j + 2, c + 1 + fit(g[i].0, mid, vowels[j]) + fit(mid, g[i].1, vowels[j + 1]), 2, &mut cost, &mut step);
+            }
+            if j < n {
+                let weak = matches!(vowels[j], "ə" | "ɐ" | "ᵻ" | "ɚ");
+                relax(i, j + 1, c + if weak { 2 } else { 6 }, 3, &mut cost, &mut step);
+            }
+        }
+    }
+    if cost[m][n] > 2 * n as u32 + 2 {
+        return None;
+    }
+    let mut out: Vec<Grp<'a>> = Vec::with_capacity(n);
+    let (mut i, mut j) = (m, n);
+    while i > 0 || j > 0 {
+        match step[i][j] {
+            0 => {
+                out.push(mk_grp(src, g[i - 1].0, g[i - 1].1));
+                i -= 1;
+                j -= 1;
+            }
+            1 => i -= 1,
+            2 => {
+                let mid = g[i - 1].0 + 1;
+                out.push(mk_grp(src, mid, g[i - 1].1));
+                out.push(mk_grp(src, g[i - 1].0, mid));
+                i -= 1;
+                j -= 2;
+            }
+            _ => {
+                let at = if i > 0 { g[i - 1].1 } else { 0 };
+                out.push(mk_grp(src, at, at));
+                j -= 1;
+            }
+        }
+    }
+    out.reverse();
+    Some(out)
 }
 
 /// Is a GA /ɑː/ the LOT vowel (RP /ɒ/), or THOUGHT, or the PALM vowel?
@@ -199,7 +323,9 @@ fn open_set(g: Option<Grp>, src: &str) -> Open {
     match g {
         Some(g) => {
             let l = g.letters;
-            if l == "ou" || l == "au" || l == "aw" || l == "oa" || (l == "a" && (g.after == "lk" || g.after == "ll" || g.after == "lt" || g.after == "ld")) {
+            if l.is_empty() {
+                Open::Palm
+            } else if l == "ou" || l == "au" || l == "aw" || l == "oa" || (l == "a" && (g.after == "lk" || g.after == "ll" || g.after == "lt" || g.after == "ld")) {
                 // bought, cause, law, broad; chalk, tall, salt, bald
                 Open::Thought
             } else if l.contains('o') || l == "e" || l == "i" {
@@ -210,8 +336,9 @@ fn open_set(g: Option<Grp>, src: &str) -> Open {
                 Open::Palm
             }
         }
+        // no line-up at all (a spelled-out acronym, a symbol): only an o-word without a is taken as LOT
         None => {
-            if src.contains('o') {
+            if src.contains('o') && !src.contains('a') {
                 Open::Lot
             } else {
                 Open::Palm
@@ -258,7 +385,7 @@ fn flap_letter(src: &str, toks: &[Tok], at: usize) -> &'static str {
         }
         i += 1;
     }
-    let idx: Vec<usize> = toks.iter().enumerate().filter(|(_, t)| matches!(t.p.as_str(), "t" | "d" | "ɾ" | "tʃ" | "dʒ")).map(|(k, _)| k).collect();
+    let idx: Vec<usize> = toks.iter().enumerate().filter(|(_, t)| matches!(t.p.as_str(), "t" | "d" | "ɾ" | "ʧ" | "ʤ" | "ʦ" | "ʣ" | "ʔ")).map(|(k, _)| k).collect();
     if letters.len() == idx.len() {
         if let Some(k) = idx.iter().position(|&k| k == at) {
             return if letters[k] == b'd' { "d" } else { "t" };
@@ -324,22 +451,68 @@ struct Rules {
     plain_reduced: bool,
     /// British endings (-ile, -ary, -ization)
     suffixes: bool,
+    /// rhotic accents of the British Isles: hurry / marry / squirrel keep their short vowels before r
+    brit_r: bool,
 }
 
-const GB: Rules = Rules { rhotic: false, lot: Some("ɒ"), thought: None, cloth_is_lot: true, palm: None, goat: "əʊ", face: "eɪ", unflap: true, yod: true, plain_reduced: true, suffixes: true };
-const SC: Rules = Rules { rhotic: true, lot: Some("ɔ"), thought: Some("ɔ"), cloth_is_lot: true, palm: Some("a"), goat: "oː", face: "eː", unflap: true, yod: true, plain_reduced: false, suffixes: false };
-const IE: Rules = Rules { rhotic: true, lot: None, thought: None, cloth_is_lot: false, palm: None, goat: "oː", face: "eː", unflap: true, yod: true, plain_reduced: false, suffixes: false };
-const CA: Rules = Rules { rhotic: true, lot: None, thought: Some("ɑː"), cloth_is_lot: false, palm: None, goat: "oʊ", face: "eɪ", unflap: false, yod: false, plain_reduced: false, suffixes: false };
+const GB: Rules = Rules { rhotic: false, lot: Some("ɒ"), thought: None, cloth_is_lot: true, palm: None, goat: "əʊ", face: "eɪ", unflap: true, yod: true, plain_reduced: true, suffixes: true, brit_r: false };
+const SC: Rules = Rules { rhotic: true, lot: Some("ɔ"), thought: Some("ɔ"), cloth_is_lot: true, palm: Some("a"), goat: "oː", face: "eː", unflap: true, yod: true, plain_reduced: false, suffixes: true, brit_r: true };
+const IE: Rules = Rules { rhotic: true, lot: None, thought: None, cloth_is_lot: false, palm: None, goat: "oː", face: "eː", unflap: true, yod: true, plain_reduced: false, suffixes: true, brit_r: true };
+const CA: Rules = Rules { rhotic: true, lot: None, thought: Some("ɑː"), cloth_is_lot: false, palm: None, goat: "oʊ", face: "eɪ", unflap: false, yod: false, plain_reduced: false, suffixes: false, brit_r: false };
 
 /// Rewrite one American word form. Returns the new form and whether the word
 /// ends in an r that is only heard before a vowel (linking r).
+/// STRUT before r in hurry, worry, courage; NURSE in furry, occurring, blurry
+/// (a word in -ur plus an ending keeps the vowel of its base).
+fn strut_before_r(g: Option<Grp>, src: &str) -> bool {
+    let strut = match g {
+        Some(g) => (matches!(g.letters, "u" | "o") && g.after.starts_with("rr")) || g.letters == "ou",
+        None => ["urr", "orr", "our"].iter().any(|x| src.contains(x)),
+    };
+    if !strut {
+        return false;
+    }
+    const NURSE_BASES: &[&str] = &["occur", "recur", "concur", "incur", "blur", "fur", "pur", "spur", "slur", "bur", "demur", "whir"];
+    if let Some(at) = src.find("rr") {
+        let ending = &src[at + 2..];
+        if matches!(ending, "ing" | "ings" | "ed" | "y" | "er" | "ers" | "ier" | "iest" | "s") && NURSE_BASES.contains(&&src[..at + 1]) {
+            return false;
+        }
+    }
+    true
+}
+
+/// "or" + vowel with a short vowel in British speech (moral, historic, forest,
+/// coroner, majority) as against story, glorious, memorial, boring.
+fn short_or(g: Option<Grp>, src: &str) -> bool {
+    let Some(g) = g else { return false };
+    if g.letters == "a" {
+        // quarrel, warrant, warrior
+        return (g.before.ends_with('w') || g.before.ends_with("qu")) && g.after == "rr";
+    }
+    if g.letters != "o" || !g.after.starts_with('r') {
+        return false;
+    }
+    if g.after == "rr" {
+        return true;
+    }
+    let at = g.letters.as_ptr() as usize - src.as_ptr() as usize + 2;
+    let rest = &src[at.min(src.len())..];
+    let long = rest.is_empty()
+        || ["y", "ia", "iu", "io", "ie", "eo", "us", "um", "ing", "ous"].iter().any(|x| rest.starts_with(x))
+        || matches!(rest, "a" | "e" | "es" | "ed" | "er" | "ers" | "as" | "age")
+        || !rest.starts_with(['a', 'e', 'i', 'o', 'u', 'y']);
+    !long
+}
+
 fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
     let fixed = if r.suffixes { suffix_fix(ph, src) } else { None };
     let ph = fixed.as_deref().unwrap_or(ph);
     let toks = tokenize(ph);
     let n = toks.len();
     let vowel_idx: Vec<usize> = (0..n).filter(|&i| is_vowel(&toks[i].p)).collect();
-    let groups = align(src, vowel_idx.len());
+    let vowels: Vec<&str> = vowel_idx.iter().map(|&i| toks[i].p.as_str()).collect();
+    let groups = align(src, &vowels);
     let grp = |i: usize| -> Option<Grp> { groups.as_ref().and_then(|g| vowel_idx.iter().position(|&k| k == i).map(|k| g[k])) };
     let p = |i: usize| -> &str { toks.get(i).map_or("", |t| t.p.as_str()) };
     let vowel_at = |i: usize| -> bool { toks.get(i).is_some_and(|t| is_vowel(&t.p)) };
@@ -363,12 +536,9 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
             }
             "ɜː" if !r.rhotic => {
                 if r_kept {
-                    // hurry, worry, courage: STRUT; furry, stirring: NURSE
-                    let strut = match g {
-                        Some(g) => (matches!(g.letters, "u" | "o") && g.after.starts_with("rr")) || g.letters == "ou",
-                        None => ["urr", "orr", "our"].iter().any(|x| src.contains(x)),
-                    };
-                    push(&mut out, t.stress, if strut { "ʌ" } else { "ɜː" });
+                    // hurry, worry, courage: STRUT; squirrel, stirrup: KIT; furry, stirring: NURSE
+                    let kit = g.is_some_and(|g| matches!(g.letters, "i" | "y") && g.after == "rr") && !src.ends_with("ing") && !src.ends_with("ed");
+                    push(&mut out, t.stress, if kit { "ɪ" } else if strut_before_r(g, src) { "ʌ" } else { "ɜː" });
                 } else {
                     push(&mut out, t.stress, "ɜː");
                     if vowel_at(i + 1) {
@@ -377,6 +547,12 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
                 }
                 final_r |= last;
             }
+            "ɜː" if r.brit_r && r_kept => {
+                let kit = g.is_some_and(|g| matches!(g.letters, "i" | "y") && g.after == "rr") && !src.ends_with("ing") && !src.ends_with("ed");
+                push(&mut out, t.stress, if kit { "ɪ" } else if strut_before_r(g, src) { "ʌ" } else { "ɜː" });
+            }
+            // marry, carry, narrow: TRAP (merry, very keep DRESS)
+            "ɛ" if r.brit_r && r_kept && g.is_some_and(|g| g.letters == "a" && g.after == "rr") => push(&mut out, t.stress, "æ"),
             "ɹ" if !r.rhotic => {
                 if vowel_at(i + 1) {
                     push(&mut out, None, "ɹ");
@@ -403,7 +579,7 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
             "ɔː" => {
                 if before_r {
                     // forest, orange keep a short vowel in British speech (word list); "orr" by rule
-                    let short = !r.rhotic && r_kept && g.is_some_and(|g| g.letters == "o" && g.after.starts_with("rr"));
+                    let short = !r.rhotic && r_kept && short_or(g, src);
                     push(&mut out, t.stress, if short { "ɒ" } else { "ɔː" });
                 } else if r.cloth_is_lot && cloth(g, src) {
                     push(&mut out, t.stress, r.lot.unwrap_or("ɔː"));
@@ -411,7 +587,10 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
                     push(&mut out, t.stress, r.thought.unwrap_or("ɔː"));
                 }
             }
-            "ɔ" => push(&mut out, t.stress, r.lot.unwrap_or("ɔ")),
+            // the short ɔ of weak "on": LOT where LOT is rewritten, else the merged vowel (Canadian)
+            "ɔ" => push(&mut out, t.stress, r.lot.or(r.thought).unwrap_or("ɔ")),
+            // LOT written out in data/en_brit_words.tsv
+            "ɒ" => push(&mut out, t.stress, r.lot.unwrap_or("ɑː")),
             "ɪ" | "iː" if before_r && !r.rhotic => {
                 let short = r_kept
                     && t.p == "ɪ"
@@ -442,7 +621,20 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
                 };
                 push(&mut out, t.stress, v);
             }
-            "ʊ" if before_r && !r.rhotic => push(&mut out, t.stress, "ʊə"),
+            "ʊ" if before_r && (!r.rhotic || r.yod) => {
+                // during, neural, endure: yod after t d n
+                let yod = r.yod
+                    && i > 0
+                    && matches!(p(i - 1), "t" | "d" | "n")
+                    && match g {
+                        Some(g) => matches!(g.letters, "u" | "eu" | "ew"),
+                        None => src.contains("ur") || src.contains("eur"),
+                    };
+                if yod {
+                    push(&mut out, None, "j");
+                }
+                push(&mut out, t.stress, if r.rhotic { "ʊ" } else { "ʊə" });
+            }
             "aɪ" | "aʊ" | "ɔɪ" if before_r && !r_kept && !r.rhotic => {
                 push(&mut out, t.stress, &t.p);
                 push(&mut out, None, "ə");
@@ -450,6 +642,16 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
             "oʊ" => push(&mut out, t.stress, r.goat),
             "eɪ" => push(&mut out, t.stress, r.face),
             "ɾ" if r.unflap => push(&mut out, None, flap_letter(src, &toks, i)),
+            // kitten, certain, written: the American glottal stop + syllabic n is t + schwa + n
+            "ʔ" if r.unflap => push(&mut out, None, "t"),
+            "n̩" if r.unflap => {
+                push(&mut out, None, "ə");
+                push(&mut out, None, "n");
+            }
+            "l̩" if r.unflap => {
+                push(&mut out, None, "ə");
+                push(&mut out, None, "l");
+            }
             "uː" if r.yod && i > 0 && matches!(p(i - 1), "t" | "d" | "n") => {
                 let yod = match g {
                     Some(g) => matches!(g.letters, "u" | "ue" | "ew" | "eu") || (g.letters == "e" && g.after.starts_with('w')) || (g.letters == "ui" && p(i - 1) == "n"),
@@ -483,36 +685,102 @@ fn expand_abbr<'a>(en: &English, ph: &str, src: &'a str) -> &'a str {
     ABBR.iter().find(|(a, full)| *a == src && en.lexicon_form(full) == Some(ph)).map_or(src, |(_, full)| *full)
 }
 
-/// Southern British form of one word of the American output.
-fn to_gb(en: &English, ph: &str, src: &str, use_lex: bool) -> (String, bool) {
-    if let Some(g) = gb_func().get(ph) {
-        return (g.to_string(), ends_in_r(ph));
+/// The British form (American notation) of a word of data/en_brit_words.tsv, or of
+/// its possessive, when the engine gave the word its plain reading.
+fn brit_form(en: &English, ph: &str, src: &str) -> Option<String> {
+    if src.is_empty() || crate::en::is_homograph(src) || !en.is_default_form(src, ph) {
+        return None;
+    }
+    if let Some(b) = brit_words().get(src) {
+        return Some(b.to_string());
+    }
+    let b = brit_words().get(src.strip_suffix("'s")?)?;
+    let last = b.chars().last()?;
+    Some(match last {
+        't' => format!("{}ʦ", &b[..b.len() - 1]),
+        'd' => format!("{}ʣ", &b[..b.len() - 1]),
+        's' | 'z' | 'ʃ' | 'ʒ' | 'ʧ' | 'ʤ' => format!("{b}ᵻz"),
+        'p' | 'k' | 'f' | 'θ' => format!("{b}s"),
+        _ => format!("{b}z"),
+    })
+}
+
+/// Where the main stress falls (index among the vowels) and whether the word
+/// ends in a voiced consonant: what tells the readings of a homograph apart
+/// (REcord / reCORD, the use / to use).
+fn reading_key(ph: &str) -> (Option<usize>, Option<bool>) {
+    let toks = tokenize(ph);
+    let stress = toks.iter().filter(|t| is_vowel(&t.p)).position(|t| t.stress == Some('ˈ'));
+    let voiced = toks.iter().rev().find(|t| t.p != "ɹ").and_then(|t| match t.p.as_str() {
+        "s" | "f" | "θ" | "t" | "ʦ" => Some(false),
+        "z" | "v" | "ð" | "d" | "ʣ" => Some(true),
+        _ => None,
+    });
+    (stress, voiced)
+}
+
+/// Southern British form of one word of the American output. `strong`: the
+/// word stands before a pause, where of / from / was / been are not reduced.
+fn to_gb(en: &English, ph: &str, src: &str, use_lex: bool, strong: bool) -> (String, bool) {
+    if let Some(&(weak, full)) = gb_func().get(ph) {
+        return ((if strong { full } else { weak }).to_string(), ends_in_r(ph));
     }
     let src = expand_abbr(en, ph, src);
-    if use_lex && !src.is_empty() && !crate::en::is_homograph(src) && en.is_default_form(src, ph) {
-        if let Some(g) = gb_lex().get(src) {
-            return (g.to_string(), ends_in_r(ph));
-        }
-        // an inflected form of a listed word keeps the listed stem (passes, classes, dancing)
-        for suf in ["'s", "s", "es", "ed", "ing", "er", "ers", "ly"] {
-            let Some(stem) = src.strip_suffix(suf) else { continue };
-            if stem.len() < 3 {
-                continue;
+    if use_lex && !src.is_empty() {
+        if crate::en::is_homograph(src) {
+            // the list holds every British reading; take the one that matches the reading the engine chose
+            if let Some(vars) = gb_lex().get(src) {
+                let (by_rule, fr) = rules(ph, src, GB);
+                let want = reading_key(&by_rule);
+                if let Some(v) = vars.split('|').find(|v| reading_key(v) == want) {
+                    return (v.to_string(), fr);
+                }
+                return (by_rule, fr);
             }
-            let mut cands = vec![stem.to_string()];
-            if matches!(suf, "ed" | "ing" | "er" | "ers" | "es") {
-                cands.push(format!("{stem}e"));
+        } else if en.is_default_form(src, ph) {
+            if let Some(g) = gb_lex().get(src) {
+                return (g.split('|').next().unwrap_or(g).to_string(), ends_in_r(ph));
             }
-            for c in cands {
-                let (Some(g), Some(ga_stem)) = (gb_lex().get(c.as_str()), en.lexicon_form(&c)) else { continue };
-                let Some(rest) = ph.strip_prefix(ga_stem) else { continue };
-                if rest.is_empty() || rest.chars().any(|x| x == 'ˈ') {
+            // an inflected form of a listed word keeps the listed stem (passes, classes, dancing, aunts)
+            for suf in ["'s", "s", "es", "ed", "ing", "er", "ers", "ly"] {
+                let Some(stem) = src.strip_suffix(suf) else { continue };
+                if stem.len() < 3 {
                     continue;
                 }
-                let (tail, fr) = rules(rest, suf, GB);
-                let link = if ends_in_r(ga_stem) && tail.chars().next().is_some_and(|x| VOWELS.contains(x)) { "ɹ" } else { "" };
-                return (format!("{g}{link}{tail}"), fr || (rest.is_empty() && ends_in_r(ga_stem)));
+                let mut cands = vec![stem.to_string()];
+                if matches!(suf, "ed" | "ing" | "er" | "ers" | "es") {
+                    cands.push(format!("{stem}e"));
+                }
+                for c in cands {
+                    if crate::en::is_homograph(&c) {
+                        continue;
+                    }
+                    let (Some(g), Some(ga_stem)) = (gb_lex().get(c.as_str()), en.lexicon_form(&c)) else { continue };
+                    // t + s and d + z are one letter in the engine's output (aunt, aunts: ˈænt, ˈænʦ)
+                    if matches!(suf, "s" | "'s") {
+                        let fused = [("t", "ʦ"), ("d", "ʣ")].iter().find_map(|(c1, lig)| {
+                            let (ga0, g0) = (ga_stem.strip_suffix(c1)?, g.strip_suffix(c1)?);
+                            (ph.strip_prefix(ga0)? == *lig).then(|| format!("{g0}{lig}"))
+                        });
+                        if let Some(f) = fused {
+                            return (f, false);
+                        }
+                    }
+                    let Some(rest) = ph.strip_prefix(ga_stem) else { continue };
+                    if rest.is_empty() || rest.chars().any(|x| x == 'ˈ') {
+                        continue;
+                    }
+                    let (tail, fr) = rules(rest, suf, GB);
+                    let link = if ends_in_r(ga_stem) && tail.chars().next().is_some_and(|x| VOWELS.contains(x)) { "ɹ" } else { "" };
+                    return (format!("{g}{link}{tail}"), fr);
+                }
             }
+        }
+    }
+    // British word forms the list does not hold (vase, schedule, yoghurt)
+    if use_lex {
+        if let Some(b) = brit_form(en, ph, src) {
+            return rules(&b, src, GB);
         }
     }
     rules(ph, src, GB)
@@ -544,7 +812,7 @@ fn antipodean(gb: &str, src: &str, a: Accent) -> String {
             // dance, chance, plant, example: TRAP in Australia (BATH stays broad in grass, path, can't, aunt)
             "ɑː" if a == Accent::Au
                 && matches!(next.as_str(), "n" | "m")
-                && matches!(next2.as_str(), "s" | "t" | "d" | "p" | "tʃ")
+                && matches!(next2.as_str(), "s" | "t" | "d" | "p" | "ʧ" | "ʦ" | "ʣ")
                 && ["anc", "ant", "and", "amp", "ans", "anch"].iter().any(|x| src.contains(x))
                 && !src.contains("ar")
                 && !matches!(src, "can't" | "cant" | "shan't" | "aunt" | "aunts") =>
@@ -552,24 +820,39 @@ fn antipodean(gb: &str, src: &str, a: Accent) -> String {
                 toks[i].p = "æ".into();
             }
             // sure, poor, tour: THOUGHT; pure, cure keep the diphthong
-            "ʊə" if i == 0 || toks[i - 1].p != "j" => toks[i].p = "ɔː".into(),
+            // (after ʧ / ʤ too: mature, endure keep it like during, whose ʤ comes from dj)
+            "ʊə" if i == 0 || !matches!(toks[i - 1].p.as_str(), "j" | "ʧ" | "ʤ") => toks[i].p = "ɔː".into(),
             // New Zealand: NEAR and SQUARE are one vowel
             "eə" if a == Accent::Nz => toks[i].p = "ɪə".into(),
             _ => {}
         }
     }
-    // tune, dune: tj → tʃ, dj → dʒ
-    render(&toks).replace("tj", "tʃ").replace("dj", "dʒ")
+    // tune, dune, during: tj → ʧ, dj → ʤ before the u vowels only (not court-yard, Good-year)
+    let mut out: Vec<Tok> = Vec::with_capacity(n);
+    let mut i = 0;
+    while i < n {
+        let u_next = toks.get(i + 2).is_some_and(|t| matches!(t.p.as_str(), "uː" | "u" | "ʊ" | "ʊə" | "ə"));
+        if matches!(toks[i].p.as_str(), "t" | "d") && toks.get(i + 1).is_some_and(|t| t.p == "j") && u_next {
+            out.push(Tok { stress: None, p: if toks[i].p == "t" { "ʧ".into() } else { "ʤ".into() } });
+            i += 2;
+            continue;
+        }
+        out.push(toks[i].clone());
+        i += 1;
+    }
+    render(&out)
 }
 
 fn wh(ph: &str, src: &str) -> Option<String> {
-    // which / witch are different words in Scotland and Ireland
-    if src.starts_with("wh") && !src.starts_with("who") {
-        if let Some(rest) = ph.strip_prefix('w') {
-            return Some(format!("ʍ{rest}"));
-        }
+    // which / witch are different words in Scotland and Ireland; also inside somewhere, meanwhile, overwhelm
+    let at = src.find("wh")?;
+    if src[at..].starts_with("who") {
+        return None;
     }
-    None
+    if at == 0 {
+        return ph.strip_prefix('w').map(|rest| format!("ʍ{rest}"));
+    }
+    (ph.matches('w').count() == 1).then(|| ph.replace('w', "ʍ"))
 }
 
 fn scottish(ph: &str) -> String {
@@ -589,16 +872,41 @@ fn starts_with_vowel(ph: &str) -> bool {
     ph.chars().find(|&c| c != 'ˈ' && c != 'ˌ').is_some_and(|c| VOWELS.contains(c))
 }
 
-/// One word of the American output in the given accent (no linking r).
+/// One word of the American output in the given accent (no linking r across
+/// words). Returns the form and whether it ends in an r that is only heard
+/// before a vowel.
 pub fn word(en: &English, ph: &str, src: &str, a: Accent) -> (String, bool) {
+    word_at(en, ph, src, a, false, true)
+}
+
+/// As `word`, with the word list switched off (`use_lex` false: rules only, for
+/// tools/en_gb_build.py) or the word standing before a pause (`strong`).
+pub fn word_at(en: &English, ph: &str, src: &str, a: Accent, strong: bool, use_lex: bool) -> (String, bool) {
+    // a hyphenated compound comes as its parts: each part is a word of its own (half-past, far-off)
+    if src.contains('-') && ph.contains(' ') {
+        let (pp, sp): (Vec<&str>, Vec<&str>) = (ph.split(' ').collect(), src.split('-').filter(|x| !x.is_empty()).collect());
+        if pp.len() == sp.len() {
+            let mut parts: Vec<(String, bool)> = pp.iter().zip(&sp).enumerate().map(|(k, (p, s))| word_at(en, p, s, a, strong && k + 1 == pp.len(), use_lex)).collect();
+            for k in 0..parts.len() - 1 {
+                if parts[k].1 && !a.rhotic() && starts_with_vowel(&parts[k + 1].0) && !parts[k].0.ends_with('ɹ') {
+                    parts[k].0.push('ɹ');
+                }
+            }
+            let fr = parts.last().is_some_and(|x| x.1);
+            return (parts.into_iter().map(|x| x.0).collect::<Vec<_>>().join(" "), fr);
+        }
+    }
+    // a spelled-out acronym (ROI, CRO): letter names, the spelling says nothing about their vowels
+    let spelled = !src.is_empty() && en.is_spelled(src, ph);
+    let rule_src = if spelled { "" } else { src };
     match a {
-        Accent::Gb | Accent::Za => to_gb(en, ph, src, true),
+        Accent::Gb => to_gb(en, ph, rule_src, use_lex && !spelled, strong),
         Accent::Au | Accent::Nz => {
-            let (g, fr) = to_gb(en, ph, src, true);
+            let (g, fr) = to_gb(en, ph, rule_src, use_lex && !spelled, strong);
             (antipodean(&g, src, a), fr)
         }
         Accent::In => {
-            let (g, fr) = to_gb(en, ph, src, true);
+            let (g, fr) = to_gb(en, ph, rule_src, use_lex && !spelled, strong);
             let mut toks = tokenize(&g);
             for t in toks.iter_mut() {
                 match t.p.as_str() {
@@ -609,18 +917,15 @@ pub fn word(en: &English, ph: &str, src: &str, a: Accent) -> (String, bool) {
             }
             (render(&toks), fr)
         }
-        Accent::Sc => {
-            let src = expand_abbr(en, ph, src);
-            let (s, _) = rules(ph, src, SC);
-            let s = scottish(&s);
+        Accent::Sc | Accent::Ie => {
+            let src = expand_abbr(en, ph, rule_src);
+            // British word forms (herb, tomato, schedule) when the engine gave the word its plain reading
+            let brit = brit_form(en, ph, src);
+            let (s, _) = rules(brit.as_deref().unwrap_or(ph), src, if a == Accent::Sc { SC } else { IE });
+            let s = if a == Accent::Sc { scottish(&s) } else { s };
             (wh(&s, src).unwrap_or(s), false)
         }
-        Accent::Ie => {
-            let src = expand_abbr(en, ph, src);
-            let (s, _) = rules(ph, src, IE);
-            (wh(&s, src).unwrap_or(s), false)
-        }
-        Accent::Ca => (rules(ph, expand_abbr(en, ph, src), CA).0, false),
+        Accent::Ca => (rules(ph, expand_abbr(en, ph, rule_src), CA).0, false),
     }
 }
 
@@ -628,13 +933,15 @@ pub fn word(en: &English, ph: &str, src: &str, a: Accent) -> (String, bool) {
 pub fn apply(en: &English, outs: &mut [Out], a: Accent) {
     let n = outs.len();
     let mut link = vec![false; n];
+    let last = (0..n).rev().find(|&k| !outs[k].ph.is_empty());
     for k in 0..n {
         if outs[k].ph.is_empty() {
             continue;
         }
         let glued = outs[k].ph.starts_with('\u{0}');
         let ph = outs[k].ph.trim_start_matches('\u{0}').to_string();
-        let (new, fr) = word(en, &ph, &outs[k].src, a);
+        let strong = outs[k].pause_after || Some(k) == last;
+        let (new, fr) = word_at(en, &ph, &outs[k].src, a, strong, true);
         outs[k].ph = if glued { format!("\u{0}{new}") } else { new };
         link[k] = fr;
     }
@@ -664,7 +971,7 @@ mod tests {
 
     #[test]
     fn tokens_round_trip() {
-        for s in ["sˈɛkɹətˌɛɹi", "ɐbˌaʊt", "fˈaɪɚ", "tʃˈɜːtʃ", "nˈuː"] {
+        for s in ["sˈɛkɹətˌɛɹi", "ɐbˌaʊt", "fˈaɪɚ", "ʧˈɜːʧ", "nˈuː"] {
             assert_eq!(render(&tokenize(s)), s);
         }
     }
@@ -691,7 +998,7 @@ mod tests {
     fn lot_goat_flap_yod() {
         assert_eq!(gb("hˈɑːt", "hot"), "hˈɒt");
         assert_eq!(gb("fˈɑːðɚ", "father"), "fˈɑːðə");
-        assert_eq!(gb("wˈɑːtʃ", "watch"), "wˈɒtʃ");
+        assert_eq!(gb("wˈɑːʧ", "watch"), "wˈɒʧ");
         assert_eq!(gb("dˈɔːɡ", "dog"), "dˈɒɡ");
         assert_eq!(gb("lˈɔː", "law"), "lˈɔː");
         assert_eq!(gb("hˈoʊm", "home"), "hˈəʊm");
@@ -705,12 +1012,63 @@ mod tests {
     }
 
     #[test]
+    fn review_cases() {
+        // ɪ + əʊ is not ɪə + ʊ
+        assert_eq!(tokenize("vˈɪdɪəʊ").iter().map(|t| t.p.as_str()).collect::<Vec<_>>(), ["v", "ɪ", "d", "ɪ", "əʊ"]);
+        // affricate letters after the nasal
+        assert_eq!(antipodean("plˈɑːnʦ", "plants", Accent::Au), "plˈænʦ");
+        assert_eq!(antipodean("kəmˈɑːnʣ", "commands", Accent::Au), "kəmˈænʣ");
+        assert_eq!(antipodean("bɹˈɑːnʧ", "branch", Accent::Au), "bɹˈænʧ");
+        assert_eq!(antipodean("bɹˈɑːnʧ", "branch", Accent::Nz), "bɹˈɑːnʧ");
+        // yod coalescence only before the u vowels
+        assert_eq!(antipodean("kˈɔːtjˌɑːd", "courtyard", Accent::Au), "kˈɔːtjˌɑːd");
+        assert_eq!(antipodean("ɡˈʊdjɪə", "goodyear", Accent::Au), "ɡˈʊdjɪə");
+        assert_eq!(antipodean("djˈʊəɹɪŋ", "during", Accent::Au), "ʤˈʊəɹɪŋ");
+        assert_eq!(antipodean("məʧˈʊə", "mature", Accent::Au), "məʧˈʊə");
+        // NURSE in a word in -ur plus an ending, STRUT in hurry
+        assert_eq!(gb("əkˈɜːɹɪŋ", "occurring"), "əkˈɜːɹɪŋ");
+        assert_eq!(gb("blˈɜːɹi", "blurry"), "blˈɜːɹi");
+        assert_eq!(gb("kˈɜːɹi", "curry"), "kˈʌɹi");
+        assert_eq!(gb("skwˈɜːɹəl", "squirrel"), "skwˈɪɹəl");
+        // LOT before r
+        assert_eq!(gb("kwˈɔːɹəl", "quarrel"), "kwˈɒɹəl");
+        assert_eq!(gb("ɪmˈɔːɹəl", "immoral"), "ɪmˈɒɹəl");
+        assert_eq!(gb("kˈɔːɹənɚ", "coroner"), "kˈɒɹənə");
+        assert_eq!(gb("ɡlˈɔːɹi", "glory"), "ɡlˈɔːɹi");
+        assert_eq!(gb("məmˈɔːɹiəl", "memorial"), "məmˈɔːɹiəl");
+        // spelling line-up when the counts disagree
+        assert_eq!(gb("əfˈɔːɹθˌɑːt", "aforethought"), "əfˈɔːθˌɔːt");
+        assert_eq!(gb("kˈoʊlslˌɑː", "coleslaw"), "kˈəʊlslˌɔː");
+        assert_eq!(gb("ˌɪmpɹɪsˈɑːɹiˌoʊ", "impresario"), "ˌɪmpɹɪsˈɑːɹiˌəʊ");
+        // letter names: no spelling to go by
+        assert_eq!(gb("ˌɑːɹˌoʊˈaɪ", ""), "ˌɑːɹˌəʊˈaɪ");
+        // glottal stop + syllabic n
+        assert_eq!(gb("kˈɪʔn̩", "kitten"), "kˈɪtən");
+        assert_eq!(rules("ɹˈɪʔn̩", "written", IE).0, "ɹˈɪtən");
+        assert_eq!(rules("kˈɪʔn̩", "kitten", CA).0, "kˈɪʔn̩");
+        // rhotic accents of the British Isles
+        assert_eq!(rules("hˈɜːɹi", "hurry", IE).0, "hˈʌɹi");
+        assert_eq!(rules("mˈɛɹi", "marry", IE).0, "mˈæɹi");
+        assert_eq!(rules("mˈɛɹi", "merry", IE).0, "mˈɛɹi");
+        assert_eq!(rules("dˈʊɹɪŋ", "during", IE).0, "djˈʊɹɪŋ");
+        assert_eq!(rules("jˈɒt", "yacht", IE).0, "jˈɑːt");
+        assert_eq!(scottish(&rules("jˈɒt", "yacht", SC).0), "jˈɔt");
+        assert_eq!(rules("ˌɔn", "on", CA).0, "ˌɑːn");
+        assert_eq!(wh("sˈʌmwˌɛɹ", "somewhere").as_deref(), Some("sˈʌmʍˌɛɹ"));
+        assert_eq!(wh("hˈoʊl", "whole"), None);
+        // readings of a homograph
+        assert_eq!(reading_key("ɹˈɛkɔːd"), reading_key("ɹˈɛkəd"));
+        assert_ne!(reading_key("ɹˈɛkɔːd"), reading_key("ɹɪkˈɔːd"));
+        assert_ne!(reading_key("jˈuːs"), reading_key("jˈuːz"));
+    }
+
+    #[test]
     fn other_accents() {
         assert_eq!(antipodean("dˈɑːns", "dance", Accent::Au), "dˈæns");
         assert_eq!(antipodean("dˈɑːns", "dance", Accent::Nz), "dˈɑːns");
         assert_eq!(antipodean("ɡɹˈɑːs", "grass", Accent::Au), "ɡɹˈɑːs");
         assert_eq!(antipodean("ɹˈæbɪt", "rabbit", Accent::Au), "ɹˈæbət");
-        assert_eq!(antipodean("tjˈuːn", "tune", Accent::Au), "tʃˈuːn");
+        assert_eq!(antipodean("tjˈuːn", "tune", Accent::Au), "ʧˈuːn");
         assert_eq!(antipodean("skwˈeə", "square", Accent::Nz), "skwˈɪə");
         assert_eq!(antipodean("ʃˈʊə", "sure", Accent::Au), "ʃˈɔː");
         assert_eq!(antipodean("pjˈʊə", "pure", Accent::Au), "pjˈʊə");
@@ -719,7 +1077,7 @@ mod tests {
         assert_eq!(scottish(&rules("kˈɑːt", "cot", SC).0), "kˈɔt");
         assert_eq!(scottish(&rules("kˈɔːt", "caught", SC).0), "kˈɔt");
         assert_eq!(scottish(&rules("kˈɑːɹ", "car", SC).0), "kˈaɹ");
-        assert_eq!(wh("wˌɪtʃ", "which").as_deref(), Some("ʍˌɪtʃ"));
+        assert_eq!(wh("wˌɪʧ", "which").as_deref(), Some("ʍˌɪʧ"));
         assert_eq!(wh("hˌuː", "who"), None);
         assert_eq!(rules("kˈɔːt", "caught", CA).0, "kˈɑːt");
         assert_eq!(rules("fˈɔːɹ", "four", CA).0, "fˈɔːɹ");
