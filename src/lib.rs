@@ -6,6 +6,7 @@
 
 pub mod de;
 pub mod en;
+pub mod en_accent;
 pub mod es;
 pub mod fold;
 pub mod he;
@@ -68,12 +69,30 @@ pub enum Lang {
     Ar,
     /// Latin American Spanish (espeak's es-419): seseo, yeísmo
     EsLa,
+    /// English accents: the American engine plus `en_accent` (Southern British,
+    /// Australian, New Zealand, South African, Indian, Scottish, Irish, Canadian)
+    EnGb,
+    EnAu,
+    EnNz,
+    EnZa,
+    EnIn,
+    EnSc,
+    EnIe,
+    EnCa,
 }
 
 impl Lang {
     pub fn parse(s: &str) -> Option<Lang> {
         match s.to_ascii_lowercase().as_str() {
             "en" | "en-us" | "en_us" | "eng" => Some(Lang::En),
+            "en-gb" | "en_gb" | "en-uk" | "en-gb-x-rp" => Some(Lang::EnGb),
+            "en-au" | "en_au" => Some(Lang::EnAu),
+            "en-nz" | "en_nz" => Some(Lang::EnNz),
+            "en-za" | "en_za" => Some(Lang::EnZa),
+            "en-in" | "en_in" => Some(Lang::EnIn),
+            "en-sc" | "en-gb-scotland" | "en-scotland" => Some(Lang::EnSc),
+            "en-ie" | "en_ie" => Some(Lang::EnIe),
+            "en-ca" | "en_ca" => Some(Lang::EnCa),
             "es" | "es-es" | "spa" => Some(Lang::Es),
             "es-419" | "es-la" | "es-mx" | "es-ar" | "es-us" | "es-co" | "es-cl" | "es-pe" | "es-ve" | "es-419-sys" => Some(Lang::EsLa),
             "it" | "it-it" | "ita" => Some(Lang::It),
@@ -106,17 +125,42 @@ impl Lang {
     pub fn base(self) -> Lang {
         match self {
             Lang::EsLa => Lang::Es,
+            l if l.accent().is_some() => Lang::En,
             l => l,
         }
     }
 
-    pub const ALL: &[Lang] = &[Lang::En, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar];
+    /// The English accent a dialect code selects (`None` for plain `en` and other languages).
+    pub fn accent(self) -> Option<en_accent::Accent> {
+        use en_accent::Accent::*;
+        Some(match self {
+            Lang::EnGb => Gb,
+            Lang::EnAu => Au,
+            Lang::EnNz => Nz,
+            Lang::EnZa => Za,
+            Lang::EnIn => In,
+            Lang::EnSc => Sc,
+            Lang::EnIe => Ie,
+            Lang::EnCa => Ca,
+            _ => return None,
+        })
+    }
+
+    pub const ALL: &[Lang] = &[Lang::En, Lang::EnGb, Lang::EnAu, Lang::EnNz, Lang::EnZa, Lang::EnIn, Lang::EnSc, Lang::EnIe, Lang::EnCa, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar];
 
     pub fn code(self) -> &'static str {
         match self {
             Lang::En => "en",
             Lang::Es => "es",
             Lang::EsLa => "es-419",
+            Lang::EnGb => "en-gb",
+            Lang::EnAu => "en-au",
+            Lang::EnNz => "en-nz",
+            Lang::EnZa => "en-za",
+            Lang::EnIn => "en-in",
+            Lang::EnSc => "en-sc",
+            Lang::EnIe => "en-ie",
+            Lang::EnCa => "en-ca",
             Lang::It => "it",
             Lang::De => "de",
             Lang::Ru => "ru",
@@ -143,6 +187,7 @@ impl Lang {
     pub fn implemented(self) -> bool {
         match self {
             Lang::En | Lang::Es | Lang::EsLa | Lang::It | Lang::De | Lang::Ru => true,
+            Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnZa | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => true,
             Lang::He => he::IMPLEMENTED,
             Lang::Fr => fr::IMPLEMENTED,
             Lang::Pt => pt::IMPLEMENTED,
@@ -236,7 +281,7 @@ impl G2p {
                 return out;
             }
         }
-        let out = self.phonemize_plain(text, lang.base());
+        let out = self.phonemize_plain(text, lang.base(), lang.accent());
         match lang {
             Lang::EsLa => es::latin_american(&out),
             _ => out,
@@ -276,7 +321,7 @@ impl G2p {
         Some(parts.join(" "))
     }
 
-    fn phonemize_plain(&self, text: &str, lang: Lang) -> String {
+    fn phonemize_plain(&self, text: &str, lang: Lang, accent: Option<en_accent::Accent>) -> String {
         if lang == Lang::Ru {
             return self.russian().phonemize(text);
         }
@@ -422,7 +467,12 @@ impl G2p {
         }
         match lang {
             Lang::Es | Lang::EsLa => es::join(&mut outs),
-            Lang::En => self.english().join(&mut outs),
+            Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnZa | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => {
+                self.english().join(&mut outs);
+                if let Some(a) = accent {
+                    en_accent::apply(self.english(), &mut outs, a);
+                }
+            }
             Lang::It => it::join(&mut outs),
             Lang::De | Lang::Ru | Lang::He => {}
             Lang::Fr => fr::join(&mut outs),
@@ -506,7 +556,7 @@ impl G2p {
         }
         let ph = match lang {
             Lang::Es | Lang::EsLa => es::word(&lw),
-            Lang::En => self.english().word(w, outs),
+            Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnZa | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => self.english().word(w, outs),
             Lang::It => self.italian().word(&lw),
             Lang::De => self.german().word(w),
             Lang::Ru => self.russian().phonemize(w),

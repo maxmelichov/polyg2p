@@ -95,6 +95,7 @@ adds the optional CC BY-SA lexicons described under [Licensing](#licensing).
 | Language | Code | How it works | polyg2p | with lexicon pack | espeak-ng |
 |---|---|---|---|---|---|
 | English | `en` | CMUdict, context rules, small transformer for unknown words | **97.9%** | | 96.7% |
+| English accents | `en-gb`, `en-au`, `en-nz`, `en-za`, `en-in`, `en-sc`, `en-ie`, `en-ca` | the English engine plus accent rules; `en-gb` adds a Britfone word list ([docs/english-accents.md](docs/english-accents.md)) | 92.2% (`en-gb` vs WikiPron UK) | | |
 | Spanish | `es`, `es-419` | rules; `es-419` writes Latin American seseo and yeísmo | **99.5%** | | 99.3% |
 | Italian | `it` | rules, stress and vowel-quality statistics | **98.6%** | **99.7%** | 87.1% |
 | German | `de` | rules, compound splitting | 96.5% | **98.7%** | 96.5% |
