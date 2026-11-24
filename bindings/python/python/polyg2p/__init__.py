@@ -153,6 +153,8 @@ class Phonemizer:
         pieces: list[tuple[str, str]] = []
         last = 0
         for m in _INLINE.finditer(text):
+            if norm_lang(m.group(1)) not in SUPPORTED_LANGS:
+                continue  # a pseudo-tag such as <foo-bar>: plain text, not a language switch
             if m.start() > last:
                 pieces.append((lang, text[last:m.start()]))
             pieces.append((norm_lang(m.group(1)), m.group(2)))

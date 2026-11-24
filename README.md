@@ -220,7 +220,7 @@ hand-written rules.
 
 The British English word list compiled into the crate, `data/en_gb_lex.tsv`,
 comes from Britfone (MIT; full notice in `NOTICE`). Britfone's author states
-that its transcriptions were written for it and that published dictionaries
+that its transcriptions started from CMUdict and that published dictionaries
 were consulted rather than included; polyg2p relies on that statement. Only
 entries that Wiktionary's UK pronunciations also give are kept (a check, no
 Wiktionary text is copied). Empty the file down to its header line if you

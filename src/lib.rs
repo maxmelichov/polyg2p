@@ -88,7 +88,7 @@ impl Lang {
             "en-au" | "en_au" => Some(Lang::EnAu),
             "en-nz" | "en_nz" => Some(Lang::EnNz),
             "en-in" | "en_in" => Some(Lang::EnIn),
-            "en-sc" | "en_sc" | "en-gb-scotland" | "en-scotland" => Some(Lang::EnSc),
+            "en-sc" | "en_sc" | "en-gb-scotland" | "en_gb_scotland" | "en-scotland" | "en_scotland" => Some(Lang::EnSc),
             "en-ie" | "en_ie" => Some(Lang::EnIe),
             "en-ca" | "en_ca" => Some(Lang::EnCa),
             "es" | "es-es" | "spa" => Some(Lang::Es),

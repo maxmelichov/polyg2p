@@ -69,7 +69,7 @@ WikiPron) gives the same pronunciation. Of 1,444 Britfone words that differ from
 is Britfone's.
 
 Provenance: Britfone is published under the MIT licence. Its author states (README and issue #2
-of the Britfone repository) that the transcriptions were written for it, that published
+of the Britfone repository) that the transcriptions started from CMUdict, that published
 dictionaries (Collins, Oxford, Cambridge, Macmillan) "were consulted rather than included", and
 that the only sources included, "after heavy modification", were computer-readable ones (CMUdict
 and word-frequency lists). polyg2p relies on that statement; it has not audited Britfone entry by
