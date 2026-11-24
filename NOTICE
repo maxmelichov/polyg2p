@@ -54,8 +54,9 @@ data/en_gb_lex.tsv (Southern British forms of about 1,000 words)
     IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    Only entries whose pronunciation Wiktionary's UK list (via WikiPron) also gives are
-    kept; Wiktionary is used as a check and none of its text is included.
+    An entry is kept when Wiktionary's UK list (via WikiPron), if it has the word, gives
+    the same pronunciation; words that list lacks are kept on a stress check alone.
+    Wiktionary is used as a check and none of its text is included.
 
     Provenance, as stated by Britfone's author (README and issue #2 of that repository,
     2023-10-23): the transcriptions started from CMUdict; Wiktionary, Wikipedia and the

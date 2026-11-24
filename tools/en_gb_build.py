@@ -24,6 +24,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from en_accent_eval import collapse
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+# known Britfone errors on the path without a second source (typing slips, American or wrong-stress forms):
+# the rules are right for these
+EXCLUDE = {"adventurous", "nah", "atlases", "contrasts"}
 HEADER = "# word\tSouthern British form (readings of a context-dependent word joined with |); built by tools/en_gb_build.py from Britfone (MIT)\n"
 
 
@@ -144,6 +147,8 @@ def main():
             form = keep[0] if keep else ""
         if not same:
             miss.append((w, ga, got, vs[0], "" if form else "unconfirmed"))
+        if w in EXCLUDE and w not in second:
+            form = ""
         if not form:
             unconfirmed += not same
             continue

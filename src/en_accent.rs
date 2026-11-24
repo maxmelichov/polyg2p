@@ -560,7 +560,7 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
             }
             // marry, carry, narrow: TRAP; Mary, vary, parent, square: the FACE vowel; merry, very keep DRESS
             "ɛ" if r.brit_r && r_kept && g.is_some_and(|g| g.letters == "a" && g.after == "rr") => push(&mut out, t.stress, "æ"),
-            "ɛ" if r.brit_r && before_r && g.is_some_and(|g| matches!(g.letters, "a" | "ai" | "ae" | "ei")) => push(&mut out, t.stress, r.face),
+            "ɛ" if r.brit_r && !r.rhotic && before_r && g.is_some_and(|g| matches!(g.letters, "a" | "ai" | "ae" | "ei")) => push(&mut out, t.stress, r.face),
             "ɹ" if !r.rhotic => {
                 if vowel_at(i + 1) {
                     push(&mut out, None, "ɹ");
@@ -740,7 +740,12 @@ fn pick_reading<'a>(vars: &'a str, by_rule: &str) -> Option<&'a str> {
     let want = stresses(by_rule);
     let mut best: Option<(usize, &str)> = None;
     let mut tie = false;
-    for v in vars.split('|').filter(|v| stresses(v) == want) {
+    let cands: Vec<&str> = vars.split('|').filter(|v| stresses(v) == want).collect();
+    // the only listed reading with the engine's stress pattern is the reading, however far its vowels are (produce noun)
+    if let [only] = cands[..] {
+        return Some(only);
+    }
+    for v in cands {
         let d = distance(v, by_rule);
         match best {
             Some((bd, _)) if d == bd => tie = true,
@@ -1126,7 +1131,8 @@ mod tests {
         assert_eq!(gb("mˈɔːɹəl", "moral"), "mˈɒɹəl");
         assert_eq!(gb("lˈæʔn̩", "latin"), "lˈætɪn");
         assert_eq!(gb("ˈɛspiənɑːʤ", "espionage"), "ˈɛspiənɑːʤ");
-        assert_eq!(rules("mˈɛɹi", "mary", IE).0, "mˈeːɹi");
+        assert_eq!(rules("mˈɛɹi", "mary", GB).0, "mˈeəɹi");
+        assert_eq!(rules("mˈɛɹi", "mary", IE).0, "mˈɛɹi");
         assert_eq!(rules("sˈɜːɹəp", "syrup", IE).0, "sˈɪɹəp");
         assert_eq!(wh("wˈɑːpɪŋ", "whopping").as_deref(), Some("ʍˈɑːpɪŋ"));
     }

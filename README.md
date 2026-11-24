@@ -221,8 +221,9 @@ hand-written rules.
 The British English word list compiled into the crate, `data/en_gb_lex.tsv`,
 comes from Britfone (MIT; full notice in `NOTICE`). Britfone's author states
 that its transcriptions started from CMUdict and that published dictionaries
-were consulted rather than included; polyg2p relies on that statement. Only
-entries that Wiktionary's UK pronunciations also give are kept (a check, no
+were consulted rather than included; polyg2p relies on that statement. An
+entry is kept when Wiktionary's UK pronunciations, if they have the word, give
+the same form; words they lack are kept on a stress check alone (a check, no
 Wiktionary text is copied). Empty the file down to its header line if you
 want none of it, and `en-gb` falls back to its rules
 ([docs/english-accents.md](docs/english-accents.md)).

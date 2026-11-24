@@ -63,16 +63,18 @@ reading the list does not hold (contrast) keeps the American reading run through
 
 `tools/en_gb_build.py` writes `data/en_gb_lex.tsv` from Britfone. Britfone has typing errors and
 some American forms among its entries (deflection with r-, geese with -z, glory with the vowel of
-lot), so an entry is kept only when it has exactly one main stress and Wiktionary's UK list (via
-WikiPron) gives the same pronunciation. Of 1,444 Britfone words that differ from the rule output,
-501 are left to the rules for that reason. Wiktionary is only the check; every form in the list
-is Britfone's.
+lot), so an entry has exactly one main stress, and when Wiktionary's UK list (via WikiPron) has the
+word it must give the same pronunciation. A word WikiPron lacks is kept on the stress check alone
+(303 of the 1,358 entries), apart from a short exclusion list of known Britfone errors in the
+build tool. 191 Britfone words that differ from the rule output are left to the rules (a
+contradicting WikiPron form, or not exactly one main stress). Wiktionary is only the check; every
+form in the list is Britfone's.
 
 Provenance: Britfone is published under the MIT licence. Its author states (README and issue #2
 of the Britfone repository) that the transcriptions started from CMUdict, that published
 dictionaries (Collins, Oxford, Cambridge, Macmillan) "were consulted rather than included", and
-that the only sources included, "after heavy modification", were computer-readable ones (CMUdict
-and word-frequency lists). polyg2p relies on that statement; it has not audited Britfone entry by
+that the only sources included, "after heavy modification", were computer-readable ones "(like CMUDICT
+and BNC)". polyg2p relies on that statement; it has not audited Britfone entry by
 entry. The list is optional: with a header-only `data/en_gb_lex.tsv` the variant runs on its rules
 and `data/en_brit_words.tsv`, at the "rules only" accuracy below.
 
@@ -83,14 +85,14 @@ vowels and e/ɛ, a/æ spelling differences ignored). `tools/en_accent_eval.py`. 
 dictionary words, not the frequency-weighted top-20,000 figure the README gives for other
 languages.
 
-| | words in the list (813) | other Britfone words (11,024) | words Britfone lacks (53,859) |
+| | words in the list (834) | other Britfone words (11,003) | words Britfone lacks (53,859) |
 |---|---|---|---|
-| plain `en` scored as British | 24.5% | 69.4% | 41.9% |
-| `en-gb`, rules only | 33.7% | 92.3% | 55.9% |
-| `en-gb` | 95.7% | 92.4% | 56.0% |
+| plain `en` scored as British | 24.3% | 69.5% | 41.9% |
+| `en-gb`, rules only | 33.6% | 92.5% | 55.9% |
+| `en-gb` | 93.6% | 92.6% | 56.1% |
 
 The first column is not an independent result for the full variant: those entries were kept
-because this reference confirms them. The other two columns are independent of the list. The
+because this reference confirms them (or, for words it lacks, is not consulted). The other two columns are independent of the list. The
 last one is mostly rare words and names, where the out-of-vocabulary model does the work (plain
 `en` scores 62% on the same kind of list against American pronunciations).
 
