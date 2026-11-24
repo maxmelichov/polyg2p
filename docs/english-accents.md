@@ -22,7 +22,7 @@ from a tag alone (r or no r, BATH, LOT, yod, mergers).
 
 ## What each one changes
 
-- `en-gb`: no r unless a vowel follows, with linking r across words (`fˈɑːɹ əwˈeɪ`, `fˈɑː.`); LOT `ɒ`;
+- `en-gb`: weak forms of, was, from as `əv`, `wəz`, `fɹəm`; no r unless a vowel follows, with linking r across words (`fˈɑːɹ əwˈeɪ`, `fˈɑː.`); LOT `ɒ`;
   CLOTH joins LOT (`dˈɒɡ`); GOAT `əʊ`; BATH `ɑː` (word list); NEAR `ɪə`, SQUARE `eə`, CURE `ʊə`;
   hurry / sorry / marry keep short vowels; `t` and `d` instead of the flap; yod after t d n (`njˈuː`);
   -ile, -ary / -ory, -ization endings; unstressed vowels written `ə` / `ɪ` (never `ɐ` / `ᵻ`).
