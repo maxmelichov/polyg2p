@@ -95,6 +95,7 @@ adds the optional CC BY-SA lexicons described under [Licensing](#licensing).
 | Language | Code | How it works | polyg2p | with lexicon pack | espeak-ng |
 |---|---|---|---|---|---|
 | English | `en` | CMUdict, context rules, small transformer for unknown words | **97.9%** | | 96.7% |
+| English accents | `en-gb`, `en-au`, `en-nz`, `en-in`, `en-sc`, `en-ie`, `en-ca` | the English engine plus accent rules; `en-gb` adds a Britfone word list ([docs/english-accents.md](docs/english-accents.md)) | not measured on this scale; `en-gb` against a UK dictionary: see the linked page | | |
 | Spanish | `es`, `es-419` | rules; `es-419` writes Latin American seseo and yeísmo | **99.5%** | | 99.3% |
 | Italian | `it` | rules, stress and vowel-quality statistics | **98.6%** | **99.7%** | 87.1% |
 | German | `de` | rules, compound splitting | 96.5% | **98.7%** | 96.5% |
@@ -216,6 +217,16 @@ The small Italian tables compiled into the crate, `data/it_suffix.tsv` and
 statistics are generally not copyrightable. Delete them if you want no
 Wiktionary-derived material at all, and Italian falls back to its
 hand-written rules.
+
+The British English word list compiled into the crate, `data/en_gb_lex.tsv`,
+comes from Britfone (MIT; full notice in `NOTICE`). Britfone's author states
+that its transcriptions started from CMUdict and that published dictionaries
+were consulted rather than included; polyg2p relies on that statement. An
+entry is kept when Wiktionary's UK pronunciations, if they have the word, give
+the same form; words they lack are kept on a stress check alone (a check, no
+Wiktionary text is copied). Empty the file down to its header line if you
+want none of it, and `en-gb` falls back to its rules
+([docs/english-accents.md](docs/english-accents.md)).
 
 The evaluation scripts call espeak-ng through `phonemizer`, which is GPL. They
 are development tools, not part of the package.

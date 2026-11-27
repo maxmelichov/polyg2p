@@ -21,6 +21,7 @@ fn names(lang: Lang) -> Option<&'static [&'static str; 26]> {
         Lang::It => Some(&IT),
         Lang::De => Some(&DE),
         Lang::En | Lang::Ru | Lang::He => None,
+        Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => None,
         Lang::Fr => fr::LETTERS,
         Lang::Pt => pt::LETTERS,
         Lang::Pl => pl::LETTERS,

@@ -29,6 +29,49 @@ en.lex (English lexicon) and en.g2p (English out-of-vocabulary model)
     LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
     CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE.
 
+data/en_gb_lex.tsv (Southern British forms of about 1,000 words)
+    Derived from Britfone 3.0.1 (https://github.com/JoseLlarena/Britfone), which is
+    distributed under the following licence:
+
+    The MIT License (MIT)
+
+    Copyright (c) by 2017 Jose Llarena
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of
+    this software and associated documentation files (the "Software"), to deal in
+    the Software without restriction, including without limitation the rights to
+    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software is furnished to do so,
+    subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+    FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+    COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+    An entry is kept when Wiktionary's UK list (via WikiPron), if it has the word, gives
+    the same pronunciation; words that list lacks are kept on a stress check alone.
+    Wiktionary is used as a check and none of its text is included.
+
+    Provenance, as stated by Britfone's author (README and issue #2 of that repository,
+    2023-10-23): the transcriptions started from CMUdict; Wiktionary, Wikipedia and the
+    Collins, Oxford, Cambridge and Macmillan dictionaries are named as further sources for
+    British forms; the dictionaries "were consulted rather than included", and the only
+    sources included, "after heavy modification", were computer-readable ones "(like
+    CMUDICT and BNC)". polyg2p relies on that statement and on the MIT licence above; it
+    has not audited Britfone entry by entry. The file can be emptied down to its header
+    line without touching the code: en-gb then runs on its rules and
+    data/en_brit_words.tsv alone (see docs/english-accents.md for what
+    that costs in accuracy).
+
+data/en_gb_func.tsv, data/en_brit_words.tsv
+    Short lists of British function-word and word forms written by the polyg2p authors.
+
 data/it_suffix.tsv, data/it_open.tsv (Italian stress / vowel-openness statistics)
     Aggregate counts computed from WikiPron's Italian data, which is extracted
     from Wiktionary (CC BY-SA). The tables hold only per-ending statistics, not

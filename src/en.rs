@@ -191,6 +191,11 @@ enum Homograph {
     Close,
 }
 
+/// Is this word resolved by the sentence pass (accent layer: its form depends on context)?
+pub(crate) fn is_homograph(w: &str) -> bool {
+    homograph(w).is_some()
+}
+
 fn homograph(w: &str) -> Option<Homograph> {
     use Homograph::*;
     Some(match w {
@@ -270,6 +275,40 @@ impl English {
 
     pub fn has_lexicon(&self) -> bool {
         self.lex.is_some()
+    }
+
+    /// The lexicon's default pronunciation of a lower-case word (accent layer).
+    pub(crate) fn lexicon_form(&self, lw: &str) -> Option<&str> {
+        self.lookup(lw)
+    }
+
+    /// The full (stressed) form of a lower-case word: its lexicon entry when it has
+    /// one, else what `word` gives (accent tools).
+    pub fn citation(&self, lw: &str) -> String {
+        match self.lookup(lw) {
+            Some(p) => p.to_string(),
+            None => self.word(lw, &[]),
+        }
+    }
+
+    /// Is this word one whose reading the sentence pass chooses (accent tools)?
+    pub fn homograph_word(&self, lw: &str) -> bool {
+        is_homograph(lw)
+    }
+
+    /// Is `ph` this word read letter by letter (accent layer: ROI, CRO)?
+    pub(crate) fn is_spelled(&self, lw: &str, ph: &str) -> bool {
+        lw.len() <= 6 && lw.chars().all(|c| c.is_ascii_alphabetic()) && self.lookup(lw) != Some(ph) && self.spell(lw) == ph
+    }
+
+    /// Is `ph` the pronunciation this word gets with no context: its lexicon
+    /// entry, or what `word` returns for it (accent layer: a weak form, a
+    /// homograph reading or a merged pair is not).
+    pub(crate) fn is_default_form(&self, lw: &str, ph: &str) -> bool {
+        if self.lookup(lw) == Some(ph) {
+            return true;
+        }
+        !self.func.contains_key(lw) && self.word(lw, &[]) == ph
     }
 
     fn lookup(&self, w: &str) -> Option<&str> {

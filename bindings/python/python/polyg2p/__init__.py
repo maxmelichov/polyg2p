@@ -31,9 +31,14 @@ from .vocab import unknown_symbols, VOCAB
 __all__ = ["Phonemizer", "Engine", "unknown_symbols", "VOCAB", "SUPPORTED_LANGS", "default_data_dir"]
 
 SUPPORTED_LANGS = tuple(dict.fromkeys(list(CORE_LANGS) + ["he", "yi"]))
-_ALIASES = {"ge": "de", "en-us": "en", "eng": "en", "heb": "he", "iw": "he", "rus": "ru", "yid": "yi", "ji": "yi"}
-_INLINE = re.compile(r"<(\w+)>(.*?)</\1>", re.DOTALL)
-_TAG = re.compile(r"</?\w+>")
+_ALIASES = {
+    "ge": "de", "en-us": "en", "eng": "en", "heb": "he", "iw": "he", "rus": "ru", "yid": "yi", "ji": "yi",
+    # English accents: the aliases the Rust core accepts
+    "en-uk": "en-gb", "en-gb-x-rp": "en-gb", "en-gb-scotland": "en-sc", "en-scotland": "en-sc",
+}
+# language codes may carry a region: <en-gb>…</en-gb>, <es-419>…</es-419>
+_INLINE = re.compile(r"<(\w+(?:[-_]\w+)*)>(.*?)</\1>", re.DOTALL)
+_TAG = re.compile(r"</?\w+(?:[-_]\w+)*>")
 _HEBREW = re.compile(r"[֐-׿]")
 
 
@@ -47,7 +52,8 @@ def default_data_dir() -> Optional[Path]:
 
 
 def norm_lang(lang: str) -> str:
-    lang = lang.lower()
+    """Lower-case code with "-" as the separator (en_GB -> en-gb), aliases resolved."""
+    lang = lang.strip().lower().replace("_", "-")
     return _ALIASES.get(lang, lang)
 
 
