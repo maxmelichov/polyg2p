@@ -61,11 +61,14 @@ fn letters() {
 #[test]
 fn output_symbols() {
     // every symbol the module can write: the 7 vowels, the consonants, ʼ ʷ, kept punctuation
-    const OK: &str = "əuiaeɨo hlmsrʃkbvtnɲʔwzʒjdɡŋpfʧʤʦʣʼʷ.,?!:'-";
+    // (no ʦ ʣ: Amharic has neither, and t + s, d + z are never left to the affricate fold)
+    const OK: &str = "əuiaeɨo hlmsrʃkbvtnɲʔwzʒjdɡŋpfʧʤʼʷ.,?!:";
     let g = G2p::new(None);
     for c in rows("am_cases.tsv") {
         let got = g.phonemize(&c[1], Lang::Am);
         assert!(got.chars().all(|x| OK.contains(x)), "{} -> {got}", c[1]);
+        // a mark never stands alone
+        assert!(got.is_empty() || got.split(' ').all(|w| w.chars().any(|x| !".,?!:".contains(x))), "{} -> {got}", c[1]);
     }
     let all: String = (0x1200u32..=0x135A).filter_map(char::from_u32).filter(|&c| am::fidel(c).is_some()).collect();
     for w in all.chars().collect::<Vec<_>>().chunks(5) {
@@ -78,6 +81,15 @@ fn output_symbols() {
 fn tags_and_batch() {
     let g = G2p::new(None);
     assert_eq!(g.phonemize("ሰላም [laughs] ዓለም።", Lang::Am), "səlam [laughs] aləm.");
+    // Ethiopic punctuation right after a tag stays with the tag
+    assert_eq!(g.phonemize("ሰላም [laughs]። ዓለም", Lang::Am), "səlam [laughs]. aləm");
+    assert_eq!(g.phonemize("ሰላም [laughs]፡፡ ዓለም", Lang::Am), "səlam [laughs]. aləm");
+    assert_eq!(g.phonemize("ሰላም [laughs]፣ ዓለም", Lang::Am), "səlam [laughs], aləm");
+    assert_eq!(g.phonemize("ሰላም [laughs]?። ዓለም", Lang::Am), "səlam [laughs]? aləm");
+    assert_eq!(g.phonemize("ሰላም [laughs]፡ ዓለም", Lang::Am), "səlam [laughs] aləm");
+    assert_eq!(g.phonemize("[laughs] ። ዓለም", Lang::Am), "[laughs] aləm");
+    // other languages keep their own glue
+    assert_eq!(g.phonemize("uno [laughs]. dos", Lang::Es), "ˈuno [laughs]. dˈos");
     let texts: Vec<String> = (0..200).map(|i| if i % 2 == 0 { "ሰላም፣ ዓለም።".to_string() } else { "ቤቶች".to_string() }).collect();
     let out = g.phonemize_batch(&texts, Lang::Am);
     assert_eq!(out.len(), 200);

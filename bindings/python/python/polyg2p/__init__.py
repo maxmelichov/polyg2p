@@ -35,6 +35,8 @@ _ALIASES = {
     "ge": "de", "en-us": "en", "eng": "en", "heb": "he", "iw": "he", "rus": "ru", "yid": "yi", "ji": "yi",
     # English accents: the aliases the Rust core accepts
     "en-uk": "en-gb", "en-gb-x-rp": "en-gb", "en-gb-scotland": "en-sc", "en-scotland": "en-sc",
+    # Amharic: the codes Lang::parse accepts (am_ET arrives here as am-et)
+    "amh": "am", "am-et": "am",
 }
 # language codes may carry a region: <en-gb>…</en-gb>, <es-419>…</es-419>
 _INLINE = re.compile(r"<(\w+(?:[-_]\w+)*)>(.*?)</\1>", re.DOTALL)

@@ -16,15 +16,21 @@
 //!   at the start of the word it opens a syllable and takes `ɨ`. The last
 //!   consonant of the word joins the coda when sonority does not rise
 //!   (`ልብስ` → `lɨbs`, `አንድ` → `and`); otherwise `ɨ` goes between the two
-//!   (`ክፍል` → `kɨfɨl`, `እግር` → `ɨɡɨr`).
+//!   (`ክፍል` → `kɨfɨl`, `እግር` → `ɨɡɨr`). `h` never closes a cluster (`እኅት` →
+//!   `ɨhɨt`).
+//! * A bare `t` or `d` never stands directly before `ʃ`, `ʒ` or `z`, nor `t`
+//!   before a word-final `s`: it takes `ɨ` (`ቤትሽ` → `betɨʃ`). Written next to
+//!   each other the two would be folded into the affricate (`fold.rs`), and
+//!   `ቤትሽ` would come out the same as `ቤች`.
 //!
 //! Not predicted: gemination. Fidel does not write it, and it is lexical.
 //! The `ɨ` rule works on the written word, so a one-letter prefix is syllabified
 //! together with its stem.
 //!
-//! Amharic does not go through the shared tokenizer: `phonemize` reads the whole
-//! text, because Ethiopic punctuation (`። ፣ ፤ ፥ ፦ ፧ ፡`) has to be mapped first
-//! and apostrophes and hyphens are passed through as written.
+//! Text goes through the shared tokenizer after [`marks`] has mapped Ethiopic
+//! punctuation (`። ፣ ፤ ፥ ፦ ፧ ፡`) to the kept marks and turned everything the
+//! module does not read into a space. [`join`] then makes sure no mark is left
+//! standing alone.
 
 use crate::Out;
 
@@ -133,19 +139,27 @@ fn sonority(c: &str) -> u8 {
     }
 }
 
+/// Would `fold.rs` write `c1 c2` as one affricate letter wherever they meet?
+fn folds(c1: &str, c2: &str) -> bool {
+    matches!((c1, c2), ("t", "ʃ") | ("d", "ʒ") | ("d", "z"))
+}
+
 /// May the word end in the cluster `c1 c2` without `ɨ`? Sonority must not rise,
-/// and two sonorants need a fall.
+/// and two sonorants need a fall. `h` does not close a cluster, and neither does
+/// a pair the affricate fold would merge (`ts` is folded at the end of a word).
 fn coda_ok(c1: &str, c2: &str) -> bool {
-    if c1 == c2 {
+    if c1 == c2 || c1 == "h" || folds(c1, c2) || (c1, c2) == ("t", "s") {
         return false;
     }
     let (s1, s2) = (sonority(c1), sonority(c2));
     if s2 > 1 { s1 > s2 } else { s1 >= s2 }
 }
 
-/// Characters that belong to a fidel run (Ethiopic, Ethiopic Supplement, Ethiopic Extended).
+/// Letters of a written word: Ethiopic, and the Ethiopic Supplement, Extended
+/// and Extended-A blocks. Only the first is read ([`fidel`]); a letter of the
+/// other three is skipped without splitting the word.
 fn in_run(c: char) -> bool {
-    matches!(c as u32, 0x1200..=0x135A | 0x1380..=0x138F | 0x2D80..=0x2DDF)
+    matches!(c as u32, 0x1200..=0x135A | 0x1380..=0x138F | 0x2D80..=0x2DDF | 0xAB01..=0xAB2E) && c.is_alphabetic()
 }
 
 /// Phonemes of one run of fidel (one written word).
@@ -183,10 +197,12 @@ fn run(w: &str, out: &mut String) {
             coda = 0;
         } else if !last
             && ((i + 3 == n && bare(n - 2) && bare(n - 1) && coda_ok(seg[n - 2].0, seg[n - 1].0))
-                || (seg[i + 1].0 == "ɲ" && !seg[i + 1].1 && !seg[i + 1].2.is_empty()))
+                || (seg[i + 1].0 == "ɲ" && !seg[i + 1].1 && !seg[i + 1].2.is_empty())
+                || folds(c, seg[i + 1].0))
         {
             // after a vowel, but it still opens a syllable: the final cluster comes
-            // first (ስምንት → sɨmɨnt), and ɲ is long before a vowel (ማንኛው → manɨɲaw)
+            // first (ስምንት → sɨmɨnt), ɲ is long before a vowel (ማንኛው → manɨɲaw), and
+            // t + ʃ must not read as the affricate (ቤትሻ → betɨʃa)
             ph.push(c);
             ph.push("ɨ");
             coda = 0;
@@ -216,135 +232,132 @@ pub fn word(lw: &str) -> String {
     out
 }
 
-/// Ethiopic and typographic punctuation → the punctuation the output keeps.
-/// `Some("")` deletes the character (quotes), so the letters around it join.
+/// Ethiopic and typographic punctuation → the mark the output keeps, followed
+/// by a space so that it never reads as a digit separator (`3፣4` is two
+/// numbers). `Some(" ")` is a word boundary; `Some("")` deletes the character,
+/// so the letters around it join: quotation marks, apostrophes, and the
+/// combining marks (the Ethiopic gemination and vowel-length marks
+/// U+135D..U+135F, and U+0300..U+036F).
 fn punct(c: char) -> Option<&'static str> {
     Some(match c {
-        '።' | '፨' | '…' => ".",
-        '፣' | '፤' | '፥' | '(' | ')' | '–' | '—' | ';' => ",",
-        '፦' => ":",
-        '፧' => "?",
+        '።' | '፨' | '…' => ". ",
+        '፣' | '፤' | '፥' | '(' | ')' | '–' | '—' | ';' => ", ",
+        '፦' => ": ",
+        '፧' => "? ",
         '፡' | '፠' => " ",
-        '«' | '»' | '“' | '”' | '‘' | '’' | '"' => "",
+        '«' | '»' | '“' | '”' | '‘' | '’' | '"' | '\'' | '\u{135D}'..='\u{135F}' | '\u{0300}'..='\u{036F}' => "",
         _ => return None,
     })
 }
 
 const KEPT: &[char] = &['.', ',', '?', '!', ':'];
+/// Symbols the shared tokenizer hands to [`symbol`].
+const SPOKEN: &[char] = &['%', '$', '€', '£', '₪', '¥', '₽', '&', '+', '@', '°', '='];
 
-/// Phonemize running Amharic text.
+/// The punctuation pass that runs before the shared tokenizer.
 ///
-/// Fidel runs are converted, Ethiopic punctuation is mapped to `. , : ?`, and
-/// spacing is normalized: no space before a mark, one after it, and `.`, `,` or
-/// `:` right after another mark is dropped (`?.` → `?`, typed `::` → `:`).
-/// Digits are read as Amharic numbers and `%` as its word. Apostrophes and
-/// hyphens are passed through. Anything else (Latin letters, other scripts) is
-/// treated as a space.
-pub fn phonemize(text: &str) -> String {
-    // 1. punctuation, digits, symbols
+/// * Ethiopic punctuation becomes `. , : ?`; the word space `፡` becomes a space.
+/// * `፡፡` and `::`, the usual ways to type `።`, are a full stop; `፡-` is `፦`.
+/// * Quotation marks, apostrophes and combining marks are deleted.
+/// * Fidel, digits, `. , ? ! :`, white space and the symbols that are read
+///   (`%`, currency signs, `&`, `°`) pass through.
+/// * Anything else is a space: hyphens and dashes, slashes, Latin letters, other
+///   scripts, Ethiopic numerals.
+pub fn marks(text: &str) -> String {
     let src: Vec<char> = text.chars().collect();
-    let mut s = String::with_capacity(text.len() * 2);
+    let mut s = String::with_capacity(text.len() + 16);
     let mut i = 0;
     while i < src.len() {
         let c = src[i];
-        if let Some(p) = punct(c) {
+        i += 1;
+        if matches!(c, '፡' | ':') && src.get(i) == Some(&c) {
+            while src.get(i) == Some(&c) {
+                i += 1;
+            }
+            s.push_str(". ");
+        } else if c == '፡' && src.get(i) == Some(&'-') {
+            i += 1;
+            s.push_str(": ");
+        } else if let Some(p) = punct(c) {
             s.push_str(p);
-            i += 1;
-        } else if c.is_ascii_digit() {
-            let start = i;
-            while i < src.len() && src[i].is_ascii_digit() {
-                i += 1;
-            }
-            // 1,000,000: groups of exactly three digits
-            if i - start <= 3 {
-                while i + 3 < src.len() && src[i] == ',' && src[i + 1..i + 4].iter().all(char::is_ascii_digit) && !src.get(i + 4).is_some_and(char::is_ascii_digit) {
-                    i += 4;
-                }
-            }
-            let int: String = src[start..i].iter().filter(|c| c.is_ascii_digit()).collect();
-            s.push(' ');
-            number(&int, &mut s);
-            // 3.5: the fraction is read digit by digit
-            if i + 1 < src.len() && src[i] == '.' && src[i + 1].is_ascii_digit() {
-                s.push_str(DECIMAL);
-                s.push(' ');
-                i += 1;
-                while i < src.len() && src[i].is_ascii_digit() {
-                    s.push_str(UNITS[src[i] as usize - '0' as usize]);
-                    s.push(' ');
-                    i += 1;
-                }
-            }
-        } else if c == '%' {
-            s.push_str(" በመቶ ");
-            i += 1;
-        } else if in_run(c) || c.is_whitespace() || KEPT.contains(&c) || matches!(c, '\'' | '-') {
+        } else if in_run(c) || c.is_ascii_digit() || c.is_whitespace() || KEPT.contains(&c) || SPOKEN.contains(&c) {
             s.push(c);
-            i += 1;
         } else {
             s.push(' ');
-            i += 1;
         }
     }
-    // 2. fidel runs → phonemes; whitespace runs → one space
-    let mut t: Vec<char> = Vec::with_capacity(s.len());
-    let mut cur = String::new();
-    let mut buf = String::new();
-    for c in s.chars().chain(std::iter::once(' ')) {
-        if in_run(c) {
-            cur.push(c);
-            continue;
-        }
-        if !cur.is_empty() {
-            buf.clear();
-            run(&cur, &mut buf);
-            t.extend(buf.chars());
-            cur.clear();
-        }
-        if c.is_whitespace() {
-            if t.last() != Some(&' ') {
-                t.push(' ');
-            }
-        } else {
-            t.push(c);
-        }
-    }
-    // 3. no space before a mark
-    let mut u: Vec<char> = Vec::with_capacity(t.len());
-    for &c in &t {
-        if KEPT.contains(&c) {
-            while u.last() == Some(&' ') {
-                u.pop();
-            }
-        }
-        u.push(c);
-    }
-    // 4. one space after a mark that is followed by text
-    let mut v: Vec<char> = Vec::with_capacity(u.len() + 8);
-    for (k, &c) in u.iter().enumerate() {
-        v.push(c);
-        if KEPT.contains(&c) && u.get(k + 1).is_some_and(|&d| d != ' ' && !KEPT.contains(&d)) {
-            v.push(' ');
-        }
-    }
-    // 5. `.`, `,`, `:` directly after a mark are dropped
-    let mut out = String::with_capacity(v.len() * 2);
-    let mut k = 0;
-    while k < v.len() {
-        let c = v[k];
-        out.push(c);
-        k += 1;
-        if KEPT.contains(&c) {
-            while k < v.len() && matches!(v[k], '.' | ',' | ':') {
-                k += 1;
-            }
-        }
-    }
-    out.trim().to_string()
+    s
 }
 
-/// The shared sentence pass has nothing to do for Amharic.
-pub fn join(_outs: &mut [Out]) {}
+/// Is `c` Ethiopic punctuation? (`lib.rs` keeps it with an inline tag: `[laughs]።`.)
+pub fn is_mark(c: char) -> bool {
+    matches!(c, '።' | '፨' | '፣' | '፤' | '፥' | '፦' | '፧' | '፡' | '፠')
+}
+
+/// `.`, `,`, `:` right after another mark are dropped (`?.` → `?`).
+fn dedupe(punct: &mut String) {
+    let mut first = true;
+    punct.retain(|c| {
+        let keep = first || !matches!(c, '.' | ',' | ':');
+        first = false;
+        keep
+    });
+}
+
+/// The kept marks of a run of punctuation that follows an inline tag.
+pub fn tag_marks(run: &str) -> String {
+    let mut p: String = marks(run).chars().filter(|c| KEPT.contains(c)).collect();
+    dedupe(&mut p);
+    p
+}
+
+/// Sentence pass: a mark never stands alone. A token with no phonemes (letters
+/// the module does not read) is removed and its marks go to the word before it;
+/// marks before the first word are dropped.
+pub fn join(outs: &mut Vec<Out>) {
+    let mut kept: Vec<Out> = Vec::with_capacity(outs.len());
+    for o in outs.drain(..) {
+        if !o.ph.is_empty() {
+            kept.push(o);
+        } else if let Some(prev) = kept.last_mut() {
+            prev.pause_after |= !o.punct.is_empty();
+            prev.punct.push_str(&o.punct);
+        }
+    }
+    for o in &mut kept {
+        dedupe(&mut o.punct);
+    }
+    *outs = kept;
+}
+
+/// Digits written against letters are one word. The letters before go in front
+/// of the first number word (`በ5` → `በአምስት`). The letters after restate the end
+/// of the last one, as in the written language:
+///
+/// * `ኛ` makes the ordinal: a final bare consonant takes its first order
+///   (`5ኛ` → `አምስተኛ`, `1ኛ` → `አንደኛ`; `9ኛ` → `ዘጠነኛ`);
+/// * a suffix that starts with the consonant the number word ends in replaces
+///   that letter (`2ቱ` → `ሁለቱ`, `10ሩ` → `አሥሩ`);
+/// * anything else is appended (`2ም` → `ሁለትም`).
+pub fn glue(before: Option<&str>, words: &mut [String], after: Option<&str>) {
+    if let (Some(b), Some(w)) = (before, words.first_mut()) {
+        w.insert_str(0, b);
+    }
+    let (Some(a), Some(w)) = (after, words.last_mut()) else { return };
+    let end = w.chars().last().and_then(|e| Some((e, fidel(e)?)));
+    let start = a.chars().next().and_then(fidel);
+    if let (Some((e, (ec, false, ""))), Some((sc, _, _))) = (end, start) {
+        // the number word ends in a bare consonant
+        let guttural = matches!(ec, "h" | "ʔ");
+        if a.starts_with('ኛ') && !guttural {
+            w.pop();
+            w.push(if e == 'ኝ' { 'ነ' } else { char::from_u32(e as u32 & !7).unwrap_or(e) });
+        } else if sc == ec && !guttural {
+            w.pop();
+        }
+    }
+    w.push_str(a);
+}
 
 const UNITS: [&str; 10] = ["ዜሮ", "አንድ", "ሁለት", "ሦስት", "አራት", "አምስት", "ስድስት", "ሰባት", "ስምንት", "ዘጠኝ"];
 const TENS: [&str; 10] = ["", "አሥር", "ሃያ", "ሠላሳ", "አርባ", "ሃምሳ", "ስልሳ", "ሰባ", "ሰማንያ", "ዘጠና"];
@@ -402,22 +415,15 @@ pub fn cardinal(n: u128) -> Vec<String> {
     out
 }
 
-/// A digit string as number words followed by a space each. A leading zero
-/// (phone numbers, codes) is read digit by digit.
-fn number(digits: &str, s: &mut String) {
-    let words: Vec<String> = match digits.parse::<u128>() {
-        Ok(n) if !(digits.len() > 1 && digits.starts_with('0')) => cardinal(n),
-        _ => digits.bytes().map(|b| UNITS[(b - b'0') as usize].to_string()).collect(),
-    };
-    for w in words {
-        s.push_str(&w);
-        s.push(' ');
-    }
-}
-
+/// Words for a spoken symbol. Symbols without an entry are skipped.
 pub fn symbol(c: char) -> Option<&'static str> {
     match c {
         '%' => Some("በመቶ"),
+        '$' => Some("ዶላር"),
+        '€' => Some("ዩሮ"),
+        '£' => Some("ፓውንድ"),
+        '&' => Some("እና"),
+        '°' => Some("ዲግሪ"),
         _ => None,
     }
 }
@@ -482,18 +488,58 @@ mod tests {
     fn clusters() {
         assert!(coda_ok("b", "s") && coda_ok("n", "d") && coda_ok("r", "t") && coda_ok("j", "kʼ") && coda_ok("r", "n"));
         assert!(!coda_ok("f", "l") && !coda_ok("ɡ", "r") && !coda_ok("kʼ", "m") && !coda_ok("m", "n") && !coda_ok("t", "t"));
+        // h does not close a cluster
+        assert!(!coda_ok("h", "t") && coda_ok("r", "h"));
+        assert_eq!(word("እኅት"), "ɨhɨt");
     }
 
     #[test]
-    fn text() {
-        assert_eq!(phonemize("ሰላም፣ እንዴት ነህ?"), "səlam, ɨndet nəh?");
-        assert_eq!(phonemize("ቡና እፈልጋለሁ።"), "buna ɨfəlɡaləhu.");
-        assert_eq!(phonemize("ለምሳሌ፦ፖሊስ፣ሚሊሻ"), "ləmsale: polis, miliʃa");
-        assert_eq!(phonemize("ነው ::."), "nəw:");
-        assert_eq!(phonemize("ሰላም፡ዓለም"), "səlam aləm");
-        assert_eq!(phonemize("  «ሰላም»  "), "səlam");
-        assert_eq!(phonemize("ይካሄዳ?."), "jɨkaheda?");
-        assert_eq!(phonemize(""), "");
+    fn no_false_affricate() {
+        // pairs fold.rs would write as ʧ ʦ ʤ ʣ are never left next to each other
+        assert!(!coda_ok("t", "ʃ") && !coda_ok("t", "s") && !coda_ok("d", "ʒ") && !coda_ok("d", "z"));
+        assert!(coda_ok("tʼ", "s") && coda_ok("d", "s") && coda_ok("t", "sʼ"));
+        for (w, p) in [
+            ("ቤትሽ", "betɨʃ"),
+            ("ኮትሽ", "kotɨʃ"),
+            ("ቤትሽን", "betɨʃɨn"),
+            ("ቤትስ", "betɨs"),
+            ("ቤትሻ", "betɨʃa"),
+            ("ከብትሽ", "kəbtɨʃ"),
+            ("ውድዥ", "wɨdɨʒ"),
+            ("ውድዝ", "wɨdɨz"),
+            ("ውድዛ", "wɨdɨza"),
+            ("ትሿ", "tɨʃʷa"),
+            // the real affricates and other clusters are untouched
+            ("ቤች", "betʃ"),
+            ("ቤትሳ", "betsa"),
+            ("መንግሥት", "mənɡɨst"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+            let folded = crate::fold::fold(&word(w));
+            assert_eq!(folded.contains(['ʧ', 'ʦ', 'ʤ', 'ʣ']), w == "ቤች", "{w} -> {folded}");
+        }
+    }
+
+    #[test]
+    fn punctuation_pass() {
+        assert_eq!(marks("ሰላም፣ ዓለም።"), "ሰላም,  ዓለም. ");
+        // ፡፡ and :: are a full stop, ፡- is ፦, one ፡ is a space
+        assert_eq!(marks("ሀገር፡፡"), "ሀገር. ");
+        assert_eq!(marks("ሰላም::"), "ሰላም. ");
+        assert_eq!(marks("ለምሳሌ፡- ቡና"), "ለምሳሌ:  ቡና");
+        assert_eq!(marks("ሰላም፡ዓለም"), "ሰላም ዓለም");
+        // an Ethiopic comma between digits is not a digit separator
+        assert_eq!(marks("3፣4"), "3, 4");
+        // deleted: quotation marks, apostrophes, combining marks
+        assert_eq!(marks("«የ'ሰ\u{135F}ላ\u{0301}ም'»"), "የሰላም");
+        // a space: hyphens, the minus sign, slashes, Latin letters, Ethiopic numerals
+        assert_eq!(marks("ሥነ-ሥርዓት −5 ዶ/ር COVID-19 ፩"), "ሥነ ሥርዓት  5 ዶ ር       19  ");
+        assert_eq!(marks("$5 50% 3:30 1,000.5"), "$5 50% 3:30 1,000.5");
+        assert_eq!(tag_marks("።"), ".");
+        assert_eq!(tag_marks("?።"), "?");
+        assert_eq!(tag_marks("፡፡"), ".");
+        assert_eq!(tag_marks(";"), ",");
+        assert_eq!(tag_marks("፡"), "");
     }
 
     #[test]
@@ -504,9 +550,38 @@ mod tests {
         assert_eq!(cardinal(100), ["አንድ", "መቶ"]);
         assert_eq!(cardinal(1234), ["አንድ", "ሺህ", "ሁለት", "መቶ", "ሠላሳ", "አራት"]);
         assert_eq!(cardinal(2_000_000), ["ሁለት", "ሚሊዮን"]);
-        assert_eq!(phonemize("3 ሰዎች"), "sost səwotʃ");
-        assert_eq!(phonemize("1,000 ብር"), "and ʃih bɨr");
-        assert_eq!(phonemize("50%"), "hamsa bəməto");
-        assert_eq!(phonemize("2.5"), "hulət nətʼb amɨst");
+        assert_eq!(symbol('%'), Some("በመቶ"));
+        assert_eq!(symbol('$'), Some("ዶላር"));
+        assert_eq!(symbol('+'), None);
+    }
+
+    #[test]
+    fn digits_against_letters() {
+        let glued = |before: Option<&str>, n: u128, after: Option<&str>| {
+            let mut w = cardinal(n);
+            glue(before, &mut w, after);
+            w.join(" ")
+        };
+        for (n, after, want) in [
+            (1, "ኛ", "አንደኛ"),
+            (2, "ኛ", "ሁለተኛ"),
+            (5, "ኛ", "አምስተኛ"),
+            (9, "ኛ", "ዘጠነኛ"),
+            (10, "ኛ", "አሥረኛ"),
+            (20, "ኛ", "ሃያኛ"),
+            (100, "ኛው", "አንድ መቶኛው"),
+            (1000, "ኛ", "አንድ ሺህኛ"),
+            (2, "ቱ", "ሁለቱ"),
+            (5, "ቱ", "አምስቱ"),
+            (9, "ኙ", "ዘጠኙ"),
+            (10, "ሩ", "አሥሩ"),
+            (2, "ም", "ሁለትም"),
+            (20, "ዎቹ", "ሃያዎቹ"),
+        ] {
+            assert_eq!(glued(None, n, Some(after)), want, "{n}{after}");
+        }
+        assert_eq!(glued(Some("በ"), 5, None), "በአምስት");
+        assert_eq!(glued(Some("ከ"), 1000, Some("ኛ")), "ከአንድ ሺህኛ");
+        assert_eq!(glued(None, 5, None), "አምስት");
     }
 }

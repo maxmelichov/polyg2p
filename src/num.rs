@@ -226,7 +226,8 @@ fn expand_plain(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<Str
             Lang::Am => am::DECIMAL,
         }
         .to_string());
-        if f.len() <= 2 && !f.starts_with('0') && lang != Lang::En {
+        // English and Amharic read the fraction digit by digit
+        if f.len() <= 2 && !f.starts_with('0') && !matches!(lang, Lang::En | Lang::Am) {
             out.extend(cardinal(f.parse().unwrap_or(0), lang));
         } else {
             for d in f.chars() {

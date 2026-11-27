@@ -309,8 +309,10 @@ impl G2p {
             }
             rest = &rest[a + len + 1..];
             // punctuation glued to the tag stays with it: "[laughter]."
-            let punct: String = rest.chars().take_while(|c| text::KEPT_PUNCT.contains(c)).collect();
-            rest = &rest[punct.len()..];
+            // (Ethiopic marks included: "[laughs]።")
+            let glued: String = rest.chars().take_while(|&c| text::KEPT_PUNCT.contains(&c) || lang == Lang::Am && am::is_mark(c)).collect();
+            rest = &rest[glued.len()..];
+            let punct = if lang == Lang::Am { am::tag_marks(&glued) } else { glued };
             parts.push(format!("{tag}{punct}"));
         }
         if !found {
@@ -330,10 +332,14 @@ impl G2p {
         if lang == Lang::He {
             return self.hebrew().phonemize(text);
         }
-        if lang == Lang::Am {
-            // Ethiopic punctuation and spacing are handled on the whole text (am.rs)
-            return fold::fold(&am::phonemize(text));
-        }
+        // Ethiopic punctuation is mapped to the kept marks before tokenizing (am.rs)
+        let mapped;
+        let text = if lang == Lang::Am {
+            mapped = am::marks(text);
+            mapped.as_str()
+        } else {
+            text
+        };
         let toks = text::tokenize(text);
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
         let mut words: Vec<String> = Vec::new();
@@ -420,6 +426,21 @@ impl G2p {
                         skip = ti + 2;
                     } else {
                         num::expand(n, lang, &prev, next.unwrap_or(""), &mut words);
+                    }
+                    if lang == Lang::Am && !words.is_empty() {
+                        // digits written against letters are one word: በ5 → በአምስት, 5ኛ → አምስተኛ
+                        let before = match ti.checked_sub(1).map(|k| &toks[k]) {
+                            Some(Tok::Word(w)) if outs.last().is_some_and(|o| o.src == *w) => outs.pop().map(|o| o.src),
+                            _ => None,
+                        };
+                        let after = match toks.get(ti + 1) {
+                            Some(Tok::Word(w)) => {
+                                skip = ti + 2;
+                                Some(w.as_str())
+                            }
+                            _ => None,
+                        };
+                        am::glue(before.as_deref(), &mut words, after);
                     }
                     if lang == Lang::De && words.iter().any(|w| w == "Uhr") {
                         // 14:30 Uhr: the expansion already says Uhr

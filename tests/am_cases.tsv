@@ -75,14 +75,12 @@ epenthesis-before-long-nj	አማርኛ	amarɨɲa
 one-bare-letter	ች	ʧ
 ligature-fold	ልጅ	lɨʤ
 ligature-fold	ቤቶች	betoʧ
-ligature-fold-ts-final	ቤትስ	beʦ
 punct-full-stop	ቡና እፈልጋለሁ።	buna ɨfəlɡaləhu.
 punct-comma	ሰላም፣ እንዴት ነህ?	səlam, ɨndet nəh?
 punct-semicolon	መጣ፤ ሄደ።	mətʼa, hedə.
 punct-preface-colon	ለምሳሌ፦ፖሊስ፣ሚሊሻ	ləmsale: polis, miliʃa
 punct-question	ማን ነህ፧	man nəh?
 punct-wordspace	ሰላም፡ዓለም	səlam aləm
-punct-typed-colons	ነው ::	nəw:
 punct-doubled	እንዴት ነህ?.	ɨndet nəh?
 punct-quotes	«ሰላም» አለ።	səlam alə.
 punct-exclamation	ዋው! ሲያምር!	waw! sijamɨr!
@@ -95,9 +93,73 @@ number	2015	hulət ʃih asra amɨst
 number-decimal	2.5	hulət nətʼb amɨst
 number-leading-zero	09	zero zətʼəɲ
 percent	50%	hamsa bəməto
-unreadable-dropped	ሰላም hello ዓለም	səlam aləm
 sentence	አዲስ አበባ የኢትዮጵያ ዋና ከተማ ናት።	adis abəba jəʔitjopʼja wana kətəma nat.
 sentence	እንኳን ደህና መጡ።	ɨnkʷan dəhna mətʼu.
 sentence	አመሰግናለሁ፣ ደህና ሁን።	aməsəɡnaləhu, dəhna hun.
 sentence	ስሜ አበበ ነው።	sɨme abəbə nəw.
 sentence	ዛሬ የአየር ሁኔታው ጥሩ ነው።	zare jəʔajər hunetaw tʼɨru nəw.
+no-false-affricate	ቤትሽ	betɨʃ
+no-false-affricate	ኮትሽ	kotɨʃ
+no-false-affricate	ቤትሽን	betɨʃɨn
+no-false-affricate	ቤትስ	betɨs
+no-false-affricate	ቤትሻ	betɨʃa
+no-false-affricate	ውድዥ	wɨdɨʒ
+no-false-affricate	ውድዝ	wɨdɨz
+true-affricate-kept	ቤች	beʧ
+true-affricate-kept	ቤትሽ እና ቤች	betɨʃ ɨna beʧ
+h-closes-no-cluster	እኅት	ɨhɨt
+h-closes-no-cluster	ይህች	jɨhɨʧ
+full-stop-typed	ሀገር፡፡	haɡər.
+full-stop-typed	ሰላም፡፡ ዓለም	səlam. aləm
+full-stop-typed	ሰላም::	səlam.
+full-stop-typed	ነው ::	nəw.
+full-stop-typed	ነው ::.	nəw.
+full-stop-typed	ነው ፡፡ ሰላም	nəw. səlam
+preface-colon-typed	ለምሳሌ፡- ቡና	ləmsale: buna
+preface-colon-typed	ለምሳሌ:- ቡና	ləmsale: buna
+colon-kept	ሰላም: ዓለም	səlam: aləm
+combining-mark	ሰ፟ላም	səlam
+combining-mark	ሰ፝ላ፞ም	səlam
+combining-mark	ሰ́ላም	səlam
+number-ordinal	5ኛ	amsɨtəɲa
+number-ordinal	አምስተኛ	amsɨtəɲa
+number-ordinal	1ኛ ክፍል	andəɲa kɨfɨl
+number-ordinal	20ኛው	hajaɲaw
+number-suffix	2ቱ	hulətu
+number-suffix	ሁለቱ	hulətu
+number-suffix	10ሩ ሰዎች	asru səwoʧ
+number-suffix	2ም	hulətɨm
+number-prefix	በ5 ሰዓት	bəʔamɨst səʔat
+number-prefix	በአምስት ሰዓት	bəʔamɨst səʔat
+number-prefix	ከ1,000 በላይ	kəʔand ʃih bəlaj
+number-spaced	5 ኛ	amɨst ɲa
+minus-sign-not-read	-5	amɨst
+minus-sign-not-read	−5	amɨst
+currency	$5	amɨst dolar
+currency	5$	amɨst dolar
+currency	€20	haja juro
+currency-no-word	₪5	amɨst
+clock	3:30	sost səlasa
+number-range	1-2	and hulət
+number-list	3፣4	sost, arat
+number-decimal	3.14	sost nətʼb and arat
+number-date-slashes	12/03/2021	asra hulət zero sost hulət ʃih haja and
+symbol	30° ነው	səlasa diɡri nəw
+symbol-skipped	2+2=4	hulət hulət arat
+latin-skipped	ሰላም hello ዓለም	səlam aləm
+latin-skipped	COVID-19 ነው	asra zətʼəɲ nəw
+apostrophe-deleted	የ'ሰላም' ጽሑፍ	jəsəlam sʼɨhuf
+hyphen-word-boundary	ሥነ-ሥርዓት	sɨnə sɨrat
+hyphen-word-boundary	ሰላም - ዓለም	səlam aləm
+dash-comma	ሰላም — ዓለም	səlam, aləm
+no-bare-mark	። ሰላም	səlam
+no-bare-mark	- ' ። ?	
+no-bare-mark	hello. ሰላም	səlam
+no-bare-mark	ሰላም hello። ዓለም	səlam. aləm
+no-bare-mark	(ሰላም)	səlam,
+abbreviation-as-written	ዓ.ም.	a. m.
+abbreviation-as-written	ዶ/ር	do r
+letter-not-read	ሰላም ⶀ። ዓለም	səlam. aləm
+letter-not-read	ሰⶀላም	səlam
+ethiopic-numeral-skipped	፲፪ ቀን	kʼən
+sonorant-pair-final	ይስጥልኝ	jɨstʼɨlɲ

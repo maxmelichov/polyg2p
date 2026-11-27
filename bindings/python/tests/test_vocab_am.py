@@ -11,7 +11,7 @@ vocab = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(vocab)
 
 # every symbol src/am.rs can produce after fold.rs (tests/am.rs: output_symbols)
-AM = "əuiaeɨo hlmsrʃkbvtnɲʔwzʒjdɡŋpfʧʤʦʣʼʷ.,?!:'-"
+AM = "əuiaeɨo hlmsrʃkbvtnɲʔwzʒjdɡŋpfʧʤʼʷ.,?!:"
 
 
 class AmharicVocab(unittest.TestCase):
