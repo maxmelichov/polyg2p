@@ -34,6 +34,7 @@ pub mod sv;
 pub mod id;
 pub mod ca;
 pub mod ar;
+pub mod am;
 
 
 use std::path::{Path, PathBuf};
@@ -67,6 +68,8 @@ pub enum Lang {
     Id,
     Ca,
     Ar,
+    /// Amharic (Ge'ez script)
+    Am,
     /// Latin American Spanish (espeak's es-419): seseo, yeísmo
     EsLa,
     /// English accents: the American engine plus `en_accent` (Southern British,
@@ -112,6 +115,7 @@ impl Lang {
             "id" | "ind" => Some(Lang::Id),
             "ca" | "cat" => Some(Lang::Ca),
             "ar" | "ara" => Some(Lang::Ar),
+            "am" | "amh" | "am-et" | "am_et" => Some(Lang::Am),
             _ => None,
         }
     }
@@ -143,7 +147,7 @@ impl Lang {
         })
     }
 
-    pub const ALL: &[Lang] = &[Lang::En, Lang::EnGb, Lang::EnAu, Lang::EnNz, Lang::EnIn, Lang::EnSc, Lang::EnIe, Lang::EnCa, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar];
+    pub const ALL: &[Lang] = &[Lang::En, Lang::EnGb, Lang::EnAu, Lang::EnNz, Lang::EnIn, Lang::EnSc, Lang::EnIe, Lang::EnCa, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar, Lang::Am];
 
     pub fn code(self) -> &'static str {
         match self {
@@ -176,6 +180,7 @@ impl Lang {
             Lang::Id => "id",
             Lang::Ca => "ca",
             Lang::Ar => "ar",
+            Lang::Am => "am",
         }
     }
 
@@ -200,6 +205,7 @@ impl Lang {
             Lang::Id => id::IMPLEMENTED,
             Lang::Ca => ca::IMPLEMENTED,
             Lang::Ar => ar::IMPLEMENTED,
+            Lang::Am => am::IMPLEMENTED,
         }
     }
 }
@@ -323,6 +329,10 @@ impl G2p {
         }
         if lang == Lang::He {
             return self.hebrew().phonemize(text);
+        }
+        if lang == Lang::Am {
+            // Ethiopic punctuation and spacing are handled on the whole text (am.rs)
+            return fold::fold(&am::phonemize(text));
         }
         let toks = text::tokenize(text);
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
@@ -486,6 +496,7 @@ impl G2p {
             Lang::Id => id::join(&mut outs),
             Lang::Ca => ca::join(&mut outs),
             Lang::Ar => ar::join(&mut outs),
+            Lang::Am => am::join(&mut outs),
         }
         let mut s = String::with_capacity(text.len() * 2);
         for o in &outs {
@@ -572,6 +583,7 @@ impl G2p {
             Lang::Id => id::word(&lw),
             Lang::Ca => ca::word(&lw),
             Lang::Ar => ar::word(&lw),
+            Lang::Am => am::word(&lw),
         };
         outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
     }

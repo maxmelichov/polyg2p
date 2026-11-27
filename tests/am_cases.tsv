@@ -1,0 +1,103 @@
+# rule	input	expected output of phonemize(input, am)
+order-1	ለ	lə
+order-2	ሉ	lu
+order-3	ሊ	li
+order-4	ላ	la
+order-5	ሌ	le
+order-7	ሎ	lo
+order-8-labialized	ሏ	lʷa
+guttural-first-order-a	ሀ	ha
+guttural-first-order-a	ሐ	ha
+guttural-first-order-a	ኀ	ha
+guttural-first-order-a	አ	a
+guttural-first-order-a	ዐ	a
+h-row-kaf	ኸ	hə
+glottal-a-form	ኧረ	ərə
+ejective	ጠጅ	tʼəʤ
+ejective	ቀን	kʼən
+ejective	ጳጳስ	pʼapʼas
+ejective	ጸሎት	sʼəlot
+ejective	ፀሐይ	sʼəhaj
+ejective-affricate	ጨው	ʧʼəw
+affricate	ቸር	ʧər
+affricate	ጀመረ	ʤəmərə
+palatal	ሻይ	ʃaj
+palatal	ዠ	ʒə
+palatal-nasal	ኛ	ɲa
+labialized-series	ቋንቋ	kʼʷankʼʷa
+labialized-series	ጐረቤት	ɡʷərəbet
+labialized-series	ኳስ	kʷas
+labialized-series	ኋላ	hʷala
+labialized-series	ቍጥር	kʼʷɨtʼɨr
+carrier-initial	አንድ	and
+carrier-initial	ኢትዮጵያ	itjopʼja
+carrier-initial	ኡጋንዳ	uɡanda
+carrier-initial	ኤሊ	eli
+carrier-initial	ኦሮሞ	oromo
+carrier-sixth-order	እግር	ɨɡɨr
+carrier-sixth-order	እናት	ɨnat
+carrier-sixth-order	ዕድል	ɨdɨl
+carrier-hiatus	ሰዓት	səʔat
+carrier-hiatus	ትንሳኤ	tɨnsaʔe
+carrier-hiatus	ምዕራብ	mɨʔɨrab
+carrier-final	ረቡዕ	rəbuʔ
+epenthesis-initial	ስም	sɨm
+epenthesis-initial	ብር	bɨr
+epenthesis-initial	ውሃ	wɨha
+epenthesis-initial	ይህ	jɨh
+epenthesis-initial	ትራምፕ	tɨramp
+epenthesis-coda	ቤት	bet
+epenthesis-coda	ነው	nəw
+epenthesis-coda	መጽሐፍ	məsʼhaf
+epenthesis-coda	ሆስፒታል	hospital
+epenthesis-final-cluster	ልብስ	lɨbs
+epenthesis-final-cluster	ስልክ	sɨlk
+epenthesis-final-cluster	ሀይቅ	hajkʼ
+epenthesis-final-cluster	ግብፅ	ɡɨbsʼ
+epenthesis-final-cluster	ህልም	hɨlm
+epenthesis-rising-cluster	ክፍል	kɨfɨl
+epenthesis-rising-cluster	ክብር	kɨbɨr
+epenthesis-rising-cluster	ጥቅም	tʼɨkʼɨm
+epenthesis-rising-cluster	ደብል	dəbɨl
+epenthesis-medial	ድንግል	dɨnɡɨl
+epenthesis-medial	ትምህርት	tɨmhɨrt
+epenthesis-medial	መንግሥት	mənɡɨst
+epenthesis-medial	አንድነት	andɨnət
+epenthesis-medial	ምክንያት	mɨknɨjat
+epenthesis-medial	እንግሊዝ	ɨnɡɨliz
+epenthesis-medial	ፍርፍር	fɨrfɨr
+epenthesis-final-cc-first	ስምንት	sɨmɨnt
+epenthesis-final-cc-first	አምስት	amɨst
+epenthesis-final-cc-first	ስድስት	sɨdɨst
+epenthesis-final-cc-first	ንግሥት	nɨɡɨst
+epenthesis-before-long-nj	ማንኛው	manɨɲaw
+epenthesis-before-long-nj	አማርኛ	amarɨɲa
+one-bare-letter	ች	ʧ
+ligature-fold	ልጅ	lɨʤ
+ligature-fold	ቤቶች	betoʧ
+ligature-fold-ts-final	ቤትስ	beʦ
+punct-full-stop	ቡና እፈልጋለሁ።	buna ɨfəlɡaləhu.
+punct-comma	ሰላም፣ እንዴት ነህ?	səlam, ɨndet nəh?
+punct-semicolon	መጣ፤ ሄደ።	mətʼa, hedə.
+punct-preface-colon	ለምሳሌ፦ፖሊስ፣ሚሊሻ	ləmsale: polis, miliʃa
+punct-question	ማን ነህ፧	man nəh?
+punct-wordspace	ሰላም፡ዓለም	səlam aləm
+punct-typed-colons	ነው ::	nəw:
+punct-doubled	እንዴት ነህ?.	ɨndet nəh?
+punct-quotes	«ሰላም» አለ።	səlam alə.
+punct-exclamation	ዋው! ሲያምር!	waw! sijamɨr!
+spacing	  አዲስ   አበባ  	adis abəba
+number	3 ሰዎች	sost səwoʧ
+number	11	asra and
+number	21 ቀን	haja and kʼən
+number	1,000 ብር	and ʃih bɨr
+number	2015	hulət ʃih asra amɨst
+number-decimal	2.5	hulət nətʼb amɨst
+number-leading-zero	09	zero zətʼəɲ
+percent	50%	hamsa bəməto
+unreadable-dropped	ሰላም hello ዓለም	səlam aləm
+sentence	አዲስ አበባ የኢትዮጵያ ዋና ከተማ ናት።	adis abəba jəʔitjopʼja wana kətəma nat.
+sentence	እንኳን ደህና መጡ።	ɨnkʷan dəhna mətʼu.
+sentence	አመሰግናለሁ፣ ደህና ሁን።	aməsəɡnaləhu, dəhna hun.
+sentence	ስሜ አበበ ነው።	sɨme abəbə nəw.
+sentence	ዛሬ የአየር ሁኔታው ጥሩ ነው።	zare jəʔajər hunetaw tʼɨru nəw.

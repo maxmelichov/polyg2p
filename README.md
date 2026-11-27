@@ -1,6 +1,6 @@
 # polyg2p
 
-Grapheme-to-phoneme conversion for TTS in 20 languages, written in Rust.
+Grapheme-to-phoneme conversion for TTS in 21 languages, written in Rust.
 It writes espeak-ng's IPA notation, so models trained on espeak phonemes can
 switch without retraining. It matches or beats espeak-ng's accuracy in every
 language measured and is 35 to 65 times faster for most of them. Apache-2.0,
@@ -115,6 +115,7 @@ adds the optional CC BY-SA lexicons described under [Licensing](#licensing).
 | Indonesian | `id` | rules, e/ə stem table | **99.6%** | | 88.4% |
 | Russian | `ru` | dictionaries, context model ([details](docs/russian.md)) | **98.9%** | | 62.4% |
 | Hebrew | `he` | sentence-level tagger ([details](docs/hebrew.md)) | | | |
+| Amharic | `am` | rules: Ge'ez script to IPA ([results](docs/results/am.md)) | not measured on this scale; 7.0% phone error on a 478-word Wiktionary gold, gemination set aside | | |
 | Yiddish | `yi` | routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) | | | |
 
 ¹ Built from Wiktionary, so scoring on Wiktionary is optimistic. On a
@@ -124,6 +125,7 @@ Russian is an exact port of [Russian-G2P](https://github.com/maxmelichov/Russian
 with RUAccent's context models distilled into one 1.5M-parameter model.
 Hebrew is distilled from [RenikudPlus](https://github.com/maxmelichov/RenikudPlus).
 Arabic is scaffolded and waits for a context model like Hebrew's.
+Amharic gemination is not written in the script and is not predicted.
 
 [docs/benchmarks.md](docs/benchmarks.md) has every table: all gold words,
 8.8 million Tatoeba sentences, unknown English words, memory, and how the
