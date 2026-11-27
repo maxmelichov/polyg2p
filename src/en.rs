@@ -36,6 +36,140 @@ const PERFECT: &[&str] = &[
     "haven't", "hadn't", "wasn't", "weren't",
 ];
 
+// "read": base form /ɹiːd/ or past /ɹɛd/, decided inside the word's clause (between pauses and
+// and / but / or / so). 1. the nearest auxiliary just before it (have / was -> past, will / did / to -> base);
+// 2. a bare third-person subject ("he read" is past); 3. the nearest time word in the clause.
+const READ_BASE: &[&str] = &[
+    "will", "would", "can", "could", "shall", "should", "may", "might", "must", "do", "does", "did", "don't",
+    "doesn't", "didn't", "won't", "can't", "cannot", "wouldn't", "couldn't", "shouldn't", "to", "i'll", "we'll",
+    "you'll", "they'll", "he'll", "she'll", "it'll", "let's", "please", "gonna", "wanna", "better", "rather",
+];
+const READ_PERFECT: &[&str] = &[
+    "have", "has", "had", "having", "was", "were", "been", "being", "is", "are", "be", "am", "i've", "you've",
+    "we've", "they've", "already", "just", "hasn't", "haven't", "hadn't", "wasn't", "weren't", "isn't", "aren't",
+    "i'd", "we'd", "you'd", "they'd", "he'd", "she'd",
+];
+const READ_NOUN_DET: &[&str] = &["a", "an", "the", "good", "great", "quick", "easy", "light", "long", "fun", "interesting", "another"];
+const READ_SUBJ: &[&str] = &["i", "you", "we", "they"];
+const READ_WH: &[&str] = &["why", "what", "when", "where", "how", "which", "who", "whom", "whose", "not"];
+const READ_THIRD: &[&str] = &["he", "she", "it", "who", "everyone", "everybody", "someone", "somebody", "nobody", "one"];
+const READ_STOP: &[&str] = &["and", "but", "or", "so", "while", "because", "then"];
+const READ_PAST: &[&str] = &[
+    "yesterday", "ago", "earlier", "previously", "recently", "last", "once", "afterwards", "later", "before",
+    "was", "were", "had", "did", "finally", "eventually", "formerly",
+];
+const READ_PRESENT: &[&str] = &[
+    "now", "every", "always", "usually", "often", "sometimes", "daily", "tomorrow", "tonight", "next",
+    "currently", "nowadays", "generally", "normally", "rarely", "seldom", "never", "weekly", "regularly",
+];
+const READ_THIS_PAST: &[&str] = &[
+    "morning", "afternoon", "evening", "week", "weekend", "month", "year", "summer", "spring", "autumn", "fall", "winter",
+];
+
+fn read_is_past_form(w: &str) -> bool {
+    READ_IRREGULAR_PAST.contains(&w) || (w.len() > 4 && w.ends_with("ed") && !w.ends_with("eed"))
+}
+
+fn read_form(words: &[(&str, bool)], k: usize) -> &'static str {
+    let n = words.len();
+    let start = (0..k).rev().find(|&j| words[j].1).map_or(0, |j| j + 1);
+    let end = (k..n).find(|&j| words[j].1).map_or(n, |j| j + 1);
+    // the clause: stop at a conjunction on either side
+    let lo = (start..k).rev().find(|&j| READ_STOP.contains(&words[j].0)).map_or(start, |j| j + 1);
+    let hi = (k + 1..end).find(|&j| READ_STOP.contains(&words[j].0)).unwrap_or(end);
+    let prev = if k > lo { words[k - 1].0 } else { "" };
+    let clause_final = words[k].1 || k + 1 >= end || ["for", "of"].contains(&words[k + 1].0);
+    // the noun: "a read", "a good read", "a disappointing read."
+    if READ_NOUN_DET.contains(&prev)
+        || (k >= lo + 2 && ["a", "an", "the", "another"].contains(&words[k - 2].0) && !READ_SUBJ.contains(&prev) && clause_final)
+    {
+        return "ɹˈiːd";
+    }
+    // "who read" / "he read": the subject right before it, narrative past
+    if READ_THIRD.contains(&prev) {
+        return "ɹˈɛd";
+    }
+    // "the parent read his paper": a singular noun subject; the present would be "reads"
+    if k >= lo + 2
+        && ["the", "a", "an", "this", "that", "my", "your", "his", "her", "our", "their", "its"].contains(&words[k - 2].0)
+        && !READ_SUBJ.contains(&prev)
+        && !prev.ends_with('s')
+        && !READ_NOUN_DET.contains(&prev)
+        && !READ_BASE.contains(&prev)
+        && !READ_PERFECT.contains(&prev)
+        && !(k >= lo + 3 && READ_BASE.contains(&words[k - 3].0))
+        && !["children", "people", "men", "women", "police", "folk", "staff", "team", "family", "better", "never", "often", "also", "only", "still"].contains(&prev)
+    {
+        return "ɹˈɛd";
+    }
+    // the auxiliary between subject and verb decides (have / was -> past, will / did / to -> base);
+    // after "I / you / we / they" only an inverted auxiliary at the clause start counts ("did you read")
+    let scan: Vec<usize> = if READ_SUBJ.contains(&prev) {
+        if k >= lo + 2 && (k - 2 == lo || READ_WH.contains(&words[k - 3].0)) { vec![k - 2] } else { vec![] }
+    } else {
+        (lo..k).rev().take(4).collect()
+    };
+    for j in scan {
+        let w = words[j].0;
+        if READ_PERFECT.contains(&w) {
+            return "ɹˈɛd";
+        }
+        if READ_BASE.contains(&w) {
+            return "ɹˈiːd";
+        }
+    }
+    // the nearest time word in the clause
+    let mut best: Option<(usize, bool)> = None;
+    for j in lo..hi {
+        if j == k {
+            continue;
+        }
+        let w = words[j].0;
+        let next = if j + 1 < hi { words[j + 1].0 } else { "" };
+        let cue = if READ_PAST.contains(&w) || (w == "this" && READ_THIS_PAST.contains(&next)) {
+            Some(true)
+        } else if READ_PRESENT.contains(&w) {
+            Some(false)
+        } else {
+            None
+        };
+        if let Some(c) = cue {
+            let d = j.abs_diff(k);
+            if best.map_or(true, |(bd, _)| d < bd) {
+                best = Some((d, c));
+            }
+        }
+    }
+    if let Some((_, c)) = best {
+        return if c { "ɹˈɛd" } else { "ɹˈiːd" };
+    }
+    // "procured it and read it": a bare predicate after a conjunction takes the earlier verb's tense
+    if k == lo && lo > start {
+        if (start..lo - 1).rev().any(|j| read_is_past_form(words[j].0)) {
+            return "ɹˈɛd";
+        }
+    }
+    // "read it and liked it": a coordinated verb later in the sentence
+    for j in k + 1..end {
+        if !["and", "then"].contains(&words[j].0) {
+            continue;
+        }
+        let mut v = j + 1;
+        if v < end && ["i", "you", "we", "they", "he", "she", "then"].contains(&words[v].0) {
+            v += 1;
+        }
+        if v < end && read_is_past_form(words[v].0) {
+            return "ɹˈɛd";
+        }
+    }
+    "ɹˈiːd"
+}
+const READ_IRREGULAR_PAST: &[&str] = &[
+    "went", "came", "saw", "said", "took", "got", "made", "found", "gave", "told", "thought", "felt", "left",
+    "knew", "wrote", "sat", "stood", "heard", "began", "kept", "brought", "bought", "fell", "ran", "spoke",
+    "understood", "forgot", "slept", "ate", "drank", "laughed", "cried",
+];
+
 const AUX_RESTRESS: &[&str] = &[
     "could", "would", "should", "can", "will", "do", "does", "did", "have", "has", "had", "is", "are", "was",
     "were", "am", "be", "been",
@@ -478,15 +612,8 @@ impl English {
             let next = if k + 1 < n && !outs[k].pause_after { outs[k + 1].src.clone() } else { String::new() };
             if let Some(kind) = homograph(&src) {
                 if let Some(mut p) = self.pick_homograph(kind, &src, &prev, &next) {
-                    if matches!(kind, Homograph::Read) && p == "ɹˈiːd" {
-                        // he read / read ... yesterday: a past form
-                        let third = matches!(prev.as_str(), "he" | "she" | "it" | "who" | "everyone" | "everybody" | "someone" | "nobody");
-                        let start = (0..k).rev().find(|&j| outs[j].pause_after).map_or(0, |j| j + 1);
-                        let end = (k..n).find(|&j| outs[j].pause_after).map_or(n, |j| j + 1);
-                        let cue = outs[start..end].iter().any(|o| matches!(o.src.as_str(), "yesterday" | "ago" | "earlier" | "previously" | "recently" | "last" | "once" | "afterwards" | "later"));
-                        if third || cue {
-                            p = "ɹˈɛd".into();
-                        }
+                    if matches!(kind, Homograph::Read) {
+                        p = read_form(&outs.iter().map(|o| (o.src.as_str(), o.pause_after)).collect::<Vec<_>>(), k).into();
                     }
                     outs[k].ph = p;
                 }
