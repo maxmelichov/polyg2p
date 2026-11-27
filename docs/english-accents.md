@@ -99,8 +99,14 @@ last one is mostly rare words and names, where the out-of-vocabulary model does 
 Rules against Britfone itself: 90.5% of 15,147 words agree up to secondary stress and the
 spelling of unstressed vowels.
 
-Plain `en` output is byte-identical to the previous build (checked on 5,000 sentences with both
-English models).
+Plain `en` and `en-us` output is byte-identical to the build without the accent layer (checked on
+40,000 sentences, 106,160 words and 65,161 fuzz lines, `en` and `en-us`; the sentences and fuzz lines
+also with `POLYG2P_EN_MODEL=large`). The other languages (es, de, fr, it, pt, nl, sv, pl, tr) are
+byte-identical on the same 40,000 sentences.
+
+Cost, measured on the same 40,000 sentences with the command-line tool (user CPU, one core): plain
+`en` 3.5 s, `en-ca` 4.5 s, `en-ie` 4.7 s, `en-sc` 5.0 s, `en-gb` 5.0 s, `en-in` 5.2 s, `en-au` 5.4 s,
+so an accent adds about 30-50% on top of plain `en`, which is unchanged.
 
 ## Tests
 

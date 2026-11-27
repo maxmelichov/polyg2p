@@ -512,6 +512,16 @@ fn short_or(g: Option<Grp>, src: &str) -> bool {
     !long
 }
 
+/// THOUGHT symbol of a rule set. Scottish shortens it to ɔ, but before ɪ that would
+/// spell the CHOICE diphthong ɔɪ (drawing, sawing): the long vowel stays there.
+fn thought_sym(r: Rules, next: &str, default: &'static str) -> &'static str {
+    match r.thought {
+        Some("ɔ") if next == "ɪ" => "ɔː",
+        Some(t) => t,
+        None => default,
+    }
+}
+
 fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
     let fixed = if r.suffixes { suffix_fix(ph, src) } else { None };
     let ph = fixed.as_deref().unwrap_or(ph);
@@ -579,7 +589,7 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
                 } else {
                     match set {
                         Open::Lot => push(&mut out, t.stress, r.lot.unwrap_or("ɑː")),
-                        Open::Thought => push(&mut out, t.stress, r.thought.unwrap_or(if r.lot.is_some() { "ɔː" } else { "ɑː" })),
+                        Open::Thought => push(&mut out, t.stress, thought_sym(r, p(i + 1), if r.lot.is_some() { "ɔː" } else { "ɑː" })),
                         Open::Palm => push(&mut out, t.stress, r.palm.unwrap_or("ɑː")),
                     }
                 }
@@ -592,7 +602,7 @@ fn rules(ph: &str, src: &str, r: Rules) -> (String, bool) {
                 } else if r.cloth_is_lot && cloth(g, src) {
                     push(&mut out, t.stress, r.lot.unwrap_or("ɔː"));
                 } else {
-                    push(&mut out, t.stress, r.thought.unwrap_or("ɔː"));
+                    push(&mut out, t.stress, thought_sym(r, p(i + 1), "ɔː"));
                 }
             }
             // the short ɔ of weak "on": LOT where LOT is rewritten, else the merged vowel (Canadian)
@@ -762,7 +772,10 @@ fn pick_reading<'a>(vars: &'a str, by_rule: &str) -> Option<&'a str> {
 /// Southern British form of one word of the American output. `strong`: the
 /// word stands before a pause, where of / from / was / been are not reduced.
 fn to_gb(en: &English, ph: &str, src: &str, use_lex: bool, strong: bool) -> (String, bool) {
-    if let Some(&(weak, full)) = gb_func().get(ph) {
+    // bin is not been: the table's bare bɪn rows are the weak forms of "been" and keep only that spelling.
+    // (merged pairs such as hɐvbɪn come with the first word as source and are "have been" by construction)
+    let is_bin = ph.replace(['ˈ', 'ˌ'], "") == "bɪn";
+    if let Some(&(weak, full)) = gb_func().get(ph).filter(|_| !is_bin || src.to_lowercase().ends_with("been")) {
         return ((if strong { full } else { weak }).to_string(), ends_in_r(ph));
     }
     let src = expand_abbr(en, ph, src);
@@ -814,7 +827,7 @@ fn to_gb(en: &English, ph: &str, src: &str, use_lex: bool, strong: bool) -> (Str
                         continue;
                     }
                     let (tail, fr) = rules(rest, suf, GB);
-                    let link = if ends_in_r(ga_stem) && tail.chars().next().is_some_and(|x| VOWELS.contains(x)) { "ɹ" } else { "" };
+                    let link = if ends_in_r(ga_stem) && !g.ends_with('ɹ') && tail.chars().next().is_some_and(|x| VOWELS.contains(x)) { "ɹ" } else { "" };
                     return (format!("{g}{link}{tail}"), fr);
                 }
             }

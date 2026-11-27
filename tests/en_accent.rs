@@ -79,6 +79,26 @@ fn words() {
     // words the checked list leaves to the rules
     assert_eq!(say("en-gb", "geese"), "ɡˈiːs");
     assert_eq!(say("en-gb", "glory"), "ɡlˈɔːɹi");
+    // bin is not been: only the spelling "been" takes the weak form
+    for code in ["en-gb", "en-au", "en-nz", "en-in"] {
+        for t in ["The bin is full.", "Put it in the bin.", "bin Laden", "rubbish bin"] {
+            assert!(!say(code, t).contains("biːn"), "{code}: {t}");
+            assert!(say(code, t).contains("bˈɪn"), "{code}: {t}");
+        }
+        assert!(say(code, "Where have you been?").contains("bˈiːn"), "{code}");
+        assert!(say(code, "I have been there.").contains("həvbiːn"), "{code}");
+    }
+    // no doubled linking r when the stem already ends in one
+    for code in ["en-gb", "en-au", "en-nz", "en-in"] {
+        for w in ["contrarily", "wirier", "wiriest"] {
+            assert!(!say(code, w).contains("ɹɹ"), "{code}: {w}");
+        }
+    }
+    assert_eq!(say("en-gb", "contrarily"), "kˈɒntɹəɹili");
+    // Scottish THOUGHT stays long before ɪ so drawing / sawing do not collide with CHOICE (boy)
+    assert_eq!(say("en-sc", "drawing"), "dɹˈɔːɪŋ");
+    assert_eq!(say("en-sc", "sawing"), "sˈɔːɪŋ");
+    assert_eq!(say("en-sc", "boy"), "bˈɔɪ");
     // every code leaves plain English alone
     let plain = say("en", "The kitten had written it during the far-off record of the tomato schedule.");
     assert_eq!(plain, "ðə kˈɪʔn̩ hæd ɹˈɪʔn̩ ɪt dˈʊɹɪŋ ðə fˈɑːɹ ˈɔːf ɹˈɛkɚd ʌvðə təmˈeɪtˌoʊ skˈɛʤʊl.");
