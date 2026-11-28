@@ -1,9 +1,47 @@
 # Finnish (`fi`)
 
 Rules only (`src/fi.rs`, no lexicon, no model). Notation follows espeak-ng's
-`fi` voice so TTS models trained on espeak phonemes can consume the output;
-pronunciations follow the standard language as transcribed by Wiktionary and
-go beyond espeak on compounds, loanwords and sandhi.
+`fi` voice so TTS models trained on espeak phonemes can consume the output,
+with one deliberate exception: length is written `ː` on every long vowel and
+every long consonant (see "Notation change" below); pronunciations follow the
+standard language as transcribed by Wiktionary and go beyond espeak on
+compounds, loanwords and sandhi.
+
+## Notation change: length is `ː` everywhere
+
+Until this change a long stop was `kː`/`tː`/`pː`, but every other long
+consonant was written twice (`ss ll mm nn rr ŋŋ`), and a boundary gemination
+of a non-stop was appended to the end of the previous word (`ˌoleh hˈyvæ`).
+Now every long consonant is the consonant plus `ː`, inside words and at word
+boundaries:
+
+| case | before | now |
+|---|---|---|
+| long sonorant / fricative | `pˈallo kˈissa kˈeŋŋæt` | `pˈalːo kˈisːa kˈeŋːæt` |
+| long stop, long vowel | `kˈukːa jˈæːtelø` | unchanged |
+| boundary gemination, stop | `tˈule tːˈænne` | unchanged |
+| boundary gemination, other consonant | `ˈantaːh hˈænelle` | `ˈantaː hːˈænelːe` |
+| enclitic gemination | `tˈulehhan kˈenellˌekːæːn` | `tˈulehːan kˈenelːˌekːæːn` |
+| same consonant on both sides of a compound seam | `…tt…` | `…tː…` (one long consonant) |
+| affricates `ts`, `tʃ` | unchanged | unchanged, never `ː` |
+
+Measured on all 155,032 Tatoeba sentences (`tools/fi_boundary.py`,
+`tools/eval_acc.py` unchanged): the scorer collapses `Cː` and `CC`, so WikiPron
+word accuracy (99.5% top list, 99.3% all words), PER and the boundary-gemination
+precision/recall are identical to the previous notation. Per sentence, with
+spaces and stress marks deleted and every doubled consonant rewritten as `Cː`,
+the old and new outputs are equal on 155,032 of 155,032; 89,116 sentences
+(57.5%) and 155,162 of 769,876 tokens (20.2%) are written differently, and
+the only token-level differences that are not a plain `CC` -> `Cː` rewrite are
+the 23,904 boundary geminates that moved to the next word and a handful of
+triple consonants at compound seams (`lll` -> `lː`). No token contains a
+doubled consonant phone or `ːː` any more. Every other language's output is
+byte-identical on 30,000 Tatoeba sentences each.
+
+**Models trained on the doubled notation need the earlier release for
+Finnish**: a model that learned `ss` will read `sː` as a different symbol.
+Exact-string agreement with espeak drops by design, 96.7% -> 81.3% on the
+14,638 words of the top list below (nearly all of the loss is `ll ss nn mm`).
 
 ## Accuracy vs Wiktionary (WikiPron `fin_latn_broad.tsv`)
 
@@ -30,16 +68,18 @@ gangreeni, 20 of 20 gold words), `th`/`gh`/`ph` in loans, `WC` read with
 `veː`. Losses: `ph` is always `f`, which the gold does not do in four rare
 words (hiphop, apheli, Ghana, ghanalainen).
 
-Exact-string agreement with espeak on the same words is 96.8%; nearly all of
-the rest is secondary stress in compounds (see below).
+Exact-string agreement with espeak on the same words was 96.8% before the
+notation change and is 81.3% after it (espeak doubles sonorants and
+fricatives, we write `ː`); before it, nearly all of the rest was secondary
+stress in compounds (see below).
 
 ## What the module does
 
 - **Segments**: `a e i o u y ä ö` -> `a e i o u y æ ø`, doubled vowel ->
   `ː`, the 18 diphthongs (`ai ei oi ui yi äi öi au eu iu ou ey iy äy öy ie uo
   yö`) as vowel pairs, everything else hiatus; `aii` -> `a|iː`, `aai` ->
-  `aː|i` (as espeak). Long stops `pː tː kː` (also `bː dː ɡː`), long sonorants
-  and fricatives doubled (`ss ll nn mm rr`), `ng` -> `ŋŋ` (before a
+  `aː|i` (as espeak). Every long consonant is the consonant plus `ː` (`pː tː kː
+  bː dː ɡː sː lː nː mː rː`), `ng` -> `ŋː` (before a
   consonant `ŋ`: englanti), `nk` -> `ŋk`, `n` before p/b -> `m` and before
   k/g -> `ŋ` also across compound seams (`eteːmpæin`, `suomeŋkielinen`).
   Loan letters: `c` -> `s` before e/i/y else `k`, `ck` -> `k`, `q(u)` ->
@@ -77,9 +117,8 @@ the rest is secondary stress in compounds (see below).
   stress; pronouns `minä sinä` and the forms of `olla`/`lienee` only `ˌ`,
   as in espeak's dictionary.
 - **Sentence pass (`join`)**: boundary gemination (*loppukahdennus*) in
-  espeak's own notation — the next word's initial stop gets `ː`
-  (`tˈule tːˈænne`), another consonant is appended to the previous word
-  (`ˌoleh hˈyvæ`). Which word triggers it depends on context, following the
+  the next word's initial consonant, a stop or not, gets `ː`
+  (`tˈule tːˈænne`, `ˌole hːˈyvæ`). Which word triggers it depends on context, following the
   Wiktionary appendix on Finnish pronunciation (final gemination: nominals in
   `-e`, allative, first infinitives, connegatives, 2nd-person imperatives,
   adverbs in `-itse/-nne/-sti/-lle`):
@@ -114,7 +153,7 @@ the rest is secondary stress in compounds (see below).
   Word-final `n` -> `ŋ`/`m` before k/p (`mˈennæːŋ kˈotɪːn`), as espeak. `-lle`
   + enclitic geminates the enclitic (`kˈenellˌekːæːn`, `sˈillekːɪn`);
   imperative + enclitic inside a word (`otapa` -> `ˈotapːa`, `tulehan` ->
-  `tˈulehhan`).
+  `tˈulehːan`).
 - **Numbers and normalisation** (`prenormalize`, `expand_token`):
   - cardinals as one orthographic word below a million
     (`kaksisataakolmekymmentäviisi`), `miljoona/miljoonaa`, `miljardi`,
@@ -181,6 +220,30 @@ the rest is secondary stress in compounds (see below).
 - espeak writes no gemination after connegatives and finite verbs it cannot
   tell from the infinitive; we geminate `en voi tehdä` and not `Tom pitää
   siitä`.
+
+## ie, uo, yö
+
+They are diphthongs in every position (`tˈie`, `kˈoirien`). The gold marks a
+diphthong with `̯` on the second vowel; it has a hiatus in a first syllable in
+7 of 4,599 cases (`di|edri`, `hi|en`, `i|es`) and later in the word wherever a
+compound part or an ending begins (`alku|osa`, `luki|en`, `evaku|oida`) or in a
+loan (`terrieri`, `hygienia`). Two alternatives were measured on the half of the
+gold selected by `md5(word) % 2 == 1` (9,153 gold-unambiguous
+occurrences; rules mined on the other half): R1 = diphthong only in the first
+syllable of a word or compound part, R2 = diphthong except before a list of
+endings (`-ien`, `-uoida`, `-uoi-`, ...) and the first-syllable exceptions.
+
+| position | n | today | R1 | R2 |
+|---|---|---|---|---|
+| first syllable | 4,599 | 99.8% | 99.8% | 99.9% |
+| later | 4,554 | **91.3%** | 37.4% | 90.5% |
+
+R1 fails because the seam finder (`split_compound`, listed first elements and
+vowel harmony) finds a part start in few of the 4,143 later diphthongs of the
+gold (`maan|tie`, `aamu|yö`): 31.8% of them. R2's ending list is right on
+every word it hits in the gold (`-uoida` 9 of 9, `-uoi-` 24 of 24, `-ien` 9 of 9)
+but those are 51 words; the long tail of hiatus is compound seams the finder does
+not know. Neither beats the current rule, so it is unchanged.
 
 ## Sentence-level measurements
 

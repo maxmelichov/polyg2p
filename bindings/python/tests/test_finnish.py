@@ -21,7 +21,7 @@ class Finnish(unittest.TestCase):
         self.e = _polyg2p.Engine(None)
 
     def test_inflected_numeral(self):
-        self.assertEqual(self.e.phonemize("5:ssä", "fi"), "vˈiːdessæ")
+        self.assertEqual(self.e.phonemize("5:ssä", "fi"), "vˈiːdesːæ")
 
     def test_infinitive_only_after_governor(self):
         self.assertEqual(self.e.phonemize("Tom pitää siitä.", "fi"), "tˈom pˈitæː sˈiːtæ.")
