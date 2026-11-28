@@ -89,6 +89,11 @@ impl German {
             return out;
         }
         let lw = w.to_lowercase();
+        if lw.contains('ß')
+            && let Some(r) = reform_ss(w)
+        {
+            return self.word(&r);
+        }
         if let Some(f) = self.func.get(lw.as_str()) {
             return f.to_string();
         }
@@ -1303,6 +1308,78 @@ fn is_v(c: char) -> bool {
     matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'ä' | 'ö' | 'ü' | 'y')
 }
 
+/// Stems that keep ß in today's spelling because their vowel is long (Fuß, groß,
+/// Spaß, gemäß); matched against the end of the text up to and including the ß.
+const SS_LONG: &[&str] = &[
+    "spaß", "maß", "saß", "fraß", "gaß", "gemäß", "gefäß", "gesäß", "späß", "säß", "groß", "bloß", "stoß", "kloß",
+    "größ", "stöß", "klöß", "blöß", "flöß", "fuß", "gruß", "ruß", "buß", "süß", "grüß", "füß", "büß",
+];
+/// Short-vowel stems that open compounds whose second part starts with a vowel
+/// (Flußufer, Schloßallee, Mißerfolg, Meßergebnis).
+const SS_SEAM: &[&str] = &[
+    "fluß", "schloß", "miß", "meß", "eß", "freß", "preß", "paß", "haß", "nuß", "schuß", "kuß", "guß", "genuß",
+    "schluß", "abschluß", "anschluß", "beschluß", "entschluß", "einfluß", "überfluß", "ausschuß", "kongreß",
+    "prozeß", "baß", "faß", "riß", "biß", "imbiß", "kompromiß", "streß", "roß", "amboß",
+];
+
+/// Pre-1996 spelling to today's: until the reform, ß also stood for ss after a
+/// SHORT vowel at the end of a word or stem and before a consonant (daß, muß,
+/// Schloß, läßt, bißchen, Mißbrauch); today those are dass, muss, Schloss, lässt
+/// (Duden, "Die Schreibung von s, ss und ß": ß only after a long vowel or
+/// diphthong). Returns the modern spelling when the word has such a ß, so the
+/// lexicon and the rules read the vowel short. Words that keep ß today are left
+/// alone: ß between vowels inside a stem (Straße), after a diphthong or ie
+/// (weiß, hieß), and the long stems in `SS_LONG`.
+fn reform_ss(w: &str) -> Option<String> {
+    let c: Vec<char> = w.chars().collect();
+    let l: Vec<char> = w.to_lowercase().chars().collect();
+    if c.len() != l.len() {
+        return None;
+    }
+    let cap = c[0].is_uppercase();
+    let mut out = String::with_capacity(w.len() + 2);
+    let mut changed = false;
+    for k in 0..c.len() {
+        if l[k] != 'ß' {
+            out.push(c[k]);
+            continue;
+        }
+        let head: String = l[..=k].iter().collect();
+        let tail: String = l[k + 1..].iter().collect();
+        let short = (|| {
+            if k == 0 || !is_v(l[k - 1]) || l[k - 1] == 'y' {
+                return false;
+            }
+            if k >= 2 && (is_diph(l[k - 2], l[k - 1]) || l[k - 2] == l[k - 1]) {
+                return false; // weiß, außen, hieß: diphthong, ie or a doubled vowel
+            }
+            if l.get(k + 1).is_some_and(|&n| is_v(n)) {
+                // between vowels ß follows a long vowel unless a compound seam comes after it
+                return tail.chars().count() >= 3 && SS_SEAM.contains(&head.as_str());
+            }
+            if matches!(l[k - 1], 'e' | 'i') {
+                return true; // Prozeß, gewiß, ißt: no long e/i is written before ß
+            }
+            if head.ends_with("druß") || (head.ends_with("ruß") && !head.ends_with("gruß") && tail.starts_with("land")) {
+                return true; // Verdruß, Rußland
+            }
+            if head == "aß" || head == "äß" || SS_LONG.iter().any(|s| head.ends_with(s)) {
+                return false;
+            }
+            // der Schoß, das Floß (long) against schoß, floß (the verbs, today schoss, floss)
+            !(cap && (head == "schoß" || head == "floß" || head == "schöß"))
+        })();
+        if short {
+            changed = true;
+            // archaic -niß (Zeugniß) is today's -nis
+            out.push_str(if tail.is_empty() && head.ends_with("niß") { "s" } else { "ss" });
+        } else {
+            out.push(c[k]);
+        }
+    }
+    changed.then_some(out)
+}
+
 fn is_diph(a: char, b: char) -> bool {
     matches!((a, b), ('e', 'i') | ('a', 'i') | ('e', 'u') | ('ä', 'u') | ('a', 'u') | ('i', 'e'))
 }
@@ -1357,6 +1434,34 @@ mod tests {
             eprintln!("{w} {}", rules(w));
         }
     }
+    /// Pre-1996 ß after a short vowel (Duden, "Die Schreibung von s, ss und ß";
+    /// Wiktionary lists daß, muß, Schloß as "alte Schreibweise" of dass, muss, Schloss).
+    #[test]
+    fn old_spelling_sz() {
+        let g = super::German::load(None, None);
+        for (old, new) in [
+            ("daß", "dass"), ("muß", "muss"), ("mußte", "musste"), ("gewiß", "gewiss"), ("Schloß", "Schloss"),
+            ("Fluß", "Fluss"), ("läßt", "lässt"), ("bewußt", "bewusst"), ("bißchen", "bisschen"), ("ißt", "isst"),
+            ("Prozeß", "Prozess"), ("Rußland", "Russland"), ("häßlich", "hässlich"), ("Verdruß", "Verdruss"),
+            ("Mißerfolg", "Misserfolg"), ("Flußufer", "Flussufer"), ("floß", "floss"), ("beschloß", "beschloss"),
+        ] {
+            assert_eq!(super::reform_ss(old).as_deref(), Some(new), "{old}");
+            assert_eq!(g.word(old), g.word(new), "{old}");
+        }
+        assert_eq!(super::reform_ss("Zeugniß").as_deref(), Some("Zeugnis"));
+        assert_eq!(g.word("muß"), "mˈʊs");
+        assert_eq!(g.word("Schloß"), "ʃlˈɔs");
+        // ß that today's spelling keeps: long vowel, diphthong, ie, between vowels
+        for keep in [
+            "Fuß", "groß", "Spaß", "Maß", "saß", "aß", "vergaß", "Gruß", "süß", "Stoß", "bloß", "Schoß", "Floß", "größte",
+            "Gefäß", "gemäß", "grüßt", "stößt", "Fußball", "Großvater", "Maßeinheit", "weiß", "heißt", "ließ", "Straße",
+            "Füße", "außen", "Ruß", "Buße", "Soße", "fließt",
+        ] {
+            assert_eq!(super::reform_ss(keep), None, "{keep}");
+        }
+        assert_eq!(g.word("Fuß"), "fˈuːs");
+    }
+
     #[test]
     fn basic_rules() {
         assert_eq!(rules("haus"), "hˈaʊs");
