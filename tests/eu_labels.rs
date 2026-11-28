@@ -101,3 +101,11 @@ fn romanian_single_palatal() {
     assert_eq!(p("ro", "aici"), "aˈiʧʲ");
     assert_eq!(p("ro", "lupii"), "lˈupiɪ");
 }
+
+/// Greek: a secondary stress after the primary survives only before an enclitic.
+#[test]
+fn greek_final_secondary() {
+    assert_eq!(p("el", "άνθρωπος"), "ˈanθropos");
+    assert_eq!(p("el", "αυτοκίνητο"), "ˌaftocˈinito");
+    assert!(p("el", "άνθρωπος μου").contains("ˈanθropˌos") || p("el", "άνθρωπος μου").contains("ˈanθropˌoz"));
+}

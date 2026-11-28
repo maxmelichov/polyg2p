@@ -677,6 +677,20 @@ fn first_phone(s: &str) -> Option<char> {
 /// voicing of a word-final s before a voiced consonant (τους γονείς → tuz ɣonˈis),
 /// and elided clitics (σ' αυτό → saftˈo).
 pub fn join(words: &mut [Out]) {
+    // the second stress of a proparoxytone (άνθρωπος, αυτοκίνητο) exists only before an enclitic (μου σου του της μας σας
+    // τους τον την το τα: Holton, Mackridge & Philippaki-Warburton, Greek grammar, enclisis of stress); elsewhere a `ˌ`
+    // after the primary stress is dropped. A compound-initial `ˌ` before the primary stress (ˌaftocˈinito) stays.
+    for k in 0..words.len() {
+        const ENCLITIC: &[&str] = &["μου", "σου", "του", "της", "μας", "σας", "τους", "τον", "την", "το", "τα"];
+        let enclitic_next = !words[k].pause_after && words.get(k + 1).is_some_and(|n| ENCLITIC.contains(&n.src.as_str()));
+        if enclitic_next {
+            continue;
+        }
+        if let Some(pri) = words[k].ph.find('ˈ') {
+            let tail = words[k].ph[pri..].replace('ˌ', "");
+            words[k].ph = format!("{}{}", &words[k].ph[..pri], tail);
+        }
+    }
     for k in 1..words.len() {
         let (a, b) = words.split_at_mut(k);
         let prev = &mut a[k - 1];
