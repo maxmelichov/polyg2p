@@ -52,6 +52,65 @@ const RU_CTX_BUILTIN: &[u8] = include_bytes!("../data/ru-ctx.g2p");
 // ===========================================================================
 
 const MONO_STRESSED: &[&str] = &["а", "ко", "ли", "на", "но", "о", "по", "при", "то", "хоть"];
+/// Prepositions are proclitics: they have no stress of their own and form one
+/// phonological word with the next word, so their vowel reduces like any
+/// pretonic vowel and their last consonant takes the voicing of the next sound
+/// (на столе́ [nə stɐlʲˈe], на сто́л [nɐ stoɫ], под окно́м [pəd ɐknˈom], от до́ма
+/// [ɐd dˈomə], в парк [f park], с дру́гом [z drˈuɡəm]; Аванесов, Русское
+/// литературное произношение, on предлоги; Wiktionary writes на [nə]/[nɐ]).
+/// `V` is the position-dependent vowel (ɐ right before the stressed syllable,
+/// else ə; a word-initial о is always ɐ), a final capital the assimilating
+/// obstruent. через/перед keep their own weak stress and only assimilate.
+const PROCLITICS: &[(&str, &str)] = &[
+    ("на", "nV"), ("по", "pV"), ("о", "ɐ"), ("об", "ɐB"), ("обо", "ɐbV"), ("ко", "kV"), ("до", "dV"),
+    ("от", "ɐT"), ("ото", "ɐtV"), ("со", "sV"), ("во", "vV"), ("под", "pVD"), ("подо", "pədV"), ("за", "zV"),
+    ("над", "nVD"), ("про", "prV"), ("из", "ɪZ"), ("изо", "ɪzV"), ("без", "bʲɪZ"), ("безо", "bʲɪzV"),
+    ("при", "prʲɪ"), ("через", "ʧˈerʲɪZ"), ("перед", "pʲˈerʲɪD"), ("передо", "pʲɪrʲɪdV"),
+    ("в", "F"), ("с", "S"), ("к", "K"),
+];
+
+/// The proclitic `form` (a `PROCLITICS` template) before a host word whose IPA is `host`.
+fn proclitic(form: &str, host: &str, host_is_clitic: bool) -> String {
+    let mut first_vowel_stressed = false;
+    let mut vowels = 0;
+    let mut marked = false;
+    for ch in host.chars() {
+        if ch == 'ˈ' {
+            marked = true;
+            first_vowel_stressed = vowels == 0;
+        } else if is_phone_vowel(ch) {
+            vowels += 1;
+        }
+    }
+    // unmarked monosyllables (дом, них) are stressed words; an unmarked longer word is itself a clitic
+    let pretonic = !host_is_clitic && if marked { first_vowel_stressed } else { vowels <= 1 };
+    let h = host.chars().find(|&c| c != 'ˈ').unwrap_or(' ');
+    let voiceless = "ptkfsʂxʦʧɕ".contains(h);
+    let voiced = "bdɡzʐʑ".contains(h);
+    let mut out = String::new();
+    for c in form.chars() {
+        let (plain, vl, vd) = match c {
+            'V' => {
+                out.push_str(if pretonic { AA } else { SCHWA });
+                continue;
+            }
+            'B' => ("b", "p", "b"),
+            'D' => ("d", "t", "d"),
+            'T' => ("t", "t", "d"),
+            'Z' => ("z", "s", "z"),
+            'S' => ("s", "s", "z"),
+            'K' => ("k", "k", "ɡ"),
+            'F' => ("v", "f", "v"),
+            _ => {
+                out.push(c);
+                continue;
+            }
+        };
+        out.push_str(if voiceless { vl } else if voiced { vd } else { plain });
+    }
+    out
+}
+
 const CLITICS: &[(&str, &str)] = &[("же", "ʐɨ"), ("во", "vɐ"), ("нибудь", "nʲɪbʊtʲ")];
 const EXCEPTIONS: &[(&str, &str)] = &[
     ("что", "ʂto"), ("чтобы", "ʂtˈobɨ"), ("чтоб", "ʂtop"), ("ничто", "nʲɪʂtˈo"),
@@ -1762,7 +1821,17 @@ impl Russian {
 
     fn run(&self, text: &str, models: Option<&dyn ContextModels>, mut report: Option<&mut Report>) -> String {
         let norm = Self::normalize_input(text);
-        let words: Vec<String> = tokenize(&norm).into_iter().map(str::to_lowercase).collect();
+        let raw = tokenize(&norm);
+        // tokens written right after a hyphen that follows a letter (что-то, по-русски)
+        let hyphen_before: Vec<bool> = raw
+            .iter()
+            .map(|t| {
+                let at = t.as_ptr() as usize - norm.as_ptr() as usize;
+                let mut before = norm[..at].chars().rev();
+                before.next() == Some('-') && before.next().is_some_and(is_tok_cyr)
+            })
+            .collect();
+        let words: Vec<String> = raw.into_iter().map(str::to_lowercase).collect();
         let n = words.len();
         let is_p: Vec<bool> = words.iter().map(|w| w.chars().next().is_some_and(is_keep_punct)).collect();
         let mut prev_w: Vec<Option<usize>> = vec![None; n];
@@ -1823,10 +1892,13 @@ impl Russian {
         };
 
         let mut out: Vec<String> = Vec::with_capacity(n);
+        // token index of each `out` entry (None for Latin runs), for the proclitic pass
+        let mut src: Vec<Option<usize>> = Vec::with_capacity(n);
         let mut latin_run: Vec<&str> = Vec::new();
         for (i, tok) in words.iter().enumerate() {
             if is_p[i] {
                 self.flush_latin(&mut latin_run, &mut out, &mut report);
+                src.resize(out.len(), None);
                 let p: String = tok.chars().filter(|&c| is_keep_punct(c)).collect();
                 if !p.is_empty()
                     && let Some(last) = out.last_mut()
@@ -1846,6 +1918,7 @@ impl Russian {
                 continue;
             }
             self.flush_latin(&mut latin_run, &mut out, &mut report);
+            src.resize(out.len(), None);
             let nxt = next_w[i].map(|k| words[k].as_str());
             let prv = prev_w[i].map(|k| words[k].as_str());
             let marked = || marked_for(i);
@@ -1860,13 +1933,32 @@ impl Russian {
                 };
                 tier = "ood-suffix";
             }
-            let ipa = word_to_ipa(&acc, None);
+            let mut ipa = word_to_ipa(&acc, None);
+            // the particle -то (кто-то, что-то, как-то) is an unstressed enclitic
+            if tok == "то" && hyphen_before[i] {
+                ipa = "tə".to_string();
+            }
             if let Some(r) = report.as_deref_mut() {
                 r.push((tok.clone(), tier, ipa.clone()));
             }
             out.push(ipa);
+            src.push(Some(i));
         }
         self.flush_latin(&mut latin_run, &mut out, &mut report);
+        src.resize(out.len(), None);
+        // proclitic prepositions lean on the word right after them (right to left, so из-за, из-под chain)
+        let mut is_clitic = vec![false; out.len()];
+        for j in (0..out.len().saturating_sub(1)).rev() {
+            let Some(i) = src[j] else { continue };
+            if i + 1 >= n || is_p[i + 1] || out[j + 1].is_empty() || src[j + 1].is_some_and(|k| k != i + 1) {
+                continue; // stranded before punctuation or at the end: a full word
+            }
+            if let Some(form) = lookup(PROCLITICS, &words[i]) {
+                let unstressed = !form.contains('ˈ');
+                out[j] = proclitic(form, &out[j + 1], is_clitic[j + 1]);
+                is_clitic[j] = unstressed;
+            }
+        }
         let mut s = String::new();
         for x in out.iter().filter(|x| !x.is_empty()) {
             if !s.is_empty() {
@@ -2043,6 +2135,28 @@ mod tests {
         assert_eq!(word_to_ipa("н+а", Some(false)), "na");
         assert_eq!(word_to_ipa("", None), "");
         assert_eq!(word_to_ipa("+", None), "");
+    }
+
+    /// Prepositions lean on the next word: reduced vowel, voicing of the next sound.
+    #[test]
+    fn proclitic_prepositions() {
+        let ru = Russian::load(None);
+        for (text, ipa) in [
+            ("на стол", "nɐ stoɫ."), ("под дом", "pɐd dom."), ("от нас", "ɐt nas."), ("об нём", "ɐb nʲɵm."),
+            ("в парк", "f park."), ("в дом", "v dom."), ("с гор", "z ɡor."), ("к дню", "ɡ dʲnʲu."),
+            ("из-за всех", "ɪz zɐ fsʲex."), ("из-под них", "ɪs pɐd nʲix."), ("без них", "bʲɪz nʲix."),
+            ("при нём", "prʲɪ nʲɵm."), ("обо мне", "ɐbɐ mnʲe."), ("что-то", "ʂto tə."),
+            // stranded before punctuation: a full word, as before
+            ("он за, я на.", "on za, ja nˈa."),
+        ] {
+            assert_eq!(ru.phonemize(text), ipa, "{text}");
+        }
+        // second pretonic syllable and further: schwa
+        assert_eq!(proclitic("nV", "stɐlʲˈe", false), "nə");
+        assert_eq!(proclitic("pVD", "stɐɫˈom", false), "pət");
+        assert_eq!(proclitic("pVD", "ɐknˈom", false), "pəd");
+        assert_eq!(proclitic("ʧˈerʲɪZ", "dɐrˈoɡʊ", false), "ʧˈerʲɪz");
+        assert_eq!(proclitic("ʧˈerʲɪZ", "ʧas", false), "ʧˈerʲɪs");
     }
 
     #[test]
