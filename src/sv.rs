@@ -382,13 +382,19 @@ const K_HARD: &[&str] = &[
 ];
 /// Word-initial g before a front vowel that stays hard (loans).
 const G_HARD: &[&str] = &[
-    "gel", "gen", "gener", "genet", "genom", "genu", "geo", "gedi", "gess", "gibb", "giffel", "gigg", "gill",
+    "gel", "gen", "gener", "genet", "genom", "genu", "geo", "gedi", "gess", "gibb", "giffel", "gigg",
     "gimm", "gips", "girl", "gitarr", "gyn", "geisha", "gecko", "gem", "gentl", "germ",
 ];
 /// Word-initial g read ʃ (French loans).
 const G_SH: &[&str] = &["genre", "gelé", "geni", "generös", "gest", "gentil", "gelatin", "gest"];
 /// Native stems where "gen"/"geo"/"genom" prefixes keep j: checked before G_HARD.
 const G_SOFT: &[&str] = &["genom", "genast", "gensvar", "gentemot", "genväg", "genast", "genomsnitt", "genomföra"];
+
+/// Medial `sk` + i/y/ä/ö is the sj-sound when it starts a stressed stem (enskild, barnskötare, maktskifte), not in
+/// the stem-final -sk of fisk-e, risk-en, sliskiga; -ske- stays hard.
+fn sk_stem_start(c: &[char], i: usize) -> bool {
+    i > 0 && matches!(c.get(i + 2), Some('i' | 'y' | 'ä' | 'ö')) && c.get(i + 3).map_or(false, |&x| x != 'g' && !(c[i + 2] == 'i' && x == '#'))
+}
 
 /// Medial "sk" + front vowel read as the sj-sound (not after a prefix).
 const SK_SOFT: &[&str] = &["maskin", "människ", "kansk", "marskalk", "fallskärm", "avsk", "besk", "försk", "ansk", "utsk", "omsk", "insk", "uppsk", "misssk", "nysk", "mellansk"];
@@ -807,7 +813,7 @@ fn segment(c: &[char], parts: &[Part], lw: &str) -> Vec<Seg> {
                 } else if r.starts_with("sh") {
                     segs.push(cons("ʃ", 1, p));
                     i += 2;
-                } else if nx == 'k' && is_front(nx2) && (initial || SK_SOFT.iter().any(|s| lw.contains(s))) {
+                } else if nx == 'k' && is_front(nx2) && (initial || SK_SOFT.iter().any(|s| lw.contains(s)) || sk_stem_start(c, i)) {
                     segs.push(cons("sx", 1, p));
                     i += 2;
                 } else if r.starts_with("sion") && i > 0 {
@@ -1056,12 +1062,17 @@ fn qualities(segs: &mut [Seg], c: &[char], parts: &[Part], stressed: &[Option<us
         }
         // inflected forms keep the stem's long vowel: sjukt, djupt, högt, grovt
         if run.len() == 2 && w == 2 && final_in_part && run[1] == "t" && matches!(letter, 'u' | 'o' | 'y' | 'ö' | 'å')
-            && (matches!(run[0], "k" | "p" | "v" | "d") || (run[0] == "n" && letter == 'ö'))
+            && (matches!(run[0], "k" | "p" | "v" | "d") || (run[0] == "ɡ" && letter == 'å') || (run[0] == "n" && letter == 'ö'))
         {
             weight = 1;
         }
         // stop + liquid/j + vowel: syncopated stems keep the long vowel (jävla, fåglar, vakna, tredje)
         if run.len() == 2 && (w == 2 || (w == 3 && run[1] == "j")) && !final_in_part && ((matches!(run[0], "b" | "d" | "ɡ" | "k" | "p" | "v" | "t" | "f") && matches!(run[1], "l" | "r" | "n" | "j")) || (run[0] == "s" && run[1] == "n")) {
+            weight = 1;
+        }
+        // a linking or genitive -s does not make the syllable heavy: dags, arbets-, fredsaktivister
+        if run.len() == 2 && run[1] == "s" && pstr.chars().rev().nth(if final_in_part { 2 } else { 99 }).map_or(false, is_v)
+            && (matches!(run[0], "ɡ" | "v" | "p" | "b" | "k") || !final_in_part && matches!(run[0], "t" | "d")) {
             weight = 1;
         }
         let ph: String = if letter == 'o' && (pstr == "dom" || pstr == "domen") {
@@ -1076,9 +1087,12 @@ fn qualities(segs: &mut [Seg], c: &[char], parts: &[Part], stressed: &[Option<us
                 'e' if after_stress => "ə".to_string(),
                 'e' if p == 0 && part.stress == Stress::None => "ə".to_string(),
                 'ö' | 'å' | 'y' if weight == 0 && final_in_part => long_ph(letter).to_string(),
+                'å' if weight <= 1 => long_ph(letter).to_string(),
+                'ö' if weight <= 1 && part.stress != Stress::None => long_ph(letter).to_string(),
                 'o' if open => "ʊ".to_string(),
                 'o' if after_stress && run.len() >= 1 && run[0] == "r" && final_in_part && (c[part.end - 1] == 'r' || c[part.end - 1] == 's' || c[part.end - 1] == 'a') => "ʊ".to_string(),
                 'u' if weight == 0 && final_in_part => "ʉ".to_string(),
+                'u' | 'i' if run.len() == 1 && weight == 1 && !final_in_part && (after_stress || letter == 'u') && run[0] != "ɡ" && !(letter == 'i' && run[0] == "k") && !pstr.contains("ument") => long_ph(letter).to_string(),
                 'é' => "eː".to_string(),
                 _ => short_ph(letter).to_string(),
             }
@@ -1184,8 +1198,30 @@ fn retroflex(ph: String) -> String {
     out
 }
 
+/// A dental after a retroflex is retroflex too (rs+t: första `fœʂʈa`, rt+s: fortsätta `fʊʈʂɛta`, rd+n: ordning `oːɖɳɪŋ`).
+fn spread_retroflex(ph: String) -> String {
+    if !ph.contains(['ʂ', 'ʈ', 'ɖ', 'ɳ', 'ɭ']) {
+        return ph;
+    }
+    let mut out = String::with_capacity(ph.len());
+    let mut prev = ' ';
+    for ch in ph.chars() {
+        let ch = match (prev, ch) {
+            ('ʂ' | 'ʈ' | 'ɖ' | 'ɳ' | 'ɭ', 't') => 'ʈ',
+            ('ʂ' | 'ʈ' | 'ɖ' | 'ɳ' | 'ɭ', 'd') => 'ɖ',
+            ('ʂ' | 'ʈ' | 'ɖ' | 'ɳ' | 'ɭ', 'n') => 'ɳ',
+            ('ʂ' | 'ʈ' | 'ɖ' | 'ɳ' | 'ɭ', 'l') => 'ɭ',
+            ('ʈ' | 'ɖ' | 'ɳ' | 'ɭ', 's') => 'ʂ',
+            _ => ch,
+        };
+        out.push(ch);
+        prev = ch;
+    }
+    out
+}
+
 pub fn word(w: &str) -> String {
-    long_u(&retroflex(word_plain(w)))
+    long_u(&spread_retroflex(retroflex(word_plain(w))))
 }
 
 /// Swedish `u` is always long (`ʉː`; the short one is `ɵ`), and every other long vowel carries `ː`: espeak's bare `ʉ`
@@ -1521,7 +1557,12 @@ mod tests {
             ("barn", "bˈɑːɳ"),
             ("fors", "fˈɔʂ"),
             ("kort", "kˈɔʈ"),
-            ("förstå", "fœʂtˈoː"),
+            ("förstå", "fœʂʈˈoː"),
+            ("ordning", "ˈoːɖɳɪŋ"),
+            ("fortsätta", "fˈʊʈʂɛta"),
+            ("lågt", "lˈoːkt"),
+            ("dags", "dˈɑːks"),
+            ("numera", "nʉːmˈeːra"),
             // stress: loan suffixes, unstressed prefixes, particles, compounds
             ("studera", "stɵdˈeːra"),
             ("musik", "mɵsˈiːk"),
