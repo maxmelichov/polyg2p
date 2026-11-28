@@ -1953,6 +1953,10 @@ impl Russian {
             if i + 1 >= n || is_p[i + 1] || out[j + 1].is_empty() || src[j + 1].is_some_and(|k| k != i + 1) {
                 continue; // stranded before punctuation or at the end: a full word
             }
+            // a conjunction/particle host carries no stress to lean on: "за и против" keeps a full за
+            if matches!(words[i + 1].as_str(), "и" | "а" | "но" | "или" | "да" | "же" | "бы" | "ли") {
+                continue;
+            }
             if let Some(form) = lookup(PROCLITICS, &words[i]) {
                 let unstressed = !form.contains('ˈ');
                 out[j] = proclitic(form, &out[j + 1], is_clitic[j + 1]);
@@ -2151,6 +2155,10 @@ mod tests {
         ] {
             assert_eq!(ru.phonemize(text), ipa, "{text}");
         }
+        // conjunction host: the preposition keeps its full form
+        let kept = ru.phonemize("за и против");
+        assert!(kept.starts_with("zˈa ") || kept.starts_with("za "), "{kept}");
+        assert!(!kept.starts_with("zɐ ") && !kept.starts_with("zə "), "{kept}");
         // second pretonic syllable and further: schwa
         assert_eq!(proclitic("nV", "stɐlʲˈe", false), "nə");
         assert_eq!(proclitic("pVD", "stɐɫˈom", false), "pət");
