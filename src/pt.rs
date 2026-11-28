@@ -968,7 +968,7 @@ mod tests {
     fn sentence_pass() {
         let mut outs: Vec<Out> = ["os", "amigos", "mais", "ou", "menos", "dez", "casas"]
             .iter()
-            .map(|w| Out { ph: word(w), punct: String::new(), pause_after: false, src: w.to_string() })
+            .map(|w| Out { ph: word(w), punct: String::new(), pause_after: false, src: w.to_string(), cap: false })
             .collect();
         join(&mut outs);
         let got: Vec<&str> = outs.iter().map(|o| o.ph.as_str()).collect();

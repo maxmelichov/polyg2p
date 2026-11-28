@@ -1,7 +1,13 @@
-//! Tool: `en_homograph [--data DIR]` reads `sentence <TAB> start <TAB> end` lines (byte
-//! offsets of one word in the sentence) and prints the phonemes that word gets in the
-//! sentence, or an empty line when the word cannot be located in the output.
-//! Used by tools/en_homograph_bench.py.
+//! Tool: `en_homograph [--data DIR] [--units [--ids N] | --logits]` reads
+//! `sentence <TAB> start <TAB> end` lines (byte offsets of one word in the sentence).
+//!
+//! * default: the phonemes that word gets in the sentence, or an empty line when the word
+//!   cannot be located in the output (tools/en_homograph_bench.py).
+//! * `--units`: `target_index <TAB> unit <TAB> unit ...`, the input of the heteronym model
+//!   (`^` in front of a capitalised word); `--ids N` prints each unit's feature bucket ids
+//!   (n_buckets = N) as `id,id,...` instead of its text. Used by tools/train_homograph.py.
+//! * `--logits`: `pronunciation:logit ...` of the loaded heteronym model for that word
+//!   (parity check against PyTorch); empty when the word is not covered.
 use std::io::{self, BufRead, BufWriter, Write};
 
 use polyg2p::text::{Tok, tokenize};
@@ -12,7 +18,10 @@ fn parts(w: &str) -> impl Iterator<Item = &str> {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let data = args.iter().position(|a| a == "--data").and_then(|i| args.get(i + 1)).map(std::path::PathBuf::from);
+    let flag = |f: &str| args.iter().position(|a| a == f);
+    let data = flag("--data").and_then(|i| args.get(i + 1)).map(std::path::PathBuf::from);
+    let ids = flag("--ids").and_then(|i| args.get(i + 1)).and_then(|n| n.parse::<usize>().ok());
+    let (units_mode, logits_mode) = (flag("--units").is_some(), flag("--logits").is_some());
     let g = polyg2p::G2p::new(data.as_deref());
     let mut out = BufWriter::new(io::stdout().lock());
     for line in io::stdin().lock().lines() {
@@ -35,6 +44,39 @@ fn main() {
                 _ => 0,
             })
             .sum::<usize>();
+        if units_mode || logits_mode {
+            let (units, words) = g.heteronym_units(sent);
+            let mut seen = 0;
+            let mut found = None;
+            for (src, at) in &words {
+                if parts(src).any(|p| p == target) {
+                    if seen == nth {
+                        found = (*src == target).then_some(*at);
+                        break;
+                    }
+                    seen += parts(src).filter(|p| *p == target).count();
+                }
+            }
+            let Some(t) = found else {
+                writeln!(out).unwrap();
+                continue;
+            };
+            if logits_mode {
+                let s = g.english().heteronym_scores(&units, t).unwrap_or_default();
+                writeln!(out, "{}", s.iter().map(|(p, l)| format!("{p}:{l:.6}")).collect::<Vec<_>>().join(" ")).unwrap();
+            } else {
+                let cols: Vec<String> = units
+                    .iter()
+                    .enumerate()
+                    .map(|(i, u)| match ids {
+                        Some(n) => polyg2p::homograph::feature_ids(u, i == t, n).iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","),
+                        None => u.display(),
+                    })
+                    .collect();
+                writeln!(out, "{t}\t{}", cols.join("\t")).unwrap();
+            }
+            continue;
+        }
         let mut seen = 0;
         let mut ph = String::new();
         'find: for (src, p) in g.phonemize_words(sent, polyg2p::Lang::En) {

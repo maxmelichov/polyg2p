@@ -7,12 +7,16 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::homograph;
 use crate::lexicon::Lexicon;
 use crate::nn::Model;
 use crate::Out;
 
 const FUNC_TSV: &str = include_str!("../data/en_func.tsv");
 const MERGE_TSV: &str = include_str!("../data/en_merge.tsv");
+const HOMOGRAPH_TSV: &str = include_str!("../data/en_homograph.tsv");
+/// A sentence needs this many words before the heteronym model reads it; shorter inputs (word lists, `--words`) keep the context rules.
+const HG_MIN_WORDS: usize = 3;
 
 const LETTERS: [&str; 26] = [
     "eɪ", "biː", "siː", "diː", "iː", "ɛf", "dʒiː", "eɪtʃ", "aɪ", "dʒeɪ", "keɪ", "ɛl", "ɛm", "ɛn", "oʊ", "piː",
@@ -233,6 +237,8 @@ pub struct English {
     cache: std::sync::Mutex<HashMap<String, String>>,
     func: HashMap<&'static str, &'static str>,
     merge: HashMap<&'static str, &'static str>,
+    /// optional sentence-level model for the words of data/en_homograph.tsv (`en_homograph.g2p`)
+    hg: Option<homograph::Model>,
 }
 
 fn table(s: &'static str) -> HashMap<&'static str, &'static str> {
@@ -270,7 +276,18 @@ impl English {
             cache: Default::default(),
             func: table(FUNC_TSV),
             merge: table(MERGE_TSV),
+            hg: None,
         }
+    }
+
+    /// Masked logits of the heteronym model for the word at unit `target` (tools): (pronunciation, logit) in table order.
+    pub fn heteronym_scores(&self, units: &[homograph::Unit], target: usize) -> Option<Vec<(&str, f32)>> {
+        self.hg.as_ref()?.scores(units, target)
+    }
+
+    /// Load the heteronym model (`en_homograph.g2p`); a file that does not open or does not fit the table is ignored.
+    pub fn load_homograph(&mut self, path: &Path) {
+        self.hg = homograph::Model::open(path, &homograph::Table::parse(HOMOGRAPH_TSV)).ok();
     }
 
     pub fn has_lexicon(&self) -> bool {
@@ -293,7 +310,7 @@ impl English {
 
     /// Is this word one whose reading the sentence pass chooses (accent tools)?
     pub fn homograph_word(&self, lw: &str) -> bool {
-        is_homograph(lw)
+        is_homograph(lw) || self.hg.as_ref().is_some_and(|m| m.covers(lw))
     }
 
     /// Is `ph` this word read letter by letter (accent layer: ROI, CRO)?
@@ -558,8 +575,8 @@ impl English {
         }
     }
 
-    /// Sentence pass: homographs, function-word linking and espeak's word joining.
-    pub fn join(&self, outs: &mut [Out]) {
+    /// Title / unit abbreviations ("Dr. Smith" reads "doctor smith" without a pause): the first step of `join`.
+    pub(crate) fn expand_titles(&self, outs: &mut [Out]) {
         let n = outs.len();
         // title / unit abbreviations: "Dr. Smith" reads "doctor smith" without a pause
         for k in 0..n {
@@ -606,8 +623,27 @@ impl English {
                 }
             }
         }
+    }
+
+    /// Sentence pass: homographs, function-word linking and espeak's word joining.
+    pub fn join(&self, outs: &mut [Out]) {
+        let n = outs.len();
+        self.expand_titles(outs);
+        // the heteronym model, when there is one, reads whole sentences
+        let hg = self.hg.as_ref().and_then(|m| {
+            let (u, at) = homograph::units(outs);
+            (u.iter().filter(|x| x.word).count() >= HG_MIN_WORDS).then_some((m, u, at))
+        });
         for k in 0..n {
             let src = outs[k].src.clone();
+            if let Some((m, u, at)) = &hg {
+                if m.covers(&src) {
+                    if let Some(p) = m.pick(u, at[k]) {
+                        outs[k].ph = p.to_string();
+                        continue;
+                    }
+                }
+            }
             let prev = if k > 0 && !outs[k - 1].pause_after { outs[k - 1].src.clone() } else { String::new() };
             let next = if k + 1 < n && !outs[k].pause_after { outs[k + 1].src.clone() } else { String::new() };
             if let Some(kind) = homograph(&src) {
@@ -663,7 +699,7 @@ mod tests {
     use super::*;
     #[test]
     fn spelling() {
-        let e = English { lex: None, model: None, cache: Default::default(), func: table(FUNC_TSV), merge: table(MERGE_TSV) };
+        let e = English { lex: None, model: None, cache: Default::default(), func: table(FUNC_TSV), merge: table(MERGE_TSV), hg: None };
         assert_eq!(e.spell("FBI"), "ˌɛfbˌiːˈaɪ");
         assert_eq!(e.spell("UK"), "jˌuːkˈeɪ");
     }

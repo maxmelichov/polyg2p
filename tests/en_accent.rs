@@ -14,6 +14,11 @@ fn engine() -> G2p {
     let dir = std::env::var_os("POLYG2P_DATA").map(std::path::PathBuf::from).expect("set POLYG2P_DATA to a folder with en.lex and en.g2p");
     assert!(dir.join("en.lex").exists(), "POLYG2P_DATA has no en.lex");
     assert!(std::env::var("POLYG2P_EN_MODEL").map_or(true, |v| v != "large"), "the cases were written with the default model: unset POLYG2P_EN_MODEL");
+    // the cases pin the context rules; the optional heteronym model reads some of their sentences differently
+    assert!(
+        !dir.join("en_homograph.g2p").exists() || std::env::var("POLYG2P_EN_HOMOGRAPH").is_ok_and(|v| v == "off"),
+        "the cases were written with the context rules: set POLYG2P_EN_HOMOGRAPH=off when the folder has en_homograph.g2p"
+    );
     G2p::new(Some(&dir))
 }
 

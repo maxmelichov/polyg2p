@@ -146,10 +146,33 @@ training, mostly names:
 | polyg2p, `POLYG2P_EN_MODEL=large` (1.2M params) | **74.6%** | **6.2%** |
 | espeak-ng | 64.2% | 8.7% |
 
-Homographs in context, on 40 sentences covering read, record, live, close,
-tear, lead, use, wind, present, object, estimate and separate: polyg2p 40/40,
-espeak-ng 32/40. The sentences were written by the authors, so treat this as
-indicative.
+Homographs in context are scored on Google's Wikipedia Homograph Data
+(Gorman, Mazovetskiy and Nikolaev 2018): 162 homographs, 1,615 held-out
+sentences, one labelled word each. Each system phonemizes the whole sentence, the
+phonemes of the labelled word are matched to the nearest labelled pronunciation,
+and a tie counts as wrong (`tools/en_homograph_bench.py`; the corpus is not in
+this repository). Three of its 326 labels are corrected in the script (one
+typo, two verbs whose primary stress sits on the last syllable).
+
+| held-out eval split | context rules | with `en_homograph.g2p` | same, silver-only | espeak-ng 1.51 | most frequent label |
+|---|---|---|---|---|---|
+| all, micro (n=1,615) | 71.3% | 91.7% | 81.8% | 72.9% | 84.0% |
+| all, macro | 71.3% | 91.8% | 81.8% | 73.0% | 84.1% |
+| 81 homographs the rules cover (n=813) | 89.3% | 93.2% | 86.8% | 79.6% | 82.7% |
+| 81 homographs the rules do not cover (n=802) | 53.1% | 90.1% | 76.7% | 66.2% | 85.4% |
+
+The model is optional (`en_homograph.g2p`, 3.9M parameters, 12 MB); without it the rules
+column is what polyg2p does. Only sentences with a covered word and at least three words
+pay for it, about 3 ms per occurrence single-threaded on a busy machine. NeMo evaluates on this same corpus and publishes no
+other heteronym set, so there is no separate NeMo number.
+
+The same systems on 181 author-written sentences over 51 homographs, built to
+defeat keyword rules (bare subjects, imperatives, misleading neighbours;
+`tests/en_homograph_cases.tsv`, written before any model output): rules 72.4%,
+model 86.2%, silver-only model 84.0%, espeak-ng 65.7%. The four sentences
+"Lead is a metal.", "He lead the sheep to the meadow.", "Lead can cause effects on
+your brain." and "I lead every group project at school." are all right with the
+model (rules: 1 of 4).
 
 ## Speed
 

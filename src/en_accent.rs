@@ -708,7 +708,7 @@ fn expand_abbr<'a>(en: &English, ph: &str, src: &'a str) -> &'a str {
 /// The British form (American notation) of a word of data/en_brit_words.tsv, or of
 /// its possessive, when the engine gave the word its plain reading.
 fn brit_form(en: &English, ph: &str, src: &str) -> Option<String> {
-    if src.is_empty() || crate::en::is_homograph(src) || !en.is_default_form(src, ph) {
+    if src.is_empty() || en.homograph_word(src) || !en.is_default_form(src, ph) {
         return None;
     }
     if let Some(b) = brit_words().get(src) {
@@ -780,7 +780,7 @@ fn to_gb(en: &English, ph: &str, src: &str, use_lex: bool, strong: bool) -> (Str
     }
     let src = expand_abbr(en, ph, src);
     if use_lex && !src.is_empty() {
-        if crate::en::is_homograph(src) {
+        if en.homograph_word(src) {
             // the list holds every British reading; take the one that matches the reading the engine chose
             if let Some(vars) = gb_lex().get(src) {
                 let (by_rule, fr) = rules(ph, src, GB);
@@ -804,7 +804,7 @@ fn to_gb(en: &English, ph: &str, src: &str, use_lex: bool, strong: bool) -> (Str
                     cands = vec![format!("{stem}y")];
                 }
                 for c in cands {
-                    if crate::en::is_homograph(&c) {
+                    if en.homograph_word(&c) {
                         continue;
                     }
                     let (Some(g), Some(ga_stem)) = (gb_lex().get(c.as_str()), en.lexicon_form(&c)) else { continue };

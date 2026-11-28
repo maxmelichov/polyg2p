@@ -34,7 +34,7 @@ associate	verb	V	ɐsˈoʊsiˌeɪt
 attribute	noun	N	ˈætɹɪbjˌuːt
 attribute	verb	V	ɐtɹˈɪbjˌuːt
 august	adj	A	ɔːɡˈʌst
-august	month	N	ˈɔːɡəst
+august	month	NAME	ˈɔːɡəst
 august	name	NAME	ˈaʊɡʊst
 axes	axis	N	ˈæksiz
 axes	ax	N,V	ˈæksəz
@@ -243,7 +243,7 @@ pervert	noun	N	pˈɜːvɚt
 pervert	verb	V	pɚvˈɜːt
 pigment	noun	N	pˈɪɡmənt
 pigment	verb	V	pɪɡmˈɛnt
-polish	nationality	A,N	pˈoʊlɪʃ
+polish	nationality	NAME	pˈoʊlɪʃ
 polish	wax	V,N	pˈɑːlɪʃ
 postulate	noun	N	pˈɑːsʧələt
 postulate	verb	V	pˈɑːsʧəlˌeɪt

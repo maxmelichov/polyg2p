@@ -10,6 +10,7 @@ pub mod en_accent;
 pub mod es;
 pub mod fold;
 pub mod he;
+pub mod homograph;
 pub mod tagger;
 pub mod it;
 pub mod lexicon;
@@ -204,6 +205,11 @@ impl Lang {
     }
 }
 
+#[doc(hidden)]
+pub fn fold_for_test(s: &str) -> String {
+    fold::fold(s)
+}
+
 /// One output word: its phonemes plus the punctuation that follows it.
 #[derive(Debug, Clone, Default)]
 pub struct Out {
@@ -213,6 +219,8 @@ pub struct Out {
     pub pause_after: bool,
     /// source word (lower-case), for context rules
     pub src: String,
+    /// the source word starts with an upper-case letter (feature of the heteronym model)
+    pub cap: bool,
 }
 
 /// The G2P engine. Language resources load lazily on first use.
@@ -243,7 +251,14 @@ impl G2p {
             // POLYG2P_EN_MODEL=large picks the bigger, slower, more accurate OOV model
             let large = std::env::var("POLYG2P_EN_MODEL").is_ok_and(|v| v == "large");
             let model = if large { self.file("en-large.g2p").or_else(|| self.file("en.g2p")) } else { self.file("en.g2p") };
-            en::English::load(self.file("en.lex").as_deref(), model.as_deref())
+            let mut en = en::English::load(self.file("en.lex").as_deref(), model.as_deref());
+            // the optional sentence-level heteronym model; POLYG2P_EN_HOMOGRAPH=off keeps the context rules only
+            if std::env::var("POLYG2P_EN_HOMOGRAPH").map_or(true, |v| v != "off") {
+                if let Some(p) = self.file("en_homograph.g2p") {
+                    en.load_homograph(&p);
+                }
+            }
+            en
         })
     }
     pub fn german(&self) -> &de::German {
@@ -357,7 +372,51 @@ impl G2p {
             .collect()
     }
 
+    /// The sentence pass of `lang` over the words of `text` (`token_outs`).
     fn plain_outs(&self, text: &str, lang: Lang, accent: Option<en_accent::Accent>) -> Vec<Out> {
+        let mut outs = self.token_outs(text, lang);
+        match lang {
+            Lang::Es | Lang::EsLa => es::join(&mut outs),
+            Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => {
+                self.english().join(&mut outs);
+                if let Some(a) = accent {
+                    en_accent::apply(self.english(), &mut outs, a);
+                }
+            }
+            Lang::It => it::join(&mut outs),
+            Lang::De | Lang::Ru | Lang::He => {}
+            Lang::Fr => fr::join(&mut outs),
+            Lang::Pt => pt::join(&mut outs),
+            Lang::Pl => pl::join(&mut outs),
+            Lang::Uk => uk::join(&mut outs),
+            Lang::Tr => tr::join(&mut outs),
+            Lang::Nl => nl::join(&mut outs),
+            Lang::Cs => cs::join(&mut outs),
+            Lang::El => el::join(&mut outs),
+            Lang::Ro => ro::join(&mut outs),
+            Lang::Hu => hu::join(&mut outs),
+            Lang::Fi => fi::join(&mut outs),
+            Lang::Sv => sv::join(&mut outs),
+            Lang::Id => id::join(&mut outs),
+            Lang::Ca => ca::join(&mut outs),
+            Lang::Ar => ar::join(&mut outs),
+        }
+        outs
+    }
+
+    /// The input of the English heteronym model for `text`: its units and, for each word of
+    /// the sentence pass, the index of its unit (`tools/train_homograph.py` reads these from
+    /// `en_homograph --units`, so training sees exactly what inference does).
+    pub fn heteronym_units(&self, text: &str) -> (Vec<homograph::Unit>, Vec<(String, usize)>) {
+        let mut outs = self.token_outs(text, Lang::En);
+        self.english().expand_titles(&mut outs);
+        let (u, at) = homograph::units(&outs);
+        let words = outs.iter().zip(at).filter(|(o, _)| !o.src.is_empty()).map(|(o, a)| (o.src.clone(), a)).collect();
+        (u, words)
+    }
+
+    /// Words (tokenization, numbers, abbreviations) of `text` before the sentence pass.
+    fn token_outs(&self, text: &str, lang: Lang) -> Vec<Out> {
         let toks = text::tokenize(text);
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
         let mut words: Vec<String> = Vec::new();
@@ -495,34 +554,10 @@ impl G2p {
                 Tok::Sep => {}
             }
         }
-        match lang {
-            Lang::Es | Lang::EsLa => es::join(&mut outs),
-            Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => {
-                self.english().join(&mut outs);
-                if let Some(a) = accent {
-                    en_accent::apply(self.english(), &mut outs, a);
-                }
-            }
-            Lang::It => it::join(&mut outs),
-            Lang::De | Lang::Ru | Lang::He => {}
-            Lang::Fr => fr::join(&mut outs),
-            Lang::Pt => pt::join(&mut outs),
-            Lang::Pl => pl::join(&mut outs),
-            Lang::Uk => uk::join(&mut outs),
-            Lang::Tr => tr::join(&mut outs),
-            Lang::Nl => nl::join(&mut outs),
-            Lang::Cs => cs::join(&mut outs),
-            Lang::El => el::join(&mut outs),
-            Lang::Ro => ro::join(&mut outs),
-            Lang::Hu => hu::join(&mut outs),
-            Lang::Fi => fi::join(&mut outs),
-            Lang::Sv => sv::join(&mut outs),
-            Lang::Id => id::join(&mut outs),
-            Lang::Ca => ca::join(&mut outs),
-            Lang::Ar => ar::join(&mut outs),
-        }
         outs
     }
+
+    /// Words (tokenization, numbers, abbreviations) of `text` before the sentence pass.
 
     /// Phonemize many texts using all available cores (order preserved).
     pub fn phonemize_batch(&self, texts: &[String], lang: Lang) -> Vec<String> {
@@ -548,7 +583,7 @@ impl G2p {
         if w.eq_ignore_ascii_case("www") {
             let ph = if lang == Lang::En { Some("dˌʌbəljuːdˌʌbəljuːdˈʌbəljuː".to_string()) } else { spell::spell("WWW", lang) };
             if let Some(ph) = ph {
-                outs.push(Out { ph, punct: String::new(), pause_after: false, src: "www".into() });
+                outs.push(Out { ph, punct: String::new(), pause_after: false, src: "www".into(), cap: false });
                 return;
             }
         }
@@ -566,7 +601,7 @@ impl G2p {
             });
         if lang != Lang::En && (spell::is_acronym(w) || single_letter) {
             if let Some(ph) = spell::spell(w, lang) {
-                outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
+                outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw, cap: w.chars().next().is_some_and(char::is_uppercase) });
                 return;
             }
         }
@@ -593,7 +628,7 @@ impl G2p {
             Lang::Ca => ca::word(&lw),
             Lang::Ar => ar::word(&lw),
         };
-        outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
+        outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw, cap: w.chars().next().is_some_and(char::is_uppercase) });
     }
 }
 

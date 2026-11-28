@@ -9,7 +9,7 @@ systems collapsed to a shared broad phone set) and `tools/homographs.py`.
 | word accuracy, strict | **97.7%** | 96.7% |
 | phoneme error rate | **2.1%** | 2.8% |
 | word accuracy, unstressed ɪ = ə | **98.6%** | 97.6% |
-| homographs in context (40 sentences) | **40/40** | 32/40 |
+| homographs in context, Wikipedia Homograph Data eval split (1,615 sentences) | 71.3% rules; **91.7%** with the optional `en_homograph.g2p` | 72.9% |
 
 What changed on 2026-10-23 (`tools/en_convert.py`): CMUdict writes most
 unstressed vowels as `AH0`; espeak and Wiktionary distinguish `ɪ`/`ᵻ` from `ə`
