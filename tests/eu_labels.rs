@@ -90,3 +90,14 @@ fn digit_ordinals() {
     assert_eq!(p("el", "4ο"), p("el", "τέταρτο"));
     assert_eq!(p("el", "4ου"), p("el", "τετάρτου"));
 }
+
+/// Romanian final -i after a consonant: one palatal offglide.
+#[test]
+fn romanian_single_palatal() {
+    assert_eq!(p("ro", "buni"), "bˈunʲ");
+    for w in ["pomi", "oameni", "faceți", "nu-mi"] {
+        assert!(!p("ro", w).contains("ʲʲ"), "{w}");
+    }
+    assert_eq!(p("ro", "aici"), "aˈiʧʲ");
+    assert_eq!(p("ro", "lupii"), "lˈupiɪ");
+}
