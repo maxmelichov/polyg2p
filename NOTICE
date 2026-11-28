@@ -125,3 +125,9 @@ am-gem.tsv - Amharic gemination (unwritten long consonants), optional data pack,
     (Dataset.ET, CC BY 4.0, https://huggingface.co/datasets/Chapimenge/amharic-gemination-lexicon; its labels
     were produced by an analyzer, no analyzer code or data is included). Share-alike terms apply to the table.
     The engine runs without it (output is then identical to before).
+
+am-verbs.tsv - Amharic verb gemination rules, optional data pack, not in the wheel:
+    root list and templates derived from the Armbruster verb tables of the GFF Data Archive (Ge'ez Frontier
+    Foundation, CC BY-SA 4.0, https://github.com/geezorg/data). Share-alike terms apply to the pack. Evaluated
+    against hand lists, Wiktionary romanisations and an analyzer-labelled lexicon (evaluation only; none of it is in
+    the pack). The engine runs without it (output is then identical to before).
