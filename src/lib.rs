@@ -559,6 +559,11 @@ impl G2p {
     }
 
     fn push_word(&self, outs: &mut Vec<Out>, w: &str, lang: Lang) {
+        if lang == Lang::Fi && (w.eq_ignore_ascii_case("www") || spell::is_acronym(w)) {
+            // W inside an abbreviation is read vee in Finnish (fi.rs)
+            outs.push(Out { ph: fi::spell_acronym(w), punct: String::new(), pause_after: false, src: w.to_lowercase() });
+            return;
+        }
         if w.eq_ignore_ascii_case("www") {
             let ph = if lang == Lang::En { Some("dˌʌbəljuːdˌʌbəljuːdˈʌbəljuː".to_string()) } else { spell::spell("WWW", lang) };
             if let Some(ph) = ph {
@@ -569,6 +574,10 @@ impl G2p {
         // Turkish has dotted and dotless i: I -> ı, İ -> i
         let lw = if lang == Lang::Tr {
             w.chars().map(|c| match c { 'I' => 'ı', 'İ' => 'i', c => c }).collect::<String>().to_lowercase()
+        } else if lang == Lang::Fi && !w.is_ascii() {
+            // composed form, so a + combining diaeresis is ä in the context rules too
+            use unicode_normalization::UnicodeNormalization;
+            w.to_lowercase().nfc().collect()
         } else {
             w.to_lowercase()
         };

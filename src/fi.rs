@@ -24,6 +24,7 @@
 
 use crate::fi_verbs::{INFINITIVE, INFINITIVE_CTX};
 use crate::Out;
+use unicode_normalization::UnicodeNormalization;
 
 pub const IMPLEMENTED: bool = true;
 pub const DECIMAL: &str = "pilkku";
@@ -748,8 +749,9 @@ fn units(c: &[char], gem: Option<usize>) -> Vec<Unit> {
         let ph: &'static str = match ch {
             'n' => {
                 if nx == 'g' {
-                    // ng + vowel / r = long ŋ (kengän, kongressi); ng + consonant = ŋ (englanti)
-                    let l = is_vowel(nx2) || nx2 == 'r';
+                    // ng + vowel = long ŋ (kengän); ng + consonant = ŋ (englanti, kongressi:
+                    // Wiktionary /ˈkoŋresːi/, /ˈsɑŋriɑ/, /ˈmɑŋroʋe/)
+                    let l = is_vowel(nx2);
                     out.push(Unit::C("ŋ", l));
                     i += 2;
                     continue;
@@ -766,7 +768,8 @@ fn units(c: &[char], gem: Option<usize>) -> Vec<Unit> {
             }
             'c' => {
                 if nx == 'h' && i == 0 {
-                    out.push(Unit::C("tʃ", false));
+                    // chr-, chl- are k (Chris, Chloe, kromi); otherwise tʃ (chatti)
+                    out.push(Unit::C(if matches!(nx2, 'r' | 'l') { "k" } else { "tʃ" }, false));
                     i += 2;
                     continue;
                 }
@@ -818,6 +821,19 @@ fn units(c: &[char], gem: Option<usize>) -> Vec<Unit> {
                 } else {
                     i += 1;
                 }
+                continue;
+            }
+            // ph is f in every loan (Philip, Sophia); Finnish has no p + h of its own
+            'p' if nx == 'h' => {
+                out.push(Unit::C("f", false));
+                i += 2;
+                continue;
+            }
+            // th-, gh- at the start and -th at the end are loans (thai, ghetto, Smith);
+            // inside a word t + h is a clitic or compound seam (olethan, lyhythihainen)
+            't' | 'g' if nx == 'h' && (i == 0 && (is_vowel(nx2) || ch == 't' && nx2 == 'r') || ch == 't' && i > 0 && i + 2 == n) => {
+                out.push(Unit::C(if ch == 't' { "t" } else { "ɡ" }, false));
+                i += 2;
                 continue;
             }
             'p' => "p",
@@ -1247,7 +1263,7 @@ fn enclitic_geminate(c: &[char]) -> Option<usize> {
 
 /// Phonemize one lower-case word (no sentence context).
 pub fn word(w: &str) -> String {
-    let lw = w.to_lowercase();
+    let lw = fold_letters(&w.to_lowercase());
     if lw.contains('-') {
         let mut out = String::new();
         for (k, p) in lw
@@ -1270,6 +1286,9 @@ pub fn word(w: &str) -> String {
     if let Some((_, r)) = RESPELL.iter().find(|(k, _)| *k == lw) {
         return r.split(' ').map(word).collect::<Vec<_>>().join(" ");
     }
+    if let Some(r) = respell_inflected(&lw) {
+        return word(&r);
+    }
     if !c.iter().any(|&x| is_vowel(x)) || c.len() == 1 || SPELLED.contains(&lw.as_str()) {
         return spell(&c);
     }
@@ -1283,6 +1302,77 @@ pub fn word(w: &str) -> String {
     let mut out = String::with_capacity(c.len() * 2);
     word_part(&c, first, &mut out);
     assimilate_nasals(&out)
+}
+
+/// Case endings a respelled loan can carry (Chicagossa, Facebookin, Youtubeen).
+const LOAN_ENDINGS: &[&str] = &[
+    "n", "a", "ä", "ssa", "ssä", "sta", "stä", "lla", "llä", "lta", "ltä", "lle", "ksi", "na", "nä", "in", "ia", "iä",
+    "issa", "issä", "ista", "istä", "illa", "illä", "ilta", "iltä", "ille", "iksi", "ina", "inä", "iin", "oon", "aan",
+    "een", "hun", "hon", "hin", "t", "it",
+];
+
+/// An inflected form of a respelled loan of five letters or more:
+/// chicagossa -> šikagossa, facebookissa -> feisbukissa, youtubessa -> juutuubissa.
+fn respell_inflected(lw: &str) -> Option<String> {
+    for (k, r) in RESPELL {
+        if k.chars().count() < 5 || r.contains(' ') {
+            continue;
+        }
+        let Some(rest) = lw.strip_prefix(k) else {
+            continue;
+        };
+        if !LOAN_ENDINGS.contains(&rest) {
+            continue;
+        }
+        let stem_c = r.chars().last().is_some_and(|c| !is_vowel(c));
+        let rest_cc = rest.chars().count() >= 2 && rest.chars().take(2).all(|c| !is_vowel(c));
+        // a consonant stem takes its ending through -i- (juutuub + ssa -> juutuubissa)
+        let link = if stem_c && (rest_cc || rest == "n" || rest == "t") { "i" } else { "" };
+        return Some(format!("{r}{link}{rest}"));
+    }
+    None
+}
+
+/// Letters outside the Finnish alphabet and its usual loan letters: composed
+/// form first (a + combining diaeresis is ä), a macron is a long vowel
+/// (Tōkyō -> tookyoo), ñ is nj, other diacritics fall back to the base letter
+/// (ř -> r, ğ -> g, ã -> a). They used to be dropped.
+fn fold_letters(lw: &str) -> String {
+    let known = |c: char| c.is_ascii() || is_vowel(c) || matches!(c, 'š' | 'ž' | 'ç' | 'ß');
+    if lw.chars().all(known) {
+        return lw.to_string();
+    }
+    let mut out = String::with_capacity(lw.len() + 4);
+    for c in lw.nfc() {
+        if known(c) {
+            out.push(c);
+            continue;
+        }
+        match c {
+            'ñ' => out.push_str("nj"),
+            'ő' => out.push('ö'),
+            'ű' => out.push('y'),
+            'þ' => out.push('t'),
+            'ð' | 'đ' => out.push('d'),
+            'ł' => out.push('l'),
+            'ı' => out.push('i'),
+            'č' | 'ć' => out.push_str("tš"),
+            _ => {
+                let mut d = c.nfd();
+                let base = d.next().unwrap_or(c);
+                let macron = d.any(|m| m == '\u{0304}');
+                if base == c {
+                    out.push(c);
+                } else {
+                    out.push(base);
+                    if macron && is_vowel(base) {
+                        out.push(base);
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 
 /// n before k/ɡ is ŋ and before p/b is m, also across compound parts and
@@ -1323,9 +1413,18 @@ fn letter_name(c: char) -> &'static str {
 /// Spell letter by letter: secondary stress on each letter, primary on the last.
 fn spell(c: &[char]) -> String {
     let mut out = String::new();
+    // W in an abbreviation is read vee (WC "veesee", BMW, www: Kielitoimiston
+    // sanakirja); only the letter on its own is kaksoisvee
+    let abbreviation = c.len() > 1;
     let letters: Vec<&str> = c
         .iter()
-        .map(|&ch| letter_name(ch))
+        .map(|&ch| {
+            if ch == 'w' && abbreviation {
+                "veː"
+            } else {
+                letter_name(ch)
+            }
+        })
         .filter(|s| !s.is_empty())
         .collect();
     for (k, name) in letters.iter().enumerate() {
@@ -1336,6 +1435,12 @@ fn spell(c: &[char]) -> String {
         out.push_str(&name[pos..]);
     }
     out
+}
+
+/// Spell an upper-case abbreviation (WC, EU, BMW).
+pub fn spell_acronym(w: &str) -> String {
+    let c: Vec<char> = w.to_lowercase().chars().filter(|c| c.is_alphabetic()).collect();
+    spell(&c)
 }
 
 fn syllables(w: &str) -> usize {
@@ -2037,5 +2142,32 @@ mod tests {
         }
         assert_eq!(trigger_class("antaa"), Trigger::Infinitive);
         assert_eq!(trigger_class("tehdä"), Trigger::Always);
+    }
+
+    /// Letters: macrons, diacritics, ng+r, ph/th/gh, respelled loans, W in abbreviations.
+    #[test]
+    fn letters() {
+        check(&[
+            ("Tōkyō", "tˈoːkyoː"),
+            ("kongressi", "kˈoŋressɪ"),
+            ("sangria", "sˈaŋrɪa"),
+            ("Smith", "smˈit"),
+            ("Philip", "fˈilɪp"),
+            ("Chris", "krˈis"),
+            ("ghetto", "ɡˈetːo"),
+            ("thriller", "trˈiller"),
+            ("olethan", "ˈolethan"),
+            ("Chicagossa", "ʃˈikaɡˌossa"),
+            ("Facebookissa", "fˈeisbukˌissa"),
+            ("Youtubessa", "jˈuːtuːbˌissa"),
+            ("Thaimaassa", "tˈaimaːssa"),
+            ("WC", "vˌeːsˈeː"),
+            ("BMW", "bˌeːˌæmvˈeː"),
+            ("www", "vˌeːvˌeːvˈeː"),
+            ("äiti", "ˈæitɪ"),
+        ]);
+        // a + combining diaeresis is ä
+        let g = crate::G2p::new(None);
+        assert_eq!(g.phonemize("a\u{308}iti", crate::Lang::Fi), g.phonemize("äiti", crate::Lang::Fi));
     }
 }
