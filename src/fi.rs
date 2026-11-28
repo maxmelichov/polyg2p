@@ -9,17 +9,18 @@
 //!   - compound boundaries (hyphens, vowel-harmony violations, numeral
 //!     morphemes, a list of frequent first elements), where the stress
 //!     pattern restarts with a secondary stress;
-//!   - `ng` -> `ŋŋ`, `nk` -> `ŋk`, loan letters (c q w x z š ž å, sh/ch);
+//!   - `ng` -> `ŋː`, `nk` -> `ŋk`, loan letters (c q w x z š ž å, sh/ch);
 //!   - sentence sandhi (`join`): boundary gemination (*loppukahdennus*) after
 //!     -e nominals, -lle, -nne, -sti, -tse and the common imperatives /
 //!     infinitives, and word-final n -> ŋ/m before k/p, both as espeak
-//!     writes them (`ˌoleh hˈyvæ`, `tˈule tːˈænne`, `mˈennæːŋ kˈotɪːn`).
+//!     writes them (`ˌole hːˈyvæ`, `tˈule tːˈænne`, `mˈennæːŋ kˈotɪːn`).
 //!
 //! Notation follows espeak's `fi` voice: `a æ ø y` (Wiktionary writes ɑ),
 //! `v` (Wiktionary ʋ), unstressed short/long `i` as `ɪ`/`ɪː`, long vowels
-//! and long stops with `ː`, long sonorants and fricatives doubled (`ss`,
-//! `ll`, `ŋŋ`), diphthongs as plain vowel pairs, stress marks right before
-//! the vowel. Function words carry no stress (`ja`, `on`, `se`) or only a
+//! and every long consonant with `ː` (`kˈukːa`, `pˈalːo`, `kˈeŋːæn`; espeak
+//! doubles sonorants and fricatives instead, a deliberate departure so that
+//! length is one mark everywhere), diphthongs as plain vowel pairs, stress
+//! marks right before the vowel. Function words carry no stress (`ja`, `on`, `se`) or only a
 //! secondary one (`ˌole`, `mˌinæ`), as in espeak's dictionary.
 
 use crate::fi_verbs::{INFINITIVE, INFINITIVE_CTX};
@@ -702,10 +703,6 @@ fn diphthong(a: char, b: char) -> bool {
     )
 }
 
-fn is_stop(ph: &str) -> bool {
-    matches!(ph, "p" | "t" | "k" | "b" | "d" | "ɡ")
-}
-
 /// Letters of one compound part -> phone units.
 fn units(c: &[char], gem: Option<usize>) -> Vec<Unit> {
     let n = c.len();
@@ -949,11 +946,7 @@ fn render(u: &[Unit], marks: &[u8], out: &mut String) {
             Unit::C(ph, long) => {
                 out.push_str(ph);
                 if *long {
-                    if is_stop(ph) {
-                        out.push('ː');
-                    } else {
-                        out.push_str(ph);
-                    }
+                    out.push('ː');
                 }
             }
         }
@@ -1265,6 +1258,42 @@ fn enclitic_geminate(c: &[char]) -> Option<usize> {
 
 /// Phonemize one lower-case word (no sentence context).
 pub fn word(w: &str) -> String {
+    merge_geminates(&word_inner(w))
+}
+
+/// Length is one mark: two identical consonant phones in a row (the seam of a
+/// compound, `olut|tölkki`, or of a hyphenated name) are one long consonant,
+/// and a long consonant meeting its own letter stays one (no `Cːː`, no `CːC`).
+/// Affricates are never lengthened.
+fn merge_geminates(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut prev: Option<char> = None; // the consonant just written
+    let mut long = false;
+    let ch: Vec<char> = s.chars().collect();
+    for (i, &c) in ch.iter().enumerate() {
+        let cons = !"aeiouyæøɪˈˌː ".contains(c) && !"ʦʧʤ".contains(c);
+        // a t before s/ʃ starts the affricate (Moskovitz = ɪt + ts), not a seam
+        let affricate = c == 't' && matches!(ch.get(i + 1), Some('s') | Some('ʃ'));
+        if cons && prev == Some(c) && !affricate {
+            if !long {
+                out.push('ː');
+                long = true;
+            }
+            continue;
+        }
+        if c == 'ː' && long {
+            continue;
+        }
+        long = c == 'ː' && prev.is_some();
+        if c != 'ː' {
+            prev = if cons { Some(c) } else { None };
+        }
+        out.push(c);
+    }
+    out
+}
+
+fn word_inner(w: &str) -> String {
     let lw = fold_letters(&w.to_lowercase());
     if lw.contains('-') {
         let mut out = String::new();
@@ -1803,17 +1832,13 @@ pub fn join(outs: &mut [Out]) {
         if c == "ts" || c == "tʃ" {
             continue;
         }
-        let already_long =
-            cur.ph[off + c.len()..].starts_with('ː') || cur.ph[off + c.len()..].starts_with(c);
+        let already_long = cur.ph[off + c.len()..].starts_with('ː');
         if geminate && !already_long {
-            if is_stop(c) {
-                cur.ph.insert(off + c.len(), 'ː');
-            } else {
-                prev.ph.push_str(c);
-            }
+            // the mark goes on the next word's first consonant, stop or not
+            cur.ph.insert(off + c.len(), 'ː');
             continue;
         }
-        if prev.ph.ends_with('n') && !prev.ph.ends_with("nn") {
+        if prev.ph.ends_with('n') && !prev.ph.ends_with("nː") {
             let rep = match c {
                 "k" | "ɡ" => "ŋ",
                 "p" | "b" => "m",
@@ -2143,7 +2168,7 @@ fn numeral_piece(morphemes: &[String]) -> Piece {
         let p = word(m);
         ph.push_str(&if k == 0 { p } else { p.replace('ˈ', "ˌ") });
     }
-    Piece::Ph(assimilate_nasals(&ph), morphemes.concat())
+    Piece::Ph(merge_geminates(&assimilate_nasals(&ph)), morphemes.concat())
 }
 
 /// The case (and cardinal / ordinal reading) a written ending after a colon
@@ -2569,7 +2594,7 @@ fn acronym_case(lw: &str, ending: &str) -> String {
     let t: Vec<char> = tail.chars().collect();
     let u = units(&t, None);
     render(&u, &[], &mut out);
-    assimilate_nasals(&out)
+    merge_geminates(&assimilate_nasals(&out))
 }
 
 /// Whether the number starting after `c[p]` + a space is a continuation of what
@@ -2679,10 +2704,10 @@ mod tests {
     fn basics() {
         for (w, p) in [
             ("talo", "tˈalo"),
-            ("kissa", "kˈissa"),
+            ("kissa", "kˈisːa"),
             ("kukka", "kˈukːa"),
             ("aakkoset", "ˈaːkːoset"),
-            ("kengät", "kˈeŋŋæt"),
+            ("kengät", "kˈeŋːæt"),
             ("lanka", "lˈaŋka"),
             ("englanti", "ˈeŋlantɪ"),
             ("yksi", "ˈyksɪ"),
@@ -2700,16 +2725,16 @@ mod tests {
             ("suomalainen", "sˈuomalˌainen"),
             ("ravintola", "rˈavɪntˌola"),
             ("vuosituhat", "vˈuosɪtˌuhat"),
-            ("todennäköisesti", "tˈodennˌækøisˌestɪ"),
+            ("todennäköisesti", "tˈodenːˌækøisˌestɪ"),
             ("eurooppalainen", "ˈeuroːpːalˌainen"),
             ("amerikkalainen", "ˈamerˌikːalˌainen"),
-            ("hallitukselle", "hˈallɪtˌukselle"),
+            ("hallitukselle", "hˈalːɪtˌukselːe"),
             // compounds: harmony, stems, numerals, hyphens
             ("yhteiskunta", "ˈyhteiskˌunta"),
             ("yliopisto", "ˈylɪˌopɪsto"),
-            ("epäonnistuminen", "ˈepæˌonnɪstˌumɪnen"),
+            ("epäonnistuminen", "ˈepæˌonːɪstˌumɪnen"),
             ("lentokone", "lˈentokˌone"),
-            ("kaksikymmentäviisi", "kˈaksɪkˌymmentævˌiːsɪ"),
+            ("kaksikymmentäviisi", "kˈaksɪkˌymːentævˌiːsɪ"),
             ("itä-suomi", "ˈitæsˌuomɪ"),
             // loan letters
             ("pizza", "pˈitsa"),
@@ -2751,11 +2776,11 @@ mod tests {
     #[test]
     fn sentences() {
         let g = crate::G2p::new(None);
-        assert_eq!(g.phonemize("ole hyvä", crate::Lang::Fi), "ˌoleh hˈyvæ");
-        assert_eq!(g.phonemize("tule tänne", crate::Lang::Fi), "tˈule tːˈænne");
+        assert_eq!(g.phonemize("ole hyvä", crate::Lang::Fi), "ˌole hːˈyvæ");
+        assert_eq!(g.phonemize("tule tänne", crate::Lang::Fi), "tˈule tːˈænːe");
         assert_eq!(
             g.phonemize("mennään kotiin", crate::Lang::Fi),
-            "mˈennæːŋ kˈotɪːn"
+            "mˈenːæːŋ kˈotɪːn"
         );
         assert_eq!(
             g.phonemize("kone toimii", crate::Lang::Fi),
@@ -2777,13 +2802,13 @@ mod tests {
             ("tänään kotona", "tˈænæːŋ kˈotona"),
             ("pois kotoa", "pˈois kˈotoa"),
             ("ulos talosta", "ˈulos tˈalosta"),
-            ("huomenna tulen", "hˈuomenna tˈulen"),
+            ("huomenna tulen", "hˈuomenːa tˈulen"),
             ("kolme koiraa", "kˈolme kˈoiraː"),
             ("kolme miestä", "kˈolme mˈiestæ"),
             ("itse tehty", "ˈitse tˈehty"),
             ("tuo poika", "tˈuo pˈoika"),
             // real triggers still geminate: imperative, -e noun
-            ("tule tänne", "tˈule tːˈænne"),
+            ("tule tänne", "tˈule tːˈænːe"),
             ("kone toimii", "kˈone tːˈoimɪː"),
         ] {
             assert_eq!(g.phonemize(s, crate::Lang::Fi), p, "{s}");
@@ -2803,31 +2828,31 @@ mod tests {
     #[test]
     fn gemination_context() {
         check(&[
-            ("Hän antaa meille vaatteet.", "hæn ˈantaː mˈeillev vˈaːtːeːt."),
-            ("Voisitko antaa hänelle tämän?", "vˈoisɪtko ˈantaːh hˈænelle tːˈæmæn?"),
-            ("Tomi käy kirkossa.", "tˈomɪ kˈæy kˈirkossa."),
+            ("Hän antaa meille vaatteet.", "hæn ˈantaː mˈeilːe vːˈaːtːeːt."),
+            ("Voisitko antaa hänelle tämän?", "vˈoisɪtko ˈantaː hːˈænelːe tːˈæmæn?"),
+            ("Tomi käy kirkossa.", "tˈomɪ kˈæy kˈirkosːa."),
             ("Se ei käy päinsä.", "se ei kˈæy pːˈæinsæ."),
-            ("Tule tänne.", "tˈule tːˈænne."),
+            ("Tule tänne.", "tˈule tːˈænːe."),
             ("Gangsterijoukko varasti rahaa.", "ɡˈaŋsterɪjˌoukːo vˈarastɪ rˈahaː."),
             ("Tom pitää siitä.", "tˈom pˈitæː sˈiːtæ."),
             ("Minun pitää lähteä.", "mˈinum pˈitæː lˈæhteæ."),
-            ("Hän haluaa tehdä sen.", "hæn hˈaluaː tˈehdæs sˈen."),
-            ("Voin antaa sen sinulle.", "vˈoin ˈantaːs sˈen sˈinulle."),
-            ("En voi tehdä sitä.", "en vˈoi tːˈehdæs sˈitæ."),
-            ("Ei saa tulla sisään.", "ei sˈaː tːˈullas sˈisæːn."),
+            ("Hän haluaa tehdä sen.", "hæn hˈaluaː tˈehdæ sːˈen."),
+            ("Voin antaa sen sinulle.", "vˈoin ˈantaː sːˈen sˈinulːe."),
+            ("En voi tehdä sitä.", "en vˈoi tːˈehdæ sːˈitæ."),
+            ("Ei saa tulla sisään.", "ei sˈaː tːˈulːa sːˈisæːn."),
             ("Tom käy koulua.", "tˈom kˈæy kˈoulua."),
             ("Älä käy kimppuun.", "ˈælæ kˈæy kːˈimpːuːn."),
-            ("Mene ja avaa kaikki ovet.", "mˈenej ja ˈavaː kːˈaikːɪ ˈovet."),
+            ("Mene ja avaa kaikki ovet.", "mˈene jːa ˈavaː kːˈaikːɪ ˈovet."),
             ("He puhuvat helposti kaikesta.", "he pˈuhuvat hˈelpostɪ kːˈaikesta."),
-            ("Turisti kävi kaupassa.", "tˈurɪstɪ kˈævɪ kˈaupassa."),
-            ("Hän pelasti kissan.", "hæm pˈelastɪ kˈissan."),
+            ("Turisti kävi kaupassa.", "tˈurɪstɪ kˈævɪ kˈaupasːa."),
+            ("Hän pelasti kissan.", "hæm pˈelastɪ kˈisːan."),
             ("Tie kulkee kylään.", "tˈie kˈulkeː kˈylæːn."),
             ("Steve kysyi tietä.", "stˈeve kˈysyi tˈietæ."),
             ("Koe kesti kauan.", "kˈoe kːˈestɪ kˈauan."),
-            ("Talossanne kukaan ei asu.", "tˈalossˌanne kˈukaːn ei ˈasu."),
+            ("Talossanne kukaan ei asu.", "tˈalosːˌanːe kˈukaːn ei ˈasu."),
             ("otapa kakku", "ˈotapːa kˈakːu"),
-            ("tulehan tänne", "tˈulehhan tˈænne"),
-            ("Voimme mennä kotiin ja syödä kakkua.", "vˈoimme mˈennæ kːˈotɪːn ja sˈyødæ kːˈakːua."),
+            ("tulehan tänne", "tˈulehːan tˈænːe"),
+            ("Voimme mennä kotiin ja syödä kakkua.", "vˈoimːe mˈenːæ kːˈotɪːn ja sˈyødæ kːˈakːua."),
             ("Hän tuo kukkia.", "hæn tˈuo kˈukːɪa."),
             ("kuusi koiraa", "kˈuːsɪ kˈoiraː"),
             ("Tämä on hyvä asia.", "tˈæmæ on hˈyvæ ˈasɪa."),
@@ -2886,18 +2911,18 @@ mod tests {
     fn letters() {
         check(&[
             ("Tōkyō", "tˈoːkyoː"),
-            ("kongressi", "kˈoŋressɪ"),
+            ("kongressi", "kˈoŋresːɪ"),
             ("sangria", "sˈaŋrɪa"),
             ("Smith", "smˈit"),
             ("Philip", "fˈilɪp"),
             ("Chris", "krˈis"),
             ("ghetto", "ɡˈetːo"),
-            ("thriller", "trˈiller"),
+            ("thriller", "trˈilːer"),
             ("olethan", "ˈolethan"),
-            ("Chicagossa", "ʃˈikaɡˌossa"),
-            ("Facebookissa", "fˈeisbukˌissa"),
-            ("Youtubessa", "jˈuːtuːbˌissa"),
-            ("Thaimaassa", "tˈaimaːssa"),
+            ("Chicagossa", "ʃˈikaɡˌosːa"),
+            ("Facebookissa", "fˈeisbukˌisːa"),
+            ("Youtubessa", "jˈuːtuːbˌisːa"),
+            ("Thaimaassa", "tˈaimaːsːa"),
             ("WC", "vˌeːsˈeː"),
             ("BMW", "bˌeːˌæmvˈeː"),
             ("www", "vˌeːvˌeːvˈeː"),
@@ -2912,41 +2937,41 @@ mod tests {
     #[test]
     fn numbers_and_abbreviations() {
         check(&[
-            ("5:ssä", "vˈiːdessæ"),
+            ("5:ssä", "vˈiːdesːæ"),
             ("5:n", "vˈiːden"),
-            ("3:lla", "kˈolmella"),
-            ("25:n", "kˈahdeŋkˌymmenenvˌiːden"),
+            ("3:lla", "kˈolmelːa"),
+            ("25:n", "kˈahdeŋkˌymːenenvˌiːden"),
             ("300:aa", "kˈolmeasˌataː"),
-            ("3:nnessa kerroksessa", "kˈolmannˌessa kˈerroksˌessa"),
+            ("3:nnessa kerroksessa", "kˈolmanːˌesːa kˈerːoksˌesːa"),
             ("5:s", "vˈiːdes"),
             ("2:ksi", "kˈahdeksɪ"),
             ("7:ään", "sˈeitsemæːn"),
             ("12. joulukuuta", "kˈahdestˌoista jˈoulukˌuːta"),
             ("5. luokka", "vˈiːdes lˈuokːa"),
-            ("5. kerroksessa", "vˈiːdennˌessæ kˈerroksˌessa"),
+            ("5. kerroksessa", "vˈiːdenːˌesːæ kˈerːoksˌesːa"),
             ("3. päivänä", "kˈolmantˌena pˈæivænæ"),
-            ("21. kerros", "kˈahdeskˌymmenesˌensɪmmˌæineŋ kˈerros"),
-            ("24.12.2023", "kˈahdeskˌymmenesnˌeljæs jˈoulukˌuːta kˈaksɪtˌuhatːakˌaksɪkˌymmentækˌolme"),
-            ("Tulen 24.12. kotiin", "tˈuleŋ kˈahdeskˌymmenesnˌeljæs jˈoulukˌuːta kˈotɪːn"),
-            ("klo 14.30", "kˈello nˈeljætˌoista kˈolmekˌymmentæ"),
-            ("kello 14.05", "kˈello nˈeljætˌoista nˈolla vˈiːsɪ"),
+            ("21. kerros", "kˈahdeskˌymːenesˌensɪmːˌæineŋ kˈerːos"),
+            ("24.12.2023", "kˈahdeskˌymːenesnˌeljæs jˈoulukˌuːta kˈaksɪtˌuhatːakˌaksɪkˌymːentækˌolme"),
+            ("Tulen 24.12. kotiin", "tˈuleŋ kˈahdeskˌymːenesnˌeljæs jˈoulukˌuːta kˈotɪːn"),
+            ("klo 14.30", "kˈelːo nˈeljætˌoista kˈolmekˌymːentæ"),
+            ("kello 14.05", "kˈelːo nˈeljætˌoista nˈolːa vˈiːsɪ"),
             ("2 300 000", "kˈaksɪ mˈiljoːnaː kˈolmesˌataːtˌuhatːa"),
             ("1 000", "tˈuhat"),
             ("100 000 euroa", "sˈatatˌuhatːa ˈeuroa"),
-            ("1,5 kg", "ˈyksɪ pˈilkːu vˈiːsɪ kˈiloɡrˌammaː"),
+            ("1,5 kg", "ˈyksɪ pˈilkːu vˈiːsɪ kˈiloɡrˌamːaː"),
             ("1 km", "ˈyksɪ kˈilomˌetrɪ"),
-            ("50 km/h", "vˈiːsɪkˌymmentæ kˈilomˌetrɪæ tˈunnɪssa"),
-            ("25 °C", "kˈaksɪkˌymmentævˌiːsɪ sˈelsiusˌastetːa"),
+            ("50 km/h", "vˈiːsɪkˌymːentæ kˈilomˌetrɪæ tˈunːɪsːa"),
+            ("25 °C", "kˈaksɪkˌymːentævˌiːsɪ sˈelsiusˌastetːa"),
             ("-5 astetta", "mˈiːnus vˈiːsɪ ˈastetːa"),
-            ("2 h 30 min", "kˈaksɪ tˈuntɪa kˈolmekˌymmentæ mˈinuːtːˌia"),
+            ("2 h 30 min", "kˈaksɪ tˈuntɪa kˈolmekˌymːentæ mˈinuːtːˌia"),
             ("n. 5 km", "nˈoin vˈiːsɪ kˈilomˌetrɪæ"),
-            ("mm. tämä", "mˈuːn mˈuassa tˈæmæ"),
+            ("mm. tämä", "mˈuːn mˈuasːa tˈæmæ"),
             ("esim. tämä", "ˈesɪmˌerkɪksɪ tˈæmæ"),
             ("EU:n", "ˌeːˈuːn"),
-            ("EU:ssa", "ˌeːˈuːssa"),
+            ("EU:ssa", "ˌeːˈuːsːa"),
             ("USA:n", "ˌuːˌæsˈaːn"),
-            ("PS:n", "pˌeːˈæssæn"),
-            ("MM:ssä", "ˌæmˈæmmæssæ"),
+            ("PS:n", "pˌeːˈæsːæn"),
+            ("MM:ssä", "ˌæmˈæmːæsːæ"),
             ("NATO:n", "nˈaton"),
             ("A:n", "ˈaːn"),
             ("Tämä on arvosana 3.5. Se on hyvä.", "tˈæmæ on ˈarvosˌana kˈolme pˈilkːu vˈiːsɪ. se on hˈyvæ."),
@@ -3013,16 +3038,16 @@ mod tests {
     #[test]
     fn numbers_stay_as_before() {
         check(&[
-            ("vuosina 2010 2011", "vˈuosɪna kˈaksɪtˌuhatːakˌymmeneŋ kˈaksɪtˌuhatːaˌyksɪtˌoista"),
+            ("vuosina 2010 2011", "vˈuosɪna kˈaksɪtˌuhatːakˌymːeneŋ kˈaksɪtˌuhatːaˌyksɪtˌoista"),
             ("sivut 1 000 ja 2 000", "sˈivut tˈuhat ja kˈaksɪtˌuhatːa"),
-            ("Olen 25. Hän on 30.", "ˌoleŋ kˈaksɪkˌymmentævˌiːsɪ. hæn oŋ kˈolmekˌymmentæ."),
-            ("8.30", "kˈahdeksam pˈilkːu kˈolmekˌymmentæ"),
+            ("Olen 25. Hän on 30.", "ˌoleŋ kˈaksɪkˌymːentævˌiːsɪ. hæn oŋ kˈolmekˌymːentæ."),
+            ("8.30", "kˈahdeksam pˈilkːu kˈolmekˌymːentæ"),
             ("Tämä on arvosana 3.5. Se on hyvä.", "tˈæmæ on ˈarvosˌana kˈolme pˈilkːu vˈiːsɪ. se on hˈyvæ."),
         ]);
         let g = crate::G2p::new(None);
         // a leading zero blocks merging into one number
         let p = g.phonemize("040 123 4567", crate::Lang::Fi);
-        assert!(p.starts_with("nˈolla nˈeljæ nˈolla"), "{p}");
+        assert!(p.starts_with("nˈolːa nˈeljæ nˈolːa"), "{p}");
     }
 
     #[test]

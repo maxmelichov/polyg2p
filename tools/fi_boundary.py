@@ -89,8 +89,8 @@ def evaluate(show):
     # "hän W sen": W as a finite form would stand
     for name, frame in [("after `voin` (infinitive context)", "voin {} {}"), ("after `hän` (finite context)", "hän {} {}")]:
         a = run([frame.format(w, "sen") for w in words])
-        b = run([frame.format(w, "on") for w in words])
-        trig = [x.split(" ")[-2] != y.split(" ")[-2] for x, y in zip(a, b)]
+        # the mark goes on the first consonant of the word after (`sːˈen`); `sen` has no other ː
+        trig = ["ː" in x.split(" ")[-1] for x in a]
         tab, mass, ex = collections.Counter(), collections.Counter(), collections.defaultdict(list)
         for w, t in zip(words, trig):
             f = word_frequency(w, "fi")
