@@ -224,8 +224,11 @@ enum Stress {
 
 // ---------------------------------------------------------------- e / ə ----
 
-/// Enclitic stripped before suffix stripping (`-ku`/`-mu` are too often stem-final: temu, beku).
-const CLITICS: &[&str] = &["nya"];
+/// Enclitic stripped before suffix stripping (`-ku`/`-mu` are too often stem-final: temu, beku;
+/// `-lah` too: telah, sekolah, sebelah, sejumlah, menikah, bersalah are single stems).
+/// `-kah` and `-pun` only occur as particles (bolehkah, pernahkah, kemanapun) and must not move the
+/// stem's `e` (Sneddon et al., Indonesian: A Comprehensive Grammar, 2nd ed., 2010, ch. 6).
+const CLITICS: &[&str] = &["nya", "kah", "pun"];
 /// One derivational suffix.
 const SUFFIXES: &[&str] = &["kan", "an", "i"];
 /// Derivational prefixes, longest first.
@@ -814,6 +817,10 @@ mod tests {
             ("penelitian", "pənəlitˈian"),
             ("ke", "kə"),
             ("perempuan", "pərəmpˈuan"),
+            // -kah / -pun are particles: the stem keeps its own e (boleh is bolɛh, not bolǝh)
+            ("bolehkah", "bolˈɛhkah"),
+            ("boleh", "bˈolɛh"),
+            ("meskipun", "məskˈipun"),
         ] {
             assert_eq!(word(w), p, "{w}");
         }
