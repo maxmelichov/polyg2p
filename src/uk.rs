@@ -24,6 +24,9 @@ use crate::Out;
 
 const SUFFIX_TSV: &str = include_str!("../data/uk_suffix.tsv");
 const STEM_TSV: &str = include_str!("../data/uk_stem.tsv");
+/// Homographs whose lexicon pick is the oblique-case / infinitive reading (добрі, робить, господарі ...): pinned to the
+/// nominative / present reading. Consulted before the table and the lexicon.
+const HOMOGRAPH_TSV: &str = include_str!("../data/uk_homograph_fix.tsv");
 
 pub const IMPLEMENTED: bool = true;
 pub const DECIMAL: &str = "кома";
@@ -195,6 +198,8 @@ struct Res {
     suffix: HashMap<String, u8>,
     /// word start -> stress index from the start (stems with fixed stress)
     stem: HashMap<String, u8>,
+    /// homograph word -> stress index from the end
+    fix: HashMap<String, u8>,
     lex: Option<Lexicon>,
 }
 
@@ -217,12 +222,13 @@ fn res() -> &'static Res {
     RES.get_or_init(|| {
         let suffix = load_table(SUFFIX_TSV);
         let stem = load_table(STEM_TSV);
+        let fix = load_table(HOMOGRAPH_TSV);
         // the optional stress lexicon lives in the data pack next to it.lex etc.
         let lex = crate::data_dir()
             .map(|d| d.join("uk.lex"))
             .filter(|p| p.exists())
             .and_then(|p| Lexicon::open(&p).ok());
-        Res { suffix, stem, lex }
+        Res { suffix, stem, lex, fix }
     })
 }
 
@@ -238,12 +244,17 @@ fn stress_from_end(lw: &str, nv: usize) -> usize {
     if nv <= 1 {
         return 0;
     }
+    let r = res();
+    if let Some(&st) = r.fix.get(lw) {
+        if (st as usize) < nv {
+            return st as usize;
+        }
+    }
     if let Some(&(_, st)) = STRESS_TABLE.iter().find(|(w, _)| *w == lw) {
         if (st as usize) < nv {
             return st as usize;
         }
     }
-    let r = res();
     if let Some(l) = &r.lex {
         if let Some(v) = l.get(lw) {
             let first = v.split(',').next().unwrap_or(v);
@@ -860,6 +871,13 @@ mod tests {
             ("нью-йорк", "ɲjˈujˈork"),
             ("вісімдесят", "βiːsʲiːmdɛsʲˈat̪"),
             ("дев'яносто", "dɛβjanˈost̪o"),
+            // homographs: the nominative / present reading, not the oblique one the lexicon picks
+            ("добрі", "dˈobrʲiː"),
+            ("господарі", "hospodarʲˈiː"),
+            ("господарів", "hospodarʲˈiːβ"),
+            ("робить", "rˈobɪtʲ"),
+            ("добра", "dˈobra"),
+            ("затримка", "zat̪rˈɪmka"),
         ] {
             assert_eq!(word(w), p, "{w}");
         }
