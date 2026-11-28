@@ -109,6 +109,7 @@ adds the optional CC BY-SA lexicons described under [Licensing](#licensing).
 | Slovak | `sk` | rules | **94.0%** | | 70.4% |
 | Estonian | `et` | rules; length and palatalisation not marked in the score | **97.9%** | | 24.1% |
 | Latvian | `lv` | rules; tone not marked | **94.2%** | | 73.9% |
+| Lithuanian | `lt` | rules, optional stress data pack (draft: stress not met); pitch accent not marked | **79.1%** | | 23.7% |
 | Hungarian | `hu` | rules | **99.8%** | | 95.2% |
 | Greek | `el` | rules | **99.3%** | | 81.0% |
 | Romanian | `ro` | rules | **98.0%** | | 97.8% |
