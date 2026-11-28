@@ -356,6 +356,7 @@ pub fn cardinal(n: u128, lang: Lang) -> Vec<String> {
         Lang::Fr => 1_000_000_000_000_000_000_000_000,
         Lang::Tr | Lang::Ro => 1_000_000_000_000_000_000_000,
         Lang::Id => 1_000_000_000_000_000_000,
+        Lang::Sk => 1_000_000_000_000,
         Lang::Uk => 1_000_000_000_000_000,
         _ => u128::MAX,
     };
@@ -723,7 +724,7 @@ mod tests {
     fn long_numbers_do_not_panic() {
         let langs = [
             Lang::En, Lang::EnGb, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk,
-            Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar,
+            Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar, Lang::Sk,
         ];
         for lang in langs {
             for len in 1..=40usize {
