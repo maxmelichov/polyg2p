@@ -39,3 +39,15 @@ fn dutch_old_spelling() {
     assert_eq!(p("nl", "s avonds"), p("nl", "'s avonds"));
     assert!(p("nl", "Den Haag").starts_with("dɛn "));
 }
+
+/// Abbreviations are expanded and their own period is dropped mid-sentence (sv, cs); sv `Tom` the name.
+#[test]
+fn abbreviations_sv_cs() {
+    assert_eq!(p("sv", "T.ex. kan man det."), p("sv", "Till exempel kan man det."));
+    assert_eq!(p("sv", "Vi kom, d.v.s. vi gick."), p("sv", "Vi kom, det vill säga vi gick."));
+    assert_eq!(p("sv", "Det finns bl.a. katter."), p("sv", "Det finns bland annat katter."));
+    assert_eq!(p("cs", "Tzv. nové věci."), p("cs", "Takzvaný nové věci."));
+    assert_eq!(p("cs", "Koupil chleba, mléko atd. Pak šel."), p("cs", "Koupil chleba, mléko a tak dále. Pak šel."));
+    assert!(p("sv", "Tom är här.").starts_with("tˈɔm "));
+    assert!(p("sv", "en tom flaska").contains("tˈuːm"));
+}

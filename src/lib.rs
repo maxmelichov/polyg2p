@@ -356,22 +356,26 @@ impl G2p {
                 }
                 Tok::Word(w) if toks.get(ti + 1) == Some(&Tok::Punct('.')) && {
                     let lw = w.to_lowercase();
-                    // two-part abbreviations: z.B., d.h., sig.ra
-                    let two = match (toks.get(ti + 2), toks.get(ti + 3)) {
-                        (Some(Tok::Word(b)), after) => {
-                            let key = format!("{lw}.{}", b.to_lowercase());
-                            norm::abbrev(lang, &key).map(|x| (x, if after == Some(&Tok::Punct('.')) { ti + 4 } else { ti + 3 }))
+                    // multi-part abbreviations: z.B., d.h., sig.ra, i.d.R., d.v.s. (the longest key wins)
+                    let mut found = norm::abbrev(lang, &lw).map(|x| (x, ti + 2, lw.clone()));
+                    let (mut key, mut pos) = (lw.clone(), ti + 2);
+                    while let Some(Tok::Word(b)) = toks.get(pos) {
+                        key = format!("{key}.{}", b.to_lowercase());
+                        let dotted = toks.get(pos + 1) == Some(&Tok::Punct('.'));
+                        if let Some(x) = norm::abbrev(lang, &key) {
+                            found = Some((x, if dotted { pos + 2 } else { pos + 1 }, key.clone()));
                         }
-                        _ => None,
-                    };
-                    let one = norm::abbrev(lang, &lw).map(|x| (x, ti + 2));
-                    if let Some((full, end)) = two.or(one) {
+                        if !dotted {
+                            break;
+                        }
+                        pos += 2;
+                    }
+                    if let Some((full, end, key)) = found {
                         for part in full.split(' ') {
                             self.push_word(&mut outs, part, lang);
                         }
                         // the period is the abbreviation's, not a sentence end, unless a sentence
                         // can end there (etc.) and the next word is capitalized
-                        let key = if end == ti + 2 { lw.clone() } else { format!("{lw}.{}", match &toks[ti + 2] { Tok::Word(b) => b.to_lowercase(), _ => String::new() }) };
                         let cap_next = next_word(end).is_some_and(|w| w.chars().next().is_some_and(|c| c.is_uppercase()));
                         let title = norm::is_title(lang, &key);
                         let keep_dot = next_word(end).is_none() || cap_next && (norm::sentence_final(&key) || lang != Lang::De && !title);
@@ -576,6 +580,8 @@ impl G2p {
             Lang::Ro => ro::word(&lw),
             Lang::Hu => hu::word(&lw),
             Lang::Fi => fi::word(&lw),
+            // capitalised Tom is the name (tˈɔm); the adjective tom is lower case (sv.wiktionary tom: tʊm / toːm)
+            Lang::Sv if w == "Tom" => "tˈɔm".to_string(),
             Lang::Sv => sv::word(&lw),
             Lang::Id => id::word(&lw),
             Lang::Ca => ca::word(&lw),
