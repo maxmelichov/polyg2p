@@ -779,8 +779,9 @@ pub fn join(outs: &mut [Out]) {
             continue;
         }
         let src = prev.src.as_str();
-        let is_prep = PREPS.contains(&src)
-            || (src == "se" && cur.src.starts_with(['s', 'z', 'š', 'ž']) || src == "se" && cur.src == "mnou");
+        // `se` is not joined: the cue (next word starts with s z š ž, or `mnou`) read 82.6% on UD dev and 84.5% on the
+        // locked UD test, below the plain pronoun reading (88.2%, 92.5%); the dictionary reading is kept
+        let is_prep = PREPS.contains(&src);
         if !is_prep || PREPS.contains(&cur.src.as_str()) && cur.src.chars().count() <= 2 {
             continue;
         }
