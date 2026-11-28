@@ -4,14 +4,14 @@
 //! (`ein+und+zwanzig`) so the German module can stress them as one compound.
 
 use crate::Lang;
-use crate::{fr, pt, pl, uk, tr, nl, cs, el, ro, hu, fi, sv, id, ca, ar};
+use crate::{fr, pt, pl, uk, tr, nl, cs, el, ro, hu, fi, sv, id, ca, ar, am};
 
 /// Parse a digit string with separators into (integer part, fractional digits).
 /// en uses `,` for thousands and `.` for decimals; es/it/de the reverse. A single
 /// separator followed by exactly three digits is read as a thousands separator.
 fn parse(s: &str, lang: Lang) -> Option<(u128, Option<String>)> {
     let (thou, dec) = match lang {
-        Lang::En | Lang::He | Lang::Ar => (',', '.'),
+        Lang::En | Lang::He | Lang::Ar | Lang::Am => (',', '.'),
         _ => ('.', ','),
     };
     let mut int_part = String::new();
@@ -223,9 +223,11 @@ fn expand_plain(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<Str
             Lang::Id => id::DECIMAL,
             Lang::Ca => ca::DECIMAL,
             Lang::Ar => ar::DECIMAL,
+            Lang::Am => am::DECIMAL,
         }
         .to_string());
-        if f.len() <= 2 && !f.starts_with('0') && lang != Lang::En {
+        // English and Amharic read the fraction digit by digit
+        if f.len() <= 2 && !f.starts_with('0') && !matches!(lang, Lang::En | Lang::Am) {
             out.extend(cardinal(f.parse().unwrap_or(0), lang));
         } else {
             for d in f.chars() {
@@ -290,6 +292,7 @@ pub fn symbol(c: char, lang: Lang) -> Option<&'static str> {
         (Lang::Id, _) => return id::symbol(c),
         (Lang::Ca, _) => return ca::symbol(c),
         (Lang::Ar, _) => return ar::symbol(c),
+        (Lang::Am, _) => return am::symbol(c),
         _ => return None,
     })
 }
@@ -330,6 +333,19 @@ fn year(n: u128, lang: Lang) -> Option<Vec<String>> {
 }
 
 pub fn cardinal(n: u128, lang: Lang) -> Vec<String> {
+    // Above the largest scale word a language's tables cover, its number code
+    // indexed past them and panicked (fr from 25 digits, tr 22, ro 23, id 19,
+    // uk 16). Such numbers are read digit by digit, as English already does.
+    let limit: u128 = match lang {
+        Lang::Fr => 1_000_000_000_000_000_000_000_000,
+        Lang::Tr | Lang::Ro => 1_000_000_000_000_000_000_000,
+        Lang::Id => 1_000_000_000_000_000_000,
+        Lang::Uk => 1_000_000_000_000_000,
+        _ => u128::MAX,
+    };
+    if n >= limit {
+        return n.to_string().chars().flat_map(|d| cardinal(d as u128 - '0' as u128, lang)).collect();
+    }
     match lang {
         Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => en_card(n),
         Lang::Es | Lang::EsLa => es_card(n, true),
@@ -352,6 +368,7 @@ pub fn cardinal(n: u128, lang: Lang) -> Vec<String> {
         Lang::Id => id::cardinal(n),
         Lang::Ca => ca::cardinal(n),
         Lang::Ar => ar::cardinal(n),
+        Lang::Am => am::cardinal(n),
     }
 }
 
@@ -674,5 +691,33 @@ mod tests {
         assert_eq!(e("3,5", Lang::De), "drei Komma fünf");
         assert_eq!(e("3:45", Lang::En), "three forty five");
         assert_eq!(e("14:05", Lang::De), "vierzehn Uhr fünf");
+    }
+
+    /// No number of up to 40 digits may panic in any language (fr, uk, tr, ro
+    /// and id used to index past their scale tables).
+    #[test]
+    fn long_numbers_do_not_panic() {
+        let langs = [
+            Lang::En, Lang::EnGb, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk,
+            Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar,
+        ];
+        for lang in langs {
+            for len in 1..=40usize {
+                for pat in ["9", "1234567890", "17", "71", "80", "10"] {
+                    let digits: String = pat.chars().cycle().take(len).collect();
+                    let one = format!("1{}", "0".repeat(len - 1));
+                    for tok in [digits.clone(), one, format!("{digits},5"), format!("{digits}.5")] {
+                        assert!(!e(&tok, lang).is_empty(), "{lang:?} {tok}");
+                    }
+                }
+            }
+        }
+        // largest value each of the five still reads as a number, and the first it spells out
+        assert_eq!(e("999999999999999999999999", Lang::Fr).split(' ').last(), Some("neuf-cent-quatre-vingt-dix-neuf-mille-neuf-cent-quatre-vingt-dix-neuf"));
+        assert_eq!(e("1000000000000000000000000", Lang::Fr), format!("un{}", " zéro".repeat(24)));
+        assert_eq!(e("1000000000000000", Lang::Uk), format!("один{}", " нуль".repeat(15)));
+        assert_eq!(e("1000000000000000000000", Lang::Tr), format!("bir{}", " sıfır".repeat(21)));
+        assert_eq!(e("1000000000000000000000", Lang::Ro), format!("unu{}", " zero".repeat(21)));
+        assert_eq!(e("1000000000000000000", Lang::Id), format!("satu{}", " nol".repeat(18)));
     }
 }
