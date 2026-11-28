@@ -1,12 +1,12 @@
 """Amharic gemination tagger (PLAN 2.3, 2.4, step 3). Character-level pre-LN transformer encoder, 0.64 M parameters, the Tagger layout of
 polyg2p tools/train_ru.py / train_he.py (same block, same G2PT file). The `stress` head (2 logits) is the gemination head: long iff
 logit[1] > logit[0]; `cons` and `vow` are dummies. Embedding = E_char + E_row + E_order, exported as one summed `emb.weight`.
-usage: AM_G2P_DIR=... AM_GEM_WORK=DIR train_am_gem.py TAG [--hm 1|0] [--device cuda:1] [--epochs 30]      TAG -> model/TAG.pt (best by held-out CE) + TAG.log
+usage: train_am_gem.py TAG [--hm 1|0] [--device cuda:1] [--epochs 30]      TAG -> model/TAG.pt (best by held-out CE) + TAG.log
 Input strings: work/sent_labels*.jsonl (sentences, held-out/gold types masked), every lex_train word alone, packs of 3-8 words."""
 import sys, os, json, math, random, time, argparse, struct
 import numpy as np, torch, torch.nn as nn, torch.nn.functional as F
-HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
-D = os.environ.get("AM_GEM_WORK", ".")   # folder with work/ (labels) and model/ (outputs)
+D = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, D)
+TOOLS = os.environ.get("POLYG2P_TOOLS", os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, TOOLS)
 from train_he import MHA, Block   # noqa: E402  (the encoder block of the Hebrew / Russian taggers)
 import am_gem_ref as G
 PAD, UNK = 0, 1
@@ -75,17 +75,15 @@ def windows(t, y, mx=CFG["max_len"]):
     return out
 def load(hm):
     sfx = "" if hm else "_nohm"
-    sents = [json.loads(l) for l in open(f"{D}/work/sent_labels{sfx}.jsonl", encoding="utf-8")]
-    train = [json.loads(l) for l in open(f"{D}/work/lex_train{sfx}.jsonl", encoding="utf-8")]
-    held = [json.loads(l) for l in open(f"{D}/work/lex_heldout{sfx}.jsonl", encoding="utf-8")]
-    return sents, train, held
-def epoch_rows(sents, lex, rng):
-    rows = []
-    for r in sents: rows += windows(r["t"], r["y"])
-    for r in lex: rows.append((r["w"], r["y"]))
-    idx = list(range(len(lex))); rng.shuffle(idx); k = 0
+    rd = lambda p: [json.loads(l) for l in open(f"{D}/work/{p}{sfx}.jsonl", encoding="utf-8")]
+    return [], rd("lex_train"), rd("lex_dev"), rd("gen")
+def epoch_rows(sents, lex, rng, gen=(), gfrac=0.2):
+    """round 2: single words and packs of 3-8 random words, no sentence rows; generated verb forms (positives only) are subsampled each epoch"""
+    pool = list(lex) + [g for g in gen if rng.random() < gfrac]; rows = []
+    for r in pool: rows.append((r["w"], r["y"]))
+    idx = list(range(len(pool))); rng.shuffle(idx); k = 0
     while k < len(idx):
-        n = rng.randint(3, 8); ws = [lex[i] for i in idx[k:k + n]]; k += n
+        n = rng.randint(3, 8); ws = [pool[i] for i in idx[k:k + n]]; k += n
         rows.append((" ".join(w["w"] for w in ws), sum(([*w["y"], -1] for w in ws), [])[:-1]))
     return rows
 def batches(rows, tokens, rng=None):
@@ -119,24 +117,23 @@ def heldout_ce(model, held, dev):
             if v >= 0: tot += -math.log(max(q if v else 1 - q, 1e-9)); n += 1
     return tot / max(n, 1)
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("tag"); ap.add_argument("--hm", type=int, default=1); ap.add_argument("--device", default="cuda:1")
+    ap = argparse.ArgumentParser(); ap.add_argument("tag"); ap.add_argument("--hm", type=int, default=1); ap.add_argument("--device", default="cpu")
     ap.add_argument("--epochs", type=int, default=30); ap.add_argument("--tokens", type=int, default=8192); ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--warm", type=int, default=500); ap.add_argument("--patience", type=int, default=5); ap.add_argument("--memfrac", type=float, default=4 / 32.6)
-    ap.add_argument("--threads", type=int, default=2); ap.add_argument("--extra", default=None, help="extra sent_labels-style jsonl (heteronym labels) replacing work/sent_labels")
+    ap.add_argument("--threads", type=int, default=4); ap.add_argument("--gfrac", type=float, default=0.2, help="share of generated verb forms (positives only) drawn per epoch"); ap.add_argument("--extra", default=None, help="extra sent_labels-style jsonl (heteronym labels) replacing work/sent_labels")
     a = ap.parse_args(); torch.set_num_threads(a.threads); random.seed(0); np.random.seed(0); torch.manual_seed(0); rng = random.Random(0)
     dev = a.device
     if dev.startswith("cuda"): torch.cuda.set_per_process_memory_fraction(a.memfrac, torch.device(dev))
-    sents, train, held = load(a.hm)
-    if a.extra: sents = [json.loads(l) for l in open(a.extra, encoding="utf-8")]
+    sents, train, held, gen = load(a.hm)
     model = Tagger().to(dev); n = sum(p.numel() for p in model.parameters()) - sum(p.numel() for p in (model.ec.weight, model.er.weight, model.eo.weight))
     print(f"vocab {len(VOC)} params(without the 3 embedding parts) {n/1e6:.3f}M sentences {len(sents)} lex_train {len(train)} heldout {len(held)} device {dev}", flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=0.01, betas=(0.9, 0.98))
-    spe = sum(1 for _ in batches(epoch_rows(sents, train, random.Random(1)), a.tokens)); total = spe * a.epochs; step = 0
+    spe = sum(1 for _ in batches(epoch_rows(sents, train, random.Random(1), gen, a.gfrac), a.tokens)); total = spe * a.epochs; step = 0
     lr_at = lambda s: a.lr * (s + 1) / a.warm if s < a.warm else 0.5 * a.lr * (1 + math.cos(math.pi * min(1.0, (s - a.warm) / max(1, total - a.warm))))
     best = 1e9; bad = 0; log = open(f"{D}/model/{a.tag}.log", "w"); t0 = time.time()
     for ep in range(a.epochs):
         model.train(); tot = 0.0; cnt = 0
-        for _, ids, ys in batches(epoch_rows(sents, train, rng), a.tokens, rng):
+        for _, ids, ys in batches(epoch_rows(sents, train, rng, gen, a.gfrac), a.tokens, rng):
             for g in opt.param_groups: g["lr"] = lr_at(step)
             ids, ys = ids.to(dev), ys.to(dev)
             loss = F.cross_entropy(model(ids).reshape(-1, 2), ys.reshape(-1), ignore_index=-100)
