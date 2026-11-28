@@ -121,16 +121,26 @@ the rest is secondary stress in compounds (see below).
     `biljoona`, `triljoona`; decimal `pilkku`; beyond a language's scale words
     digit by digit instead of a panic (shared `num.rs`);
   - a space as the thousands separator (`2 300 000`, `100 000 euroa`) is one
-    number; not when a leading zero or more digits follow (phone numbers,
-    lists of numbers keep their old reading); minus sign (`-5` -> miinus);
+    number, also after `, ` `. ` `: ` when a word precedes (`auton, 20 000
+    euroa`, `Hinta: 1 000 euroa`, `tuli. 2 000 ihmistä`); not when a leading
+    zero or more digits follow (phone numbers), after another number and a
+    space (`1 2 000`), or in a short list (`3, 2 000`: a digit run directly
+    before the comma or colon, or a 1-2 digit run before the period, keeps the
+    old digit-by-digit reading); minus sign (`-5` -> miinus);
   - inflected numerals written with a colon: `5:ssä` -> viidessä, `25:n`,
     `3:lla`, `300:aa`, `7:ään`, `2:ksi`, ordinals `5:s`, `3:nnessa`;
   - ordinals before a lower-case word: `5. luokka`, `12. joulukuuta`,
     `5. kerroksessa` (agrees in -ssa/-sta/-lla/-lta/-lle/-ksi, and päivänä,
-    kertana, vuonna); `Olen 25.` and `3.5.` stay cardinal / decimal;
+    kertana, vuonna, and a genitive noun in -an/-än/-en/-in/-on/-ön/-un/-yn:
+    `3. luokan` -> kolmannen luokan, `1.–3. luokan` -> ensimmäisen–kolmannen
+    luokan; illatives, pronouns and adverbs in -n stay nominative); `Olen 25.` and `3.5.` stay cardinal / decimal;
   - dates `24.12.2023`, `24.12.` (day ordinal, month partitive, year
-    cardinal), clock times after `klo`/`kello` and `14.30`/`14:30`
-    (`14.05` -> neljätoista nolla viisi);
+    cardinal), clock times after `klo`/`kello` (also `Kello on 9.05` and the
+    second time of a range, `klo 9.05–10.15`) and `14:30` with a colon
+    (`14.05` -> neljätoista nolla viisi); a bare `9.05` without a clock word is
+    a decimal; a score `3:2` is read `kolme kaksi`;
+  - `25 %:n` -> prosentin, `20 m2`/`5 m3` -> neliömetriä/kuutiometriä
+    (also km, cm, mm);
   - units after a number (`5 kg`, `1 km`, `50 km/h`, `25 °C`, `2 h 30 min`)
     and abbreviations with a period (`n. 5 km`, `mm.`, `esim.`, `v. 1995`);
   - abbreviations with a case ending: `EU:n`, `USA:ssa`, `PS:n`, `NATO:n`.

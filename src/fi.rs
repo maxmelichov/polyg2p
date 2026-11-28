@@ -2297,6 +2297,26 @@ fn clock(n: &str) -> Option<Vec<String>> {
     Some(out)
 }
 
+/// Whether a number is read as a clock time: after klo / kello (also across
+/// "Kello on 9.05" and as the second time of a range, "klo 9.05–10.15"). A bare
+/// 9.05 with no clock word is a decimal (9,05). Times with a colon always count.
+fn clock_context(toks: &[Tok], i: usize, prev: &str, depth: u8) -> bool {
+    let is_klo = |t: &Tok| matches!(t, Tok::Word(w) if matches!(w.to_lowercase().as_str(), "klo" | "kello"));
+    if matches!(prev, "klo" | "kello") {
+        return true;
+    }
+    let before = |from: usize| toks[..from].iter().rposition(|t| !matches!(t, Tok::Sep));
+    let Some(p) = before(i) else { return false };
+    match &toks[p] {
+        t if is_klo(t) => true,
+        Tok::Word(w) if matches!(w.to_lowercase().as_str(), "on" | "oli" | "olisi") => {
+            before(p).is_some_and(|q| is_klo(&toks[q]))
+        }
+        Tok::Num(m) if depth == 0 && m.contains('.') && clock(m).is_some() => clock_context(toks, p, "", 1),
+        _ => false,
+    }
+}
+
 /// `24.12.2023` and `24.12` as a date: the day as an ordinal, the month in the
 /// partitive, the year as a cardinal (kahdeskymmenesneljäs joulukuuta …).
 fn date(n: &str) -> Option<Vec<Piece>> {
@@ -2324,6 +2344,23 @@ fn date(n: &str) -> Option<Vec<Piece>> {
 fn noun_case(w: &str) -> Case {
     if matches!(w, "päivänä" | "kertana" | "vuonna" | "kerroksena") {
         return Case::Ess;
+    }
+    // a genitive noun in -n (3. luokan oppilas -> kolmannen luokan): conservative,
+    // only a lower-case word of 5+ letters in -an/-än/-en/-in/-on/-ön/-un/-yn that
+    // is no pronoun, adverb or preposition and not an illative / passive (-aan,
+    // -ään, -oon, -uun, -yyn, -öön, -iin, -hin, -hun, -hon, -seen) -- those stay
+    // nominative, as does anything unclear
+    if w.chars().count() >= 5
+        && ["an", "än", "en", "in", "on", "ön", "un", "yn"].iter().any(|e| w.ends_with(e))
+        && !["aan", "ään", "oon", "uun", "yyn", "öön", "iin", "hin", "hun", "hon", "hyn", "hön", "seen"].iter().any(|e| w.ends_with(e))
+        && !matches!(
+            w,
+            "hänen" | "minun" | "sinun" | "meidän" | "teidän" | "heidän" | "ennen" | "sitten" | "kuitenkin" | "toisin"
+                | "myöhemmin" | "aikaisemmin" | "tulen" | "menen" | "haluan" | "tämän" | "tuon" | "joiden" | "joihin"
+        )
+        && w.chars().all(|c| c.is_alphabetic())
+    {
+        return Case::Gen;
     }
     for (suf, case) in [
         ("ssa", Case::Ine),
@@ -2369,7 +2406,7 @@ pub fn expand_token(toks: &[Tok], i: usize, prev: &str) -> Option<(Vec<Piece>, u
                     return Some((w, 3));
                 }
             }
-            if n.contains(':') || matches!(prev, "klo" | "kello") {
+            if n.contains(':') || clock_context(toks, i, prev, 0) {
                 if let Some(w) = clock(n) {
                     return Some((words(w), 1));
                 }
@@ -2391,6 +2428,30 @@ pub fn expand_token(toks: &[Tok], i: usize, prev: &str) -> Option<(Vec<Piece>, u
                 }
                 _ => {}
             }
+            // 1.–3. luokan: the first ordinal of a range takes the case of the noun
+            // after the second
+            if digits(n) && n.len() <= 3 && dot {
+                if let Some((j, Tok::Num(m))) = next {
+                    if digits(m) && m.len() <= 3 && toks.get(j + 1) == Some(&Tok::Punct('.')) {
+                        if let Some((_, Tok::Word(w))) = after(j + 2) {
+                            if lower_initial(w) && w.chars().count() > 1 {
+                                let case = noun_case(&w.to_lowercase());
+                                return Some((vec![numeral_piece(&ordinal_morphemes(n.parse().ok()?, case)?)], 2));
+                            }
+                        }
+                    }
+                }
+            }
+            // 3:2, a score: both numbers, no colon
+            if digits(n) && n.len() <= 3 && toks.get(i + 1) == Some(&Tok::Punct(':')) {
+                if let Some(Tok::Num(m)) = toks.get(i + 2) {
+                    if digits(m) && m.len() <= 2 {
+                        let mut w = cardinal(n.parse().ok()?);
+                        w.extend(cardinal(m.parse().ok()?));
+                        return Some((words(w), 3));
+                    }
+                }
+            }
             // 5. luokka, 12. joulukuuta: a number, a period and a lower-case word
             if digits(n) && n.len() <= 3 && dot && next_lower {
                 let Some((_, Tok::Word(w))) = next else { return None };
@@ -2401,7 +2462,42 @@ pub fn expand_token(toks: &[Tok], i: usize, prev: &str) -> Option<(Vec<Piece>, u
             }
             None
         }
+        Tok::Sym('%') => {
+            // 25 %:n -> prosentin
+            let (case, false) = colon_ending().and_then(colon_case)? else { return None };
+            let w = match case {
+                Case::Gen => "prosentin",
+                Case::Ine => "prosentissa",
+                Case::Ela => "prosentista",
+                Case::Ade => "prosentilla",
+                Case::Abl => "prosentilta",
+                Case::All => "prosentille",
+                Case::Tra => "prosentiksi",
+                Case::Ess => "prosenttina",
+                Case::Part => "prosenttia",
+                Case::Ill => "prosenttiin",
+                _ => return None,
+            };
+            Some((vec![Piece::Word(w.to_string())], 3))
+        }
         Tok::Word(w) => {
+            // m2, km2, cm3: square and cubic units, the exponent glued to the symbol
+            if let (Some(Tok::Num(e)), Some(Tok::Num(n))) = (toks.get(i + 1), toks[..i].iter().rev().find(|t| !matches!(t, Tok::Sep))) {
+                if matches!(e.as_str(), "2" | "3") {
+                    let base = match w.as_str() {
+                        "m" => Some(("metri", "metriä")),
+                        "km" => Some(("kilometri", "kilometriä")),
+                        "cm" => Some(("senttimetri", "senttimetriä")),
+                        "mm" => Some(("millimetri", "millimetriä")),
+                        _ => None,
+                    };
+                    if let Some((sg, pl)) = base {
+                        let pre = if e == "2" { "neliö" } else { "kuutio" };
+                        let u = format!("{pre}{}", if n == "1" { sg } else { pl });
+                        return Some((vec![Piece::Word(u)], 2));
+                    }
+                }
+            }
             // EU:n, USA:ssa, A:n: the letter names, then the ending
             if let Some(e) = colon_ending() {
                 let upper = w.chars().count() <= 6 && w.chars().all(|c| c.is_uppercase());
@@ -2476,6 +2572,30 @@ fn acronym_case(lw: &str, ending: &str) -> String {
     assimilate_nasals(&out)
 }
 
+/// Whether the number starting after `c[p]` + a space is a continuation of what
+/// comes before, so that its digit groups must not be joined into thousands.
+/// Protected: a number and a space ("1 2 000": a list, a phone number), and a
+/// small list ("3, 2 000", "12:30 2 000": a digit run directly before , or :,
+/// and before . only a short one, an ordinal or list index). Not protected: a
+/// word before the comma, period or colon ("Hinta: 1 000 euroa", "auton,
+/// 20 000 euroa") or a long number before a period ("vuonna 2020. 2 000 ihmistä",
+/// where the period ends the sentence). A group of exactly three digits after
+/// a space is read as thousands everywhere else.
+fn glued_before(c: &[char], p: usize) -> bool {
+    match c[p] {
+        x if x.is_ascii_digit() => true,
+        ',' | ':' => p > 0 && c[p - 1].is_ascii_digit(),
+        '.' => {
+            let mut k = p;
+            while k > 0 && c[k - 1].is_ascii_digit() {
+                k -= 1;
+            }
+            p - k >= 1 && p - k <= 2
+        }
+        _ => false,
+    }
+}
+
 /// Rewrites done on the raw text before tokenizing: a space as the thousands
 /// separator (2 300 000, the Finnish standard) becomes a no-break space so the
 /// number stays one token; a minus sign before a number is read; km/h and °C.
@@ -2516,7 +2636,7 @@ pub fn prenormalize(text: &str) -> Cow<'_, str> {
         let opens = ch.is_ascii_digit()
             && ch != '0'
             && (i == 0 || !(digit(i - 1) || matches!(c[i - 1], '.' | ',' | ':' | '+')))
-            && !(i >= 2 && c[i - 1] == ' ' && (digit(i - 2) || matches!(c[i - 2], '.' | ',' | ':')));
+            && !(i >= 2 && c[i - 1] == ' ' && glued_before(&c, i - 2));
         if opens {
             let mut j = i;
             while digit(j) {
@@ -2830,6 +2950,61 @@ mod tests {
             ("NATO:n", "nˈaton"),
             ("A:n", "ˈaːn"),
             ("Tämä on arvosana 3.5. Se on hyvä.", "tˈæmæ on ˈarvosˌana kˈolme pˈilkːu vˈiːsɪ. se on hˈyvæ."),
+        ]);
+    }
+
+    /// Each text must read exactly as its spelled-out twin.
+    fn same(pairs: &[(&str, &str)]) {
+        let g = crate::G2p::new(None);
+        for (a, b) in pairs {
+            assert_eq!(g.phonemize(a, crate::Lang::Fi), g.phonemize(b, crate::Lang::Fi), "{a} vs {b}");
+        }
+    }
+
+    /// A grouped number after a comma, period or colon with a word before it is
+    /// thousands; a short list stays digit by digit.
+    #[test]
+    fn grouped_number_after_punctuation() {
+        same(&[
+            ("Hän osti auton, 20 000 euroa maksavan.", "Hän osti auton, kaksikymmentätuhatta euroa maksavan."),
+            ("Hinta: 1 000 euroa.", "Hinta: tuhat euroa."),
+            ("Hän tuli. 2 000 ihmistä tuli.", "Hän tuli. kaksituhatta ihmistä tuli."),
+            ("Matka oli 3 km, 1 000 km.", "Matka oli kolme kilometriä, tuhat kilometriä."),
+            ("Hän tuli vuonna 2020. 2 000 ihmistä tuli.", "Hän tuli vuonna 2020. kaksituhatta ihmistä tuli."),
+            ("Luvut 3, 2 000 ja 5.", "Luvut 3, 2 0 0 0 ja 5."),
+        ]);
+    }
+
+    /// H.MM is a clock time only with klo / kello (also across "on" and in a range).
+    #[test]
+    fn clock_ranges() {
+        same(&[
+            ("klo 9.05–10.15", "kello yhdeksän nolla viisi kymmenen viisitoista"),
+            ("klo 14.30–16.00", "kello neljätoista kolmekymmentä kuusitoista"),
+            ("Kello on 9.05.", "Kello on yhdeksän nolla viisi."),
+            ("Hinta on 9.05 euroa.", "Hinta on 9,05 euroa."),
+        ]);
+    }
+
+    /// An ordinal agrees with a following genitive noun; unclear words keep the nominative.
+    #[test]
+    fn ordinal_before_genitive() {
+        same(&[
+            ("3. luokan oppilas", "kolmannen luokan oppilas"),
+            ("1.–3. luokan oppilaat", "ensimmäisen kolmannen luokan oppilaat"),
+            ("5. kurssin arvosana", "viidennen kurssin arvosana"),
+            ("5. luokka", "viides luokka"),
+            ("3. hänen mielestään", "kolmas hänen mielestään"),
+        ]);
+    }
+
+    #[test]
+    fn score_percent_and_squared_units() {
+        same(&[
+            ("Tulos 3:2 oli hyvä.", "Tulos kolme kaksi oli hyvä."),
+            ("25 %:n osuus", "kaksikymmentäviisi prosentin osuus"),
+            ("20 m2 ja 5 m3", "kaksikymmentä neliömetriä ja viisi kuutiometriä"),
+            ("1 km2", "yksi neliökilometri"),
         ]);
     }
 
