@@ -329,13 +329,22 @@ fn in_run(c: char) -> bool {
     matches!(c as u32, 0x1200..=0x135A | 0x1380..=0x138F | 0x2D80..=0x2DDF | 0xAB01..=0xAB2E) && c.is_alphabetic()
 }
 
-/// Phonemes of one run of fidel (one written word).
-fn run(w: &str, out: &mut String) {
+/// Phonemes of one run of fidel (one written word). `gem[i]` marks the i-th
+/// letter long (gemination layer, see [`Gem`]); no flags = the plain reading.
+fn run(w: &str, gem: &[bool], out: &mut String) {
     let letters: Vec<char> = w.chars().filter(|&c| fidel(c).is_some()).collect();
     let seg: Vec<(&str, bool, &str)> = letters.iter().filter_map(|&c| fidel(c)).collect();
     let n = seg.len();
     let bare = |i: usize| seg[i].0 != "ʔ" && seg[i].2.is_empty();
-    let (k0, mut ph) = stem(&letters);
+    let ok = guards(&letters);
+    // a flag stands only where the guards allow a long consonant
+    let g: Vec<bool> = (0..n).map(|i| gem.get(i).copied().unwrap_or(false) && ok[i]).collect();
+    let (mut k0, mut ph) = stem(&letters);
+    // the stem table is skipped when a flag falls on a stem letter or on the letter right after it
+    if (0..=k0.min(n.saturating_sub(1))).any(|i| g.get(i).copied().unwrap_or(false)) {
+        k0 = 0;
+        ph.clear();
+    }
     ph.reserve(3 * n);
     // consonants since the last vowel
     let mut coda = u8::from(ph.last().is_some_and(|p| !is_vowel(p)));
@@ -349,6 +358,8 @@ fn run(w: &str, out: &mut String) {
     for i in k0..n {
         let (c, lab, v) = seg[i];
         let last = i + 1 == n;
+        let m = if g[i] { "ː" } else { "" };
+        let gn = !last && g[i + 1];
         if c == "ʔ" && !lab {
             // vowel carrier (sixth order እ = ɨ); ʔ only in hiatus inside the word
             if !ph.is_empty() && coda == 0 {
@@ -364,27 +375,43 @@ fn run(w: &str, out: &mut String) {
             if lab {
                 ph.push("ʷ");
             }
+            if g[i] {
+                ph.push(m);
+            }
             ph.push(v);
             coda = 0;
         } else if !last && (ph.is_empty() || coda > 0) {
             // opens a syllable
             ph.push(c);
+            if g[i] {
+                ph.push(m);
+            }
             ph.push("ɨ");
             coda = 0;
         } else if !last
             && ((i + 3 == n && fin)
                 || (seg[i + 1].0 == "ɲ" && !seg[i + 1].1 && !seg[i + 1].2.is_empty())
-                || folds(c, seg[i + 1].0))
+                || folds(c, seg[i + 1].0)
+                // R2: a long bare consonant opens a syllable too (ምሽት → mɨʃːɨt), except before a glide (ኢትዮጵያ → itjopʼːja)
+                || (g[i] && !(!seg[i + 1].1 && !seg[i + 1].2.is_empty() && matches!(seg[i + 1].0, "j" | "w")))
+                // R1: a bare consonant before a long one takes ɨ (ሀብታምነት → habtamɨnːət)
+                || gn)
         {
             // after a vowel, but it still opens a syllable: the final cluster comes
             // first (ስምንት → sɨmɨnt), ɲ is long before a vowel (ማንኛው → manɨɲaw), and
             // t + ʃ must not read as the affricate (ቤትሻ → betɨʃa)
             ph.push(c);
+            if g[i] {
+                ph.push(m);
+            }
             ph.push("ɨ");
             coda = 0;
         } else if !last || coda == 0 {
             // coda after a vowel (a word that is one bare consonant stays bare)
             ph.push(c);
+            if g[i] {
+                ph.push(m);
+            }
             coda = 1;
         } else if coda == 1 && fin {
             ph.push(c);
@@ -400,11 +427,197 @@ fn run(w: &str, out: &mut String) {
     }
 }
 
+/// Where a length mark may stand: not word-initial, not on a vowel carrier,
+/// not on `h` (any row of it, labialized too), not on a word-final bare letter.
+pub fn guards(letters: &[char]) -> Vec<bool> {
+    let n = letters.len();
+    letters
+        .iter()
+        .enumerate()
+        .map(|(i, &ch)| {
+            let (c, _lab, v) = fidel(ch).unwrap_or(("ʔ", false, ""));
+            i > 0 && c != "ʔ" && c.trim_end_matches('ʷ') != "h" && !(i + 1 == n && v.is_empty())
+        })
+        .collect()
+}
+
+/// The one-to-one homophone fold the gemination tagger is trained on
+/// (ሠ → ሰ, ጸ → ፀ, ዐ ዓ ኣ → አ, the h rows → ሀ): positions are kept.
+pub fn fold(c: char) -> char {
+    match c {
+        'ሠ' => 'ሰ', 'ሡ' => 'ሱ', 'ሢ' => 'ሲ', 'ሣ' => 'ሳ', 'ሤ' => 'ሴ', 'ሥ' => 'ስ', 'ሦ' => 'ሶ',
+        'ጸ' => 'ፀ', 'ጹ' => 'ፁ', 'ጺ' => 'ፂ', 'ጻ' => 'ፃ', 'ጼ' => 'ፄ', 'ጽ' => 'ፅ', 'ጾ' => 'ፆ',
+        'ዐ' => 'አ', 'ዑ' => 'ኡ', 'ዒ' => 'ኢ', 'ዓ' => 'አ', 'ዔ' => 'ኤ', 'ዕ' => 'እ', 'ዖ' => 'ኦ', 'ኣ' => 'አ',
+        'ሃ' => 'ሀ', 'ሐ' => 'ሀ', 'ሑ' => 'ሁ', 'ሒ' => 'ሂ', 'ሓ' => 'ሀ', 'ሔ' => 'ሄ', 'ሕ' => 'ህ', 'ሖ' => 'ሆ',
+        'ኀ' => 'ሀ', 'ኁ' => 'ሁ', 'ኂ' => 'ሂ', 'ኃ' => 'ሀ', 'ኄ' => 'ሄ', 'ኅ' => 'ህ', 'ኆ' => 'ሆ',
+        'ኸ' => 'ሀ', 'ኹ' => 'ሁ', 'ኺ' => 'ሂ', 'ኻ' => 'ሀ', 'ኼ' => 'ሄ', 'ኽ' => 'ህ', 'ኾ' => 'ሆ',
+        _ => c,
+    }
+}
+
+/// Longest window the gemination tagger reads, in characters (its `max_len`).
+fn cut_windows(t: &[char], mx: usize) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    let mut s = 0;
+    while s < t.len() {
+        let mut e = (s + mx).min(t.len());
+        if e < t.len() {
+            if let Some(k) = (s..e).rev().find(|&k| t[k] == ' ') {
+                if k > s {
+                    e = k;
+                }
+            }
+        }
+        out.push((s, e));
+        s = if e < t.len() && t[e] == ' ' { e + 1 } else { e };
+    }
+    out
+}
+
+/// Optional gemination layer: an unwritten long consonant is a property of the
+/// word, not of the script, so it needs data. Two optional files in the data
+/// directory (or `$POLYG2P_AM_GEM` = a model path, `0` = off):
+///
+/// * `am-gem-int8.g2p` / `am-gem.g2p`: a character tagger (`tools/train_am_gem.py`);
+///   the decision threshold is baked into the bias of its `stress` head, so
+///   a letter is long iff `logit[1] > logit[0]`;
+/// * `am-gem.tsv`: `word<TAB>word with U+135F after each long letter`; a hit
+///   replaces the tagger for that word.
+///
+/// With neither file nothing changes: [`Gem::apply`] returns at once.
+pub struct Gem {
+    model: Option<crate::tagger::Tagger>,
+    table: Option<std::collections::HashMap<String, Vec<bool>>>,
+}
+
+impl Gem {
+    pub fn load(data_dir: Option<&std::path::Path>) -> Self {
+        let env = std::env::var_os("POLYG2P_AM_GEM");
+        if env.as_deref().is_some_and(|v| v == "0") {
+            return Gem { model: None, table: None };
+        }
+        let path = env.map(std::path::PathBuf::from).or_else(|| {
+            let d = data_dir?;
+            let int8 = d.join("am-gem-int8.g2p");
+            Some(if int8.is_file() { int8 } else { d.join("am-gem.g2p") })
+        });
+        let model = path.and_then(|p| match crate::tagger::Tagger::open(&p) {
+            Ok(m) => Some(m),
+            Err(e) => {
+                if p.exists() {
+                    eprintln!("polyg2p: cannot load Amharic gemination model {}: {e}", p.display());
+                }
+                None
+            }
+        });
+        let table = data_dir.and_then(|d| std::fs::read_to_string(d.join("am-gem.tsv")).ok()).map(|t| Self::parse_table(&t));
+        Gem { model, table }
+    }
+
+    pub fn from_parts(model: Option<crate::tagger::Tagger>, table: Option<&str>) -> Self {
+        Gem { model, table: table.map(Self::parse_table) }
+    }
+
+    fn parse_table(t: &str) -> std::collections::HashMap<String, Vec<bool>> {
+        let mut m = std::collections::HashMap::new();
+        for l in t.lines() {
+            let Some((_, marked)) = l.split_once('\t') else { continue };
+            let (mut word, mut long) = (String::new(), Vec::new());
+            for c in marked.chars() {
+                if c == '\u{135F}' {
+                    if let Some(x) = long.last_mut() {
+                        *x = true;
+                    }
+                } else if fidel(c).is_some() {
+                    word.push(fold(c));
+                    long.push(false);
+                }
+            }
+            m.entry(word).or_insert(long);
+        }
+        m
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.model.is_none() && self.table.is_none()
+    }
+
+    /// Flags (one per fidel letter) for every word of a sentence: `words[k]` is
+    /// (the word, the marks that follow it).
+    pub fn flags(&self, words: &[(&str, &str)]) -> Vec<Vec<bool>> {
+        let letters: Vec<Vec<char>> = words.iter().map(|(w, _)| w.chars().filter(|&c| fidel(c).is_some()).collect()).collect();
+        let mut out: Vec<Vec<bool>> = letters.iter().map(|l| vec![false; l.len()]).collect();
+        let Some(m) = &self.model else {
+            return self.table_pass(letters, out);
+        };
+        // the tagger input of the delivery: folded words + marks, one space between words
+        let mut text: Vec<char> = Vec::new();
+        let mut start = Vec::with_capacity(words.len());
+        for (k, (_, marks)) in words.iter().enumerate() {
+            if k > 0 {
+                text.push(' ');
+            }
+            start.push(text.len());
+            text.extend(letters[k].iter().map(|&c| fold(c)));
+            text.extend(marks.chars());
+        }
+        for (s, e) in cut_windows(&text, m.cfg.max_len) {
+            let win: String = text[s..e].iter().collect();
+            let lg = m.forward(&m.encode(&win));
+            for (k, l) in letters.iter().enumerate() {
+                for i in 0..l.len() {
+                    let p = start[k] + i;
+                    if p >= s && p < e {
+                        let q = p - s;
+                        out[k][i] = lg.stress[2 * q + 1] > lg.stress[2 * q];
+                    }
+                }
+            }
+        }
+        self.table_pass(letters, out)
+    }
+
+    fn table_pass(&self, letters: Vec<Vec<char>>, mut out: Vec<Vec<bool>>) -> Vec<Vec<bool>> {
+        for (k, l) in letters.iter().enumerate() {
+            if let Some(t) = &self.table {
+                let key: String = l.iter().map(|&c| fold(c)).collect();
+                if let Some(f) = t.get(&key) {
+                    out[k] = f.clone();
+                }
+            }
+            let ok = guards(l);
+            for (i, x) in out[k].iter_mut().enumerate() {
+                *x = *x && ok[i];
+            }
+        }
+        out
+    }
+
+    /// Rewrites `ph` of every word that has a long letter. Runs after [`join`].
+    pub fn apply(&self, outs: &mut [Out]) {
+        if self.is_empty() || outs.is_empty() {
+            return;
+        }
+        let words: Vec<(&str, &str)> = outs.iter().map(|o| (o.src.as_str(), o.punct.as_str())).collect();
+        let flags = self.flags(&words);
+        for (o, f) in outs.iter_mut().zip(flags) {
+            if f.iter().any(|&x| x) {
+                o.ph = word_gem(&o.src, &f);
+            }
+        }
+    }
+}
+
 /// Context-free phonemes of one word: its fidel letters as one run (anything
 /// else in the token is skipped).
 pub fn word(lw: &str) -> String {
+    word_gem(lw, &[])
+}
+
+/// [`word`] with the letters flagged in `gem` read as long consonants (`ː`).
+pub fn word_gem(lw: &str, gem: &[bool]) -> String {
     let mut out = String::with_capacity(lw.len());
-    run(lw, &mut out);
+    run(lw, gem, &mut out);
     out
 }
 
@@ -1001,5 +1214,45 @@ mod tests {
         }
         assert!(["በ", "ለ", "ከ", "የ", "እስከ"].iter().all(|w| num_prefix(w)));
         assert!(!num_prefix("ብር") && !num_prefix("ሰዓት") && !num_prefix(""));
+    }
+
+    #[test]
+    fn long_consonants() {
+        let l = |w: &str, g: &[usize]| {
+            let n = w.chars().filter(|&c| fidel(c).is_some()).count();
+            word_gem(w, &(0..n).map(|i| g.contains(&i)).collect::<Vec<_>>())
+        };
+        // R2: a long bare consonant that is not word-final takes ɨ
+        assert_eq!(l("ምሽት", &[1]), "mɨʃːɨt");
+        assert_eq!(l("አምስት", &[1]), "amːɨst");
+        assert_eq!(l("ስድስት", &[1]), "sɨdːɨst");
+        // R1: a bare consonant before a long one takes ɨ
+        assert_eq!(l("ሀብታምነት", &[4]), "habtamɨnːət");
+        assert_eq!(l("ማንኛው", &[2]), "manɨɲːaw");
+        // guards: a final bare letter, a first letter, h, are never long
+        assert_eq!(l("ቤት", &[1]), "bet");
+        assert_eq!(l("ሰላም", &[0]), "səlam");
+        assert_eq!(l("ሰሀ", &[1]), "səha");
+        // a labialized letter and an ejective affricate: ː after the whole consonant
+        assert_eq!(l("ሰሏ", &[1]), "səlʷːa");
+        assert_eq!(l("ጠጨ", &[1]), "tʼətʃʼːə");
+        // R2 does not apply before a glide (ኢትዮጵያ)
+        assert_eq!(l("ኢትዮጵያ", &[3]), "itjopʼːja");
+        // the stem table is skipped when a flag falls on a stem letter or on the letter after it
+        assert_eq!(l("አምስተኛ", &[1]), "amːɨstəɲa");
+        assert_eq!(l("አምስተኛ", &[3]), "amsɨtːəɲa");
+        assert_eq!(l("አምስተኛ", &[]), "amɨstəɲa");
+    }
+
+    #[test]
+    fn guards_and_fold() {
+        let g = |w: &str| guards(&w.chars().collect::<Vec<_>>());
+        assert_eq!(g("ሰላም"), vec![false, true, false]);
+        assert_eq!(g("ሰሀ"), vec![false, false]);
+        assert_eq!(g("አምስ"), vec![false, true, false]);
+        assert_eq!(fold('ሠ'), 'ሰ');
+        assert_eq!(fold('ዓ'), 'አ');
+        assert_eq!(fold('ኸ'), 'ሀ');
+        assert_eq!(fold('ሰ'), 'ሰ');
     }
 }

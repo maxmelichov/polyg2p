@@ -95,3 +95,7 @@ uk.lex (optional Ukrainian stress lexicon, data pack, not in the wheel)
     and GFDL (https://en.wiktionary.org/wiki/Wiktionary:Copyrights, checked 2026-11-28; the kaikki.org index page
     itself states no licence, only a citation request). The data is share-alike and therefore kept outside the
     Apache-licensed package. Data from dict_uk / ukrainian-word-stress (non-commercial licence) is not used.
+    am-gem.tsv, am-gem.g2p, am-gem-int8.g2p - Amharic gemination (unwritten long consonants):
+        a word table from the hand-marked gemination lists of the GFF Data Archive (CC BY-SA 4.0) and a tagger
+        trained on those labels plus a rule. Share-alike terms apply to the table and, until stated otherwise,
+        to the model. Not in the wheel; the engine runs without them.

@@ -128,8 +128,9 @@ gold above, not taken from a published description.
 
 ## Known gaps
 
-* **Gemination is not predicted.** It is lexical and unwritten; the output
-  never contains `ː`.
+* **Gemination is lexical and unwritten.** By default the output never
+  contains `ː`; the optional layer below adds it where a model or a table
+  says so.
 * **`ɨ` is decided on the written word.** A one-letter prefix is syllabified
   with its stem (`በትምህርት` → `bətmɨhɨrt`, where careful speech keeps the
   stem's `tɨm-`), and a final pair of obstruents is always a cluster (`ነጥብ` →
@@ -189,3 +190,50 @@ among the unjudged: if its reading is `mərh`, the `-ህ` row is 92%.
   languages; a hyphen between numbers is a boundary (`1-2` → `አንድ ሁለት`).
   Symbols without a word here (`+ = @`, other currency signs) are skipped.
   Dates are not recognized: `12/03/2021` is read as three numbers.
+
+## Optional gemination layer (`am-gem*.g2p`, `am-gem.tsv`)
+
+Off unless a data file is present; without one the output is byte-identical
+to the rules above. Files, looked up in the data directory (or
+`POLYG2P_AM_GEM`: a model path, `0` = off):
+
+* `am-gem-int8.g2p` / `am-gem.g2p`: a 0.64 M-parameter character tagger (4
+  layers, d 128), the same G2PT file and kernel as the Hebrew and Russian
+  models. Its `stress` head says whether a letter is long; the threshold is
+  baked into that head's bias. It reads the whole sentence (folded words and
+  marks) in windows of at most 512 characters. `tools/train_am_gem.py`
+  trains it; `tools/am_gem_ref.py` is its Python twin.
+* `am-gem.tsv`: `word<TAB>word with U+135F after each long letter`. A hit
+  replaces the tagger for that word.
+
+Guards, applied everywhere: a letter is never long word-initially, on a vowel
+carrier (`አ ዐ`), on `h`, or as a word-final bare letter.
+
+Syllabification with a long consonant (`am::word_gem`): **R1** a bare
+consonant directly before a long one takes `ɨ` (`ሀብታምነት` → `habtamɨnːət`);
+**R2** a long bare consonant that is not word-final takes `ɨ` (`ምሽት` →
+`mɨʃːɨt`, `አምስት` → `amːɨst`), except before a glide (`ኢትዮጵያ` →
+`itjopʼːja`, where the gold has no `ɨ`). `ː` follows the whole consonant
+(`tʃʼː`, `lʷːa`). The stem table is skipped when a flag falls on a stem letter
+or the letter after it. With the gold's own length marks as flags the phone
+error without gemination is 6.84 %, the same as with no marks.
+
+### Numbers (WikiPron gold, 478 words, never trained on)
+
+Labels are tiered by how many independent sources agree; only the tiers that
+reach 90 % on the gold (lexicon agreement, rule) are trained as positives. The
+gold under-marks long consonants, so its precision is a lower bound.
+
+| | PER with gemination | gem precision | gem recall |
+|---|---|---|---|
+| no marks | 14.31 % | | |
+| rule alone (`ɲ`, `tʃ` after a vowel) | 12.84 % | 95.1 % | 20.7 % |
+| tagger (th 0.6) | 12.80 % | 85.2 % | 24.5 % |
+| tagger (th 0.6) + rule | 12.84 % | 82.5 % | 25.0 % |
+| tagger trained without the HornMorpho-derived lexicons (th 0.5) | 13.16 % | 87.8 % | 19.1 % |
+
+On held-out lexicon words (one-word inputs) the tagger at th 0.6 has precision
+91.8 % and recall 84.1 %; most of that recall is the rule (recall on
+lexicon-agreed positions alone: 24 %). On held-out words inside running
+sentences precision is 72.6 % (recall 40.9 %); at th 0.97 it is 91.1 % (22.8 %).
+Read this as: the tagger adds little over the rule on unseen words.
