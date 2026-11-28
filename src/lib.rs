@@ -324,6 +324,40 @@ impl G2p {
         if lang == Lang::He {
             return self.hebrew().phonemize(text);
         }
+        let outs = self.plain_outs(text, lang, accent);
+        let mut s = String::with_capacity(text.len() * 2);
+        for o in &outs {
+            if o.ph.is_empty() {
+                if !o.punct.is_empty() {
+                    s.push_str(&o.punct);
+                }
+                continue;
+            }
+            if !s.is_empty() && !o.src.is_empty() && !o.ph.starts_with('\u{0}') {
+                s.push(' ');
+            }
+            s.push_str(o.ph.trim_start_matches('\u{0}'));
+            s.push_str(&o.punct);
+        }
+        fold::fold(s.trim())
+    }
+
+    /// The words of `text` after the sentence pass, each with its source word
+    /// (lower-case) and phonemes, before they are joined into one string. For
+    /// tools that score one word in context (`tools/en_homograph_bench.py`).
+    /// Empty for Russian and Hebrew, which phonemize whole sentences.
+    pub fn phonemize_words(&self, text: &str, lang: Lang) -> Vec<(String, String)> {
+        if matches!(lang.base(), Lang::Ru | Lang::He) {
+            return Vec::new();
+        }
+        self.plain_outs(text, lang.base(), lang.accent())
+            .into_iter()
+            .filter(|o| !o.src.is_empty())
+            .map(|o| (o.src, fold::fold(o.ph.trim_start_matches('\u{0}'))))
+            .collect()
+    }
+
+    fn plain_outs(&self, text: &str, lang: Lang, accent: Option<en_accent::Accent>) -> Vec<Out> {
         let toks = text::tokenize(text);
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
         let mut words: Vec<String> = Vec::new();
@@ -487,21 +521,7 @@ impl G2p {
             Lang::Ca => ca::join(&mut outs),
             Lang::Ar => ar::join(&mut outs),
         }
-        let mut s = String::with_capacity(text.len() * 2);
-        for o in &outs {
-            if o.ph.is_empty() {
-                if !o.punct.is_empty() {
-                    s.push_str(&o.punct);
-                }
-                continue;
-            }
-            if !s.is_empty() && !o.src.is_empty() && !o.ph.starts_with('\u{0}') {
-                s.push(' ');
-            }
-            s.push_str(o.ph.trim_start_matches('\u{0}'));
-            s.push_str(&o.punct);
-        }
-        fold::fold(s.trim())
+        outs
     }
 
     /// Phonemize many texts using all available cores (order preserved).
