@@ -69,6 +69,9 @@ data/en_gb_lex.tsv (Southern British forms of about 1,000 words)
     data/en_brit_words.tsv alone (see docs/english-accents.md for what
     that costs in accuracy).
 
+data/en_homograph.tsv, tests/en_homograph_cases.tsv
+    Reading table (162 English heteronyms, 326 readings) and test sentences written by the polyg2p authors.
+
 data/en_gb_func.tsv, data/en_brit_words.tsv
     Short lists of British function-word and word forms written by the polyg2p authors.
 
@@ -78,6 +81,12 @@ data/it_suffix.tsv, data/it_open.tsv (Italian stress / vowel-openness statistics
     pronunciations; see "Data licensing" in README.md before redistributing.
 
 OPTIONAL data packs (not part of the Apache-2.0 distribution)
+    en_homograph.g2p - English heteronym model trained with tools/train_homograph.py on the Wikipedia Homograph
+                       Data (Apache-2.0; its sentences are English Wikipedia text, CC BY-SA 3.0), Tatoeba
+                       sentences (CC BY 2.0 FR) and WordNet 3.1 (WordNet licence). Whether weights trained on
+                       CC BY-SA text are a share-alike derivative is unsettled, so the file is optional and
+                       not shipped. A silver-only variant (no Wikipedia text) is built with
+                       `train_homograph.py --silver-only`.
     it.lex  - from WikiPron / Wiktionary, CC BY-SA 3.0/4.0
     de.lex  - from german-ipa-dict (devio-at) via ipa-dict, from Wiktionary, CC BY-SA
     These must be distributed under their own share-alike terms.

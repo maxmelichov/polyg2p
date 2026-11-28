@@ -812,7 +812,7 @@ mod tests {
     #[test]
     fn suffix_join() {
         use crate::Out;
-        let mk = |src: &str| Out { ph: word(src), punct: String::new(), pause_after: false, src: src.to_string() };
+        let mk = |src: &str| Out { ph: word(src), punct: String::new(), pause_after: false, src: src.to_string(), cap: false };
         let mut outs = vec![mk("ezernyolcszáznegyvennyolc"), mk("ban"), mk("és"), mk("ma"), mk("tóth"), mk("és"), mk("bkv"), mk("nál")];
         super::join(&mut outs);
         let got: Vec<&str> = outs.iter().map(|o| o.ph.as_str()).collect();

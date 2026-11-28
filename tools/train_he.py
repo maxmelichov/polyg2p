@@ -260,11 +260,17 @@ def export(model, vocab, path, cfg, int8=False):
     weight is quantized symmetrically per output row: w ~= q * scale[row]; the
     header entry carries "dtype": "i8" and the scales follow as `<name>.scale`.
     """
-    sd = {k: v.detach().float().cpu().contiguous() for k, v in model.state_dict().items()}
     header = {"magic": "G2PT", "config": cfg, "vocab": vocab,
               "cons_vocab": [CONS_VOCAB[i] for i in range(N_CONS)],
               "vow_vocab": [VOW_VOCAB[i] for i in range(N_VOW)],
               "letter_cons": LETTER_CONS, "tensors": []}
+    return write_g2pt(model.state_dict(), header, path, int8)
+
+
+def write_g2pt(state_dict, header, path, int8=False):
+    """Write `state_dict` after `header` (its "tensors" list is filled in) as a G2PT file; see export().
+    Shared with tools/train_homograph.py."""
+    sd = {k: v.detach().float().cpu().contiguous() for k, v in state_dict.items()}
     off = 0
     blobs = []
     for k, v in sd.items():

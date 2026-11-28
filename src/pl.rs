@@ -949,7 +949,7 @@ mod tests {
     #[test]
     fn sandhi() {
         use crate::Out;
-        let mk = |src: &str| Out { ph: word(src), punct: String::new(), pause_after: false, src: src.to_string() };
+        let mk = |src: &str| Out { ph: word(src), punct: String::new(), pause_after: false, src: src.to_string(), cap: false };
         let mut outs = vec![mk("w"), mk("szkole"), mk("jak"), mk("dobrze"), mk("bez"), mk("ciebie"), mk("w"), mk("domu")];
         super::join(&mut outs);
         let got: Vec<&str> = outs.iter().map(|o| o.ph.as_str()).collect();

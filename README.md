@@ -189,6 +189,7 @@ Raw text can go straight in:
 | `ru_*.lex` | RUAccent dictionaries | Apache-2.0 | yes | stress falls back to suffix rules |
 | `ru-ctx.g2p` | distilled from RUAccent | Apache-2.0 | compiled in | |
 | `he-int8.g2p` | distilled from RenikudPlus | Apache-2.0 | yes | Hebrew needs it or renikud-onnx |
+| `en_homograph.g2p` | trained on Wikipedia Homograph Data, Tatoeba, WordNet (see `LICENCE_NOTES.txt` beside it) | CC BY-SA text, CC BY, WordNet | no | English heteronyms (read, lead, wind, ...) use context rules; `POLYG2P_EN_HOMOGRAPH=off` ignores the file |
 | `de.lex` | ipa-dict, Wiktionary | CC BY-SA | no | German uses rules |
 | `it.lex`, `nl.lex`, `sv.lex`, `pt.lex` | WikiPron, Wiktionary | CC BY-SA | no | rules only |
 | `uk.lex` | Wiktionary stress marks (kaikki.org extract, `tools/uk_kaikki.py`) + WikiPron | CC BY-SA 4.0 / GFDL | no | stress from endings and word starts |

@@ -1,0 +1,182 @@
+# author-written adversarial sentences, not from any corpus. sentence <TAB> word <TAB> reading [<TAB> must]. The first occurrence of word is scored; readings are named in data/en_homograph.tsv.
+Lead is a metal.	lead	metal	must
+He lead the sheep to the meadow.	lead	metal	must
+Lead can cause effects on your brain.	lead	metal	must
+I lead every group project at school.	lead	verb	must
+The lead in the old pipes poisoned the water.	lead	metal
+She took the lead after the second lap.	lead	verb
+Who will lead if the captain is hurt?	lead	verb
+Lead the way, please.	lead	verb
+They lead very different lives.	lead	verb
+He will lead the team next season.	lead	verb
+The detective followed a promising lead.	lead	verb
+Lead poisoning was common in Rome.	lead	metal
+Lead paint was banned decades ago.	lead	metal
+She lead the choir for twenty years.	lead	metal
+The pencil lead snapped in half.	lead	metal
+Lead and zinc are mined in the valley.	lead	metal
+Our guide lead us across the river.	lead	metal
+Did the lead actress win an award?	lead	verb
+The report was read to the board before anyone could object.	read	past
+Read me the last line again.	read	present
+I read that book when I was nine.	read	past
+Every night I read to my kids.	read	present
+She read the letter twice and then burned it.	read	past
+Please read the instructions before you start.	read	present
+Have you read the news today?	read	past
+They read slowly because the print was small.	read	past
+Read it aloud so everyone can hear.	read	present
+He read aloud to the whole class.	read	past
+We will read the results tomorrow.	read	present
+Wind the cable around the post before the wind picks up.	wind	turn
+The wind picks up in the afternoon.	wind	air
+You have to wind the clock every week.	wind	turn
+A cold wind blew across the fields.	wind	air
+The road will wind through the hills for miles.	wind	turn
+Wind turbines turn faster in a storm.	wind	air
+Wind speeds reached eighty miles per hour.	wind	air
+He had to wind the film back by hand.	wind	turn
+The live broadcast will show where they live.	live	adj
+Where do they live now?	live	verb
+She wants to live by the sea.	live	verb
+We saw a live band last night.	live	adj
+Live from New York, it is Saturday night.	live	adj
+Millions of people live in the city.	live	verb
+Live long and prosper.	live	verb
+A live wire hung from the pole.	live	adj
+Their lives were changed forever by the flood.	lives	noun
+He lives in a small flat near the station.	lives	verb
+Their lives were never the same.	lives	noun
+A tear in the sail made her tear up.	tear	rip
+A single tear ran down her cheek.	tear	cry
+Be careful not to tear the paper.	tear	rip
+Tear along the dotted line.	tear	rip
+She wiped a tear from her eye.	tear	cry
+There was a small tear in his jacket.	tear	rip
+They close early because the store is close to the stadium.	close	verb
+Please close the door behind you.	close	verb
+We are very close friends.	close	adj
+The shop will close at nine.	close	verb
+That was a close call.	close	adj
+Stand close to the fire.	close	adj
+Close the window, it is cold.	close	verb
+The bass swam under the boat.	bass	fish
+He plays bass in a jazz trio.	bass	music
+They caught a large bass in the lake.	bass	fish
+The bass in this song is too loud.	bass	music
+Bass guitars have four strings.	bass	music
+Please record the new record.	record	verb
+She holds the world record in the mile.	record	noun
+Record the meeting so we can listen later.	record	verb
+They plan to record an album in the spring.	record	verb
+The record shows he arrived at noon.	record	noun
+Present the present to her now.	present	verb
+There were twelve people present at the meeting.	present	adjnoun
+He will present the findings on Monday.	present	verb
+She gave me a present for my birthday.	present	adjnoun
+At present nothing has changed.	present	adjnoun
+The nurse wound the bandage around the wound.	wound	turned
+The wound healed slowly.	wound	injury
+She wound the string around her finger.	wound	turned
+He had a deep wound in his leg.	wound	injury
+A minute crack appeared a minute later.	minute	tiny
+Wait a minute, I will be right back.	minute	time
+The differences are minute.	minute	tiny
+It took only a minute to fix.	minute	time
+The soldiers desert the fort in the desert.	desert	verb
+The desert is cold at night.	desert	noun
+Do not desert your friends.	desert	verb
+They crossed the desert on camels.	desert	noun
+I am content with the content.	content	adj
+The content of the letter was a secret.	content	noun
+She seemed content to stay at home.	content	adj
+The site hosts video content for children.	content	noun
+We polish the Polish silver every spring.	polish	wax
+Polish is spoken in Warsaw.	polish	nationality
+He used a cloth to polish the shoes.	polish	wax
+The Polish army crossed the border.	polish	nationality
+Many students object to the new rule.	object	verb
+The object on the table was a key.	object	noun
+I object to that question.	object	verb
+She picked up a strange object.	object	noun
+He will project the image onto the wall.	project	verb
+The project is due on Friday.	project	noun
+They project that sales will double.	project	verb
+Our class project won a prize.	project	noun
+Use a pencil for the test.	use	verb
+What is the use of crying?	use	noun
+We use the same recipe every year.	use	verb
+There is no use arguing with him.	use	noun
+The house was empty for years.	house	noun
+They will house the refugees in the school.	house	verb
+A wooden house stood on the hill.	house	noun
+The new hotel can house two hundred guests.	house	verb
+Pull the oar to row the boat across the lake.	row	line
+The neighbours had a loud row last night.	row	quarrel
+We sat in the front row.	row	line
+They row every morning before work.	row	line
+She made a deep bow to the audience.	bow	bend
+He tied a red bow in her hair.	bow	knot
+The bow of the ship hit the dock.	bow	bend
+The archer drew the bow and let the arrow fly.	bow	knot
+Farmers sow the seeds in early spring.	sow	plant
+The sow gave birth to nine piglets.	sow	pig
+A dove landed on the window.	dove	bird
+He dove into the pool without a sound.	dove	dived
+They refuse to leave the building.	refuse	verb
+The refuse is collected on Tuesdays.	refuse	noun
+The license will permit you to drive at night.	permit	verb
+You need a permit to park here.	permit	noun
+The subject of the essay was freedom.	subject	adjnoun
+They subject the metal to extreme heat.	subject	verb
+Sign the contract before you leave.	contract	noun
+Metal will contract as it cools.	contract	verb
+Can you convert this file to a PDF?	convert	verb
+He is a recent convert to the faith.	convert	noun
+They conduct experiments every day.	conduct	verb
+Her conduct at the party was shocking.	conduct	noun
+We expect prices to increase next month.	increase	verb
+There was a sharp increase in crime.	increase	noun
+We import most of our coffee.	import	verb
+Oil is the biggest import of the island.	import	noun
+Tea is the country's main export.	export	noun
+They export grain to forty countries.	export	verb
+The rebel soldiers took the town.	rebel	noun
+Teenagers often rebel against their parents.	rebel	verb
+The police suspect the driver.	suspect	verb
+The main suspect was never found.	suspect	adjnoun
+Do not insult your guests.	insult	verb
+That remark was an insult to us all.	insult	noun
+Workers protest outside the gate every day.	protest	verb
+The protest lasted three hours.	protest	noun
+The nurse tried to console the child.	console	verb
+He bought a new game console.	console	noun
+Keep the two piles separate.	separate	adj
+Separate the eggs before you add the flour.	separate	verb
+Please estimate the cost of the repairs.	estimate	verb
+Her estimate was close to the real figure.	estimate	noun
+They will graduate in June.	graduate	verb
+She is a graduate of the university.	graduate	adjnoun
+He is a learned man.	learned	adj
+She learned to swim at six.	learned	past
+The river winds through the valley.	winds	turn
+The winds of change are blowing.	winds	air
+Chop the logs with both axes.	axes	ax
+The three axes of the graph meet at zero.	axes	axis
+Is your mobile on?	mobile	adj
+A mobile hung above the crib.	mobile	art
+He drove to Mobile, Alabama.	mobile	city
+She has a good job at the bank.	job	work
+The Book of Job tells of great suffering.	job	bible
+Send your resume to the office.	resume	noun
+We will resume after lunch.	resume	verb
+Nobody is perfect.	perfect	adj
+They will perfect the design next year.	perfect	verb
+The invalid slept most of the afternoon.	invalid	noun
+Your ticket is invalid.	invalid	adj
+She moped around the house all day.	moped	past
+He rode a moped to work.	moped	noun
+He asked her for a sample of the perfume.	perfume	noun
+Flowers perfume the whole garden.	perfume	verb
+They discount the old stock in January.	discount	verb
+There was a big discount on shoes.	discount	noun
