@@ -15,6 +15,11 @@ between two pronunciations counts as wrong. The baseline answers every sentence
 with the homograph's most frequent label in the train split.
 
 options: --split eval|train   which split to score (default eval)
+         --cases FILE         score tests/en_homograph_cases.tsv (author-written sentences; readings come from
+                              data/en_homograph.tsv) instead of the corpus
+         --system NAME=DIR[,off]  also run en_homograph with data dir DIR as a column NAME (repeatable);
+                              ",off" sets POLYG2P_EN_HOMOGRAPH=off, i.e. the context rules only
+         --check-table        check that every row of data/en_homograph.tsv maps to a different corpus label
          --no-espeak          skip espeak-ng (needs `phonemizer` otherwise)
          --show N             list N misses of polyg2p
          --map                print, per homograph, each distinct output and the label it was matched to
@@ -31,6 +36,19 @@ def read_tsv(path):
     with open(path, encoding="utf8", newline="") as f:
         rows = list(csv.reader(f, delimiter="\t", quotechar='"'))
     return rows[1:]
+
+
+# Three labels in wordids.tsv are wrong (the corpus README says they are not authoritative):
+# a verb form missing its final consonant, and two verbs whose primary stress sits on the last syllable.
+PRON_FIX = {"abuses_vrb": "ə'bjuːzəz", "moderate_vrb": "'mɑːdɚˌeɪt", "ornament_vrb": "'ɔːɹnəˌmɛnt"}
+
+
+def load_wordids(corpus):
+    """homograph -> [(wordid, pronunciation)] from wordids.tsv, label typos corrected."""
+    cands = collections.defaultdict(list)
+    for h, wid, _label, pron, *_ in read_tsv(os.path.join(corpus, "wordids.tsv")):
+        cands[h].append((wid, PRON_FIX.get(wid, pron)))
+    return cands
 
 
 def collapse(p):
@@ -94,10 +112,74 @@ def match(ph, cands):
     return scored[0][1]
 
 
-def run_polyg2p(items, data):
+def run_polyg2p(items, data, off=False):
     cmd = [os.path.join(ROOT, "target", "release", "en_homograph")] + (["--data", data] if data else [])
-    inp = "".join(f"{s}\t{a}\t{b}\n" for _, _, s, a, b in items)
-    return subprocess.run(cmd, input=inp, capture_output=True, text=True, check=True).stdout.split("\n")[: len(items)]
+    inp = "".join(f"{it[2]}\t{it[3]}\t{it[4]}\n" for it in items)
+    env = dict(os.environ, **({"POLYG2P_EN_HOMOGRAPH": "off"} if off else {}))
+    return subprocess.run(cmd, input=inp, capture_output=True, text=True, check=True, env=env).stdout.split("\n")[: len(items)]
+
+
+def read_table(path=None):
+    """data/en_homograph.tsv -> {word: [(reading, ipa)]} in file order."""
+    t = collections.OrderedDict()
+    with open(path or os.path.join(ROOT, "data", "en_homograph.tsv"), encoding="utf8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            w, r, _cls, ipa = line.rstrip("\n").split("\t")
+            t.setdefault(w, []).append((r, ipa))
+    return t
+
+
+def read_cases(path):
+    """(word, reading, sentence, byte start, byte end, must) for the first occurrence of the word."""
+    items = []
+    with open(path, encoding="utf8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            f_ = line.rstrip("\n").split("\t")
+            sent, word, reading = f_[:3]
+            m = re.search(r"(?<![\w'-])" + re.escape(word) + r"(?![\w'-])", sent, re.I)
+            assert m, f"{word!r} not in {sent!r}"
+            a = len(sent[: m.start()].encode("utf8"))
+            items.append((word, reading, sent, a, a + len(m.group().encode("utf8")), len(f_) > 3 and f_[3] == "must"))
+    return items
+
+
+def check_table(corpus):
+    cands, table, bad = load_wordids(corpus), read_table(), 0
+    for w, rows in table.items():
+        labels = [match(ipa, cands[w]) for _, ipa in rows]
+        if None in labels or len(set(labels)) != len(labels) or len(rows) != len(cands[w]):
+            bad += 1
+            print("table row does not map one-to-one:", w, [(r, l) for (r, _), l in zip(rows, labels)])
+    print(f"table: {len(table)} words, {sum(map(len, table.values()))} readings, {len(set(cands) - set(table))} corpus homographs missing, {bad} bad")
+    return bad == 0 and set(cands) == set(table)
+
+
+def main_cases(a):
+    table = read_table()
+    items = read_cases(a.cases)
+    systems = {}
+    for spec in a.system:
+        name, _, rest = spec.partition("=")
+        d, *flags = rest.split(",")
+        systems[name] = run_polyg2p(items, d, "off" in flags)
+    if not a.no_espeak:
+        systems["espeak-ng"], _ = run_espeak([(w, r, s, x, y) for w, r, s, x, y, _ in items])
+    names = list(systems)
+    preds = {n: [match(ph, table[it[0]]) for it, ph in zip(items, outs)] for n, outs in systems.items()}
+    print(f"{a.cases}: {len(items)} sentences, {len({it[0] for it in items})} homographs")
+    print(f"{'':<14}" + "".join(f"{n:>12}" for n in names))
+    print(f"{'all':<14}" + "".join(f"{sum(p == it[1] for p, it in zip(preds[n], items)) / len(items):>11.1%} " for n in names))
+    must = [i for i, it in enumerate(items) if it[5]]
+    print(f"{'must (' + str(len(must)) + ')':<14}" + "".join(f"{sum(preds[n][i] == items[i][1] for i in must)}/{len(must)}".rjust(12) for n in names))
+    for n in names:
+        print(f"\n{n} misses")
+        for p, it, ph in zip(preds[n], items, systems[n]):
+            if p != it[1]:
+                print(f"  {it[0]}\twant {it[1]}\tgot {ph or '-'} ({p})\t{it[2][:90]}")
 
 
 def run_espeak(items):
@@ -130,11 +212,18 @@ def main():
     ap.add_argument("--show", type=int, default=0)
     ap.add_argument("--map", action="store_true")
     ap.add_argument("--tsv", default=None)
+    ap.add_argument("--cases", default=None)
+    ap.add_argument("--system", action="append", default=[])
+    ap.add_argument("--check-table", action="store_true")
     a = ap.parse_args()
+    if a.check_table:
+        sys.exit(0 if check_table(a.corpus) else 1)
+    if a.cases:
+        if not a.system:
+            a.system = [f"polyg2p=" + (a.data or "")]
+        return main_cases(a)
 
-    cands = collections.defaultdict(list)
-    for h, wid, _label, pron, *_ in read_tsv(os.path.join(a.corpus, "wordids.tsv")):
-        cands[h].append((wid, pron))
+    cands = load_wordids(a.corpus)
     load = lambda split: [r[:5] for h in sorted(cands) for r in read_tsv(os.path.join(a.corpus, split, h + ".tsv"))]
     train, items = load("train"), load(a.split)
     major = {}
@@ -143,6 +232,10 @@ def main():
         major[h] = c.most_common(1)[0][0] if c else cands[h][0][0]
 
     systems = {"polyg2p": run_polyg2p(items, a.data)}
+    for spec in a.system:
+        name, _, rest = spec.partition("=")
+        d, *flags = rest.split(",")
+        systems[name] = run_polyg2p(items, d, "off" in flags)
     if not a.no_espeak:
         try:
             systems["espeak-ng"], direct = run_espeak(items)
