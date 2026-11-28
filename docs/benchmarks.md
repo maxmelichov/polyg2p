@@ -125,7 +125,7 @@ SHOW_ESP=40 python tools/sentence_cmp.py de tatoeba/deu.tsv 200000 --data data-o
 | Greek | 42,314 | 243,900 | 4.41% | 5,233 | 635 |
 | Romanian | 41,083 | 277,562 | 0.61% | 405 | 21 |
 | Hungarian | 437,246 | 2,330,269 | 3.86% | 55,212 | 411 |
-| Finnish ⁵ | 152,839 | 749,768 | 2.66% | 1,215 | 11,193 |
+| Finnish ⁵ | 152,906 | 750,046 | 3.42% | 1,214 | 13,716 |
 | Swedish | 56,357 | 317,717 | 17.94% | 15,350 | 78 |
 | Indonesian | 27,927 | 153,974 | 9.41% | 10,917 | 24 |
 | Catalan | 10,659 | 76,516 | 6.62% | 1,117 | 211 |
@@ -133,7 +133,14 @@ SHOW_ESP=40 python tools/sentence_cmp.py de tatoeba/deu.tsv 200000 --data data-o
 ⁵ Finnish writes boundary gemination and nasal assimilation across words
 (*tehdä seuraavaksi* → `tˈehdæs sˈeuraavaksi`, *on kaunis* → `oŋ kˈaunis`).
 A word-by-word comparison scores these as errors although the sentence is
-right.
+right: of the 9,270 "espeak right" words on origin/main, 9,250 were this
+notation and 20 were word-level differences. On the Finnish branch
+(`fix/finnish`, same 152,906-sentence export) the table row reads 1,214 and
+13,716; before it read 1,150 and 9,270, with 2.29% of words differing. The
+rise is more gemination written in the right place (connegatives, more
+infinitives, `-da/-ta` forms), which the isolated-word gold counts as
+"espeak right"; word-level differences where espeak is right fell from 20 to
+8. Hand-labelled gemination precision rose from 94.0% (141 of 150 events) to 150 of 150, see `docs/results/fi.md`.
 
 ## English specifics
 
