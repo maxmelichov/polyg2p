@@ -4,7 +4,7 @@
 //! (`ein+und+zwanzig`) so the German module can stress them as one compound.
 
 use crate::Lang;
-use crate::{fr, pt, pl, uk, tr, nl, cs, el, ro, hu, fi, sv, id, ca, ar, am};
+use crate::{fr, pt, pl, uk, tr, nl, cs, el, ro, hu, fi, sv, id, ca, ar, am, bg, da, et, hr, lt, lv, sk, sl};
 
 /// Parse a digit string with separators into (integer part, fractional digits).
 /// en uses `,` for thousands and `.` for decimals; es/it/de the reverse. A single
@@ -224,6 +224,14 @@ fn expand_plain(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<Str
             Lang::Ca => ca::DECIMAL,
             Lang::Ar => ar::DECIMAL,
             Lang::Am => am::DECIMAL,
+            Lang::Bg => bg::DECIMAL,
+            Lang::Da => da::DECIMAL,
+            Lang::Et => et::DECIMAL,
+            Lang::Hr => hr::DECIMAL,
+            Lang::Lt => lt::DECIMAL,
+            Lang::Lv => lv::DECIMAL,
+            Lang::Sk => sk::DECIMAL,
+            Lang::Sl => sl::DECIMAL,
         }
         .to_string());
         // English and Amharic read the fraction digit by digit
@@ -293,6 +301,14 @@ pub fn symbol(c: char, lang: Lang) -> Option<&'static str> {
         (Lang::Ca, _) => return ca::symbol(c),
         (Lang::Ar, _) => return ar::symbol(c),
         (Lang::Am, _) => return am::symbol(c),
+        (Lang::Bg, _) => return bg::symbol(c),
+        (Lang::Da, _) => return da::symbol(c),
+        (Lang::Et, _) => return et::symbol(c),
+        (Lang::Hr, _) => return hr::symbol(c),
+        (Lang::Lt, _) => return lt::symbol(c),
+        (Lang::Lv, _) => return lv::symbol(c),
+        (Lang::Sk, _) => return sk::symbol(c),
+        (Lang::Sl, _) => return sl::symbol(c),
         _ => return None,
     })
 }
@@ -369,6 +385,14 @@ pub fn cardinal(n: u128, lang: Lang) -> Vec<String> {
         Lang::Ca => ca::cardinal(n),
         Lang::Ar => ar::cardinal(n),
         Lang::Am => am::cardinal(n),
+        Lang::Bg => bg::cardinal(n),
+        Lang::Da => da::cardinal(n),
+        Lang::Et => et::cardinal(n),
+        Lang::Hr => hr::cardinal(n),
+        Lang::Lt => lt::cardinal(n),
+        Lang::Lv => lv::cardinal(n),
+        Lang::Sk => sk::cardinal(n),
+        Lang::Sl => sl::cardinal(n),
     }
 }
 
