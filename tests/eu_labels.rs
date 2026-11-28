@@ -119,3 +119,11 @@ fn hungarian_articles() {
     assert_eq!(p("hu", "Ez az."), "ˈɛz ˈɑz.");
     assert_eq!(p("hu", "egy kettő"), "ˈɛɟː kˈɛtːøː");
 }
+
+/// Swedish long u carries its length mark like the other long vowels.
+#[test]
+fn swedish_long_u() {
+    assert_eq!(p("sv", "hus"), "hˈʉːs");
+    assert_eq!(p("sv", "ful"), "fˈʉːl");
+    assert!(!p("sv", "huset sjuk nu").contains("ʉ ") && !p("sv", "huset sjuk nu").replace("ʉː", "").contains('ʉ'));
+}
