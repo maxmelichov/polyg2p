@@ -724,7 +724,7 @@ mod tests {
     fn long_numbers_do_not_panic() {
         let langs = [
             Lang::En, Lang::EnGb, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk,
-            Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar, Lang::Sk, Lang::Et, Lang::Lv,
+            Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar, Lang::Sk, Lang::Et, Lang::Lv, Lang::Da,
         ];
         for lang in langs {
             for len in 1..=40usize {
