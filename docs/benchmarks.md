@@ -142,6 +142,13 @@ infinitives, `-da/-ta` forms), which the isolated-word gold counts as
 "espeak right"; word-level differences where espeak is right fell from 20 to
 8. Hand-labelled gemination precision rose from 94.0% (141 of 150 events) to 150 of 150, see `docs/results/fi.md`.
 
+Finnish length notation changed after those measurements: every long consonant
+is now written with `ː` (`pˈalːo`, not `pˈallo`) and a non-stop boundary
+gemination marks the next word's first consonant. The collapsed comparison
+against WikiPron is unchanged (99.5% / 99.3%); exact-string agreement with
+espeak on the 14,638 top words falls from 96.7% to 81.3% by design, and the
+table above (word-by-word against espeak) was measured before the change.
+
 ## English specifics
 
 Words not in the dictionary, on 3,000 CMUdict words held out of model

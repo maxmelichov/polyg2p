@@ -49,6 +49,10 @@ The output is consumed by TTS models trained on espeak-ng phonemes (NFD,
 4. `cargo test` must pass; add unit tests with ~20 words covering every rule.
 5. Update the language table and results in `README.md`.
 
+Finnish departs from espeak's notation on purpose: long consonants are written
+`Cː` everywhere (espeak doubles sonorants and fricatives), so length is one mark;
+see `docs/results/fi.md`. Do this only for a measured reason and say so there.
+
 Keep stress conventions: primary `ˈ` before the stressed *syllable's onset
 consonant* the way espeak places it for that language (check its output; in
 most languages espeak puts `ˈ` before the vowel's onset, e.g. `kˈasa`).
