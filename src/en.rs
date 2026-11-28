@@ -649,6 +649,24 @@ impl English {
                     }
                 }
             }
+            // a table word inside a hyphenated compound ("drug-addict"): the compound is phonemized part by part
+            if let (Some((m, u, at)), true) = (&hg, src.contains('-')) {
+                let parts: Vec<&str> = homograph::hyphen_parts(&src).collect();
+                if parts.iter().any(|p| m.covers(p)) {
+                    let mut pieces: Vec<String> = outs[k].ph.split(' ').map(|x| x.to_string()).collect();
+                    if pieces.len() == parts.len() {
+                        for (i, p) in parts.iter().enumerate() {
+                            if m.covers(p) {
+                                if let Some(ph) = m.pick(u, at[k] + 2 * i) {
+                                    pieces[i] = ph.to_string();
+                                }
+                            }
+                        }
+                        outs[k].ph = pieces.join(" ");
+                        continue;
+                    }
+                }
+            }
             let prev = if k > 0 && !outs[k - 1].pause_after { outs[k - 1].src.clone() } else { String::new() };
             let next = if k + 1 < n && !outs[k].pause_after { outs[k + 1].src.clone() } else { String::new() };
             if let Some(kind) = homograph(&src) {

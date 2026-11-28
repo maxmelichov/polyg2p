@@ -78,7 +78,14 @@ impl Unit {
     }
 }
 
-/// The units of a sentence and, for each `Out`, the index of its word unit (`usize::MAX` for an `Out` with no source word).
+/// The parts of a hyphenated source word (`drug-addict`), empty parts dropped; a word without a hyphen is one part.
+pub fn hyphen_parts(src: &str) -> impl Iterator<Item = &str> {
+    src.split('-').filter(|p| !p.is_empty())
+}
+
+/// The units of a sentence and, for each `Out`, the index of its first word unit (`usize::MAX` for an `Out` with no source word).
+/// A hyphenated word becomes one word unit per part with a `-` unit between the parts, so the part at position `i` has unit
+/// index `at + 2 * i`; this lets the model read a table word inside a compound ("drug-addict").
 pub fn units(outs: &[Out]) -> (Vec<Unit>, Vec<usize>) {
     let mut u = Vec::with_capacity(outs.len() * 2);
     let mut at = vec![usize::MAX; outs.len()];
@@ -87,7 +94,12 @@ pub fn units(outs: &[Out]) -> (Vec<Unit>, Vec<usize>) {
             continue;
         }
         at[k] = u.len();
-        u.push(Unit { text: o.src.clone(), cap: o.cap, word: true });
+        for (i, part) in hyphen_parts(&o.src).enumerate() {
+            if i > 0 {
+                u.push(Unit { text: "-".to_string(), cap: false, word: false });
+            }
+            u.push(Unit { text: part.to_string(), cap: o.cap && i == 0, word: true });
+        }
         for c in o.punct.chars() {
             u.push(Unit { text: c.to_string(), cap: false, word: false });
         }

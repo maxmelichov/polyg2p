@@ -104,7 +104,12 @@ fn main() {
             for (src, at) in &words {
                 if parts(src).any(|p| p == target) {
                     if seen == nth {
-                        found = (*src == target).then_some(*at);
+                        // a hyphenated word has one unit per part, `-` between them (homograph::units)
+                        found = if *src == target {
+                            Some(*at)
+                        } else {
+                            polyg2p::homograph::hyphen_parts(src).position(|p| p == target).map(|i| at + 2 * i)
+                        };
                         break;
                     }
                     seen += parts(src).filter(|p| *p == target).count();
