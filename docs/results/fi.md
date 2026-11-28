@@ -24,6 +24,12 @@ and English words; we read letters by their names (`teː`, `iː`) and expand
 abbreviations (`esim.` -> esimerkiksi), which the gold counts as errors. On
 ordinary words the remaining differences are a handful of loanwords.
 
+Misses on the lists: 99 -> 96 (top list), 1,210 -> 1,167 (all 168,814 words)
+after the letter rules below. Gains: `ng`+r is a short `ŋ` (kongressi,
+gangreeni, 20 of 20 gold words), `th`/`gh`/`ph` in loans, `WC` read with
+`veː`. Losses: `ph` is always `f`, which the gold does not do in four rare
+words (hiphop, apheli, Ghana, ghanalainen).
+
 Exact-string agreement with espeak on the same words is 96.8%; nearly all of
 the rest is secondary stress in compounds (see below).
 
@@ -73,27 +79,80 @@ the rest is secondary stress in compounds (see below).
 - **Sentence pass (`join`)**: boundary gemination (*loppukahdennus*) in
   espeak's own notation — the next word's initial stop gets `ː`
   (`tˈule tːˈænne`), another consonant is appended to the previous word
-  (`ˌoleh hˈyvæ`, `kˈolmem mˈiestæ`). Triggers: nominative `-e` nominals
-  (kone, perhe, lause; not pronouns or `-mme/-tte` forms), allative `-lle`,
-  adverbs in `-sti` (3+ syllables, not posti/viesti) and `-nne`, prolative
-  `-tse`, `kolme`, `itse`, and ~150 common imperatives / first infinitives
-  (`anna`, `tule`, `mennä`, `syödä`, `ostaa`). espeak only knows `-lle`,
-  `-nne`, `-sti`, `-tse` and a 60-word list. Word-final `n` -> `ŋ`/`m`
-  before k/p (`mˈennæːŋ kˈotɪːn`), as espeak. `-lle` + enclitic geminates
-  the enclitic (`kˈenellˌekːæːn`, `sˈillekːɪn`).
-- **Numbers**: Finnish cardinals as one orthographic word below a million
-  (`kaksisataakolmekymmentäviisi`, `tuhatyhdeksänsataayhdeksänkymmentäviisi`),
-  `miljoona/miljoonaa`, `miljardi/miljardia`, `biljoona`, `triljoona`;
-  decimal `pilkku`. The numeral parser in `word` gives every morpheme its
-  own stress. Symbols: % prosenttia, $ dollaria, € euroa, £ puntaa, & ja,
-  + plus, @ ät, ° astetta, = on yhtä kuin.
+  (`ˌoleh hˈyvæ`). Which word triggers it depends on context, following the
+  Wiktionary appendix on Finnish pronunciation (final gemination: nominals in
+  `-e`, allative, first infinitives, connegatives, 2nd-person imperatives,
+  adverbs in `-itse/-nne/-sti/-lle`):
+  - always: `-lle`, `-tse`, `-nne` (not the possessive: *talossanne*), `-e`
+    nominals (kone, perhe, lause; not the diphthong `-ie`, not loans with a
+    foreign letter near the end, not nukke/saame compounds), adverbs in
+    `-sti` by shape (`sti_adverb`: nopeasti, yleisesti, normaalisti; not
+    turisti, eversti, past tenses varasti, pelasti), `-da/-dä` after a long
+    vowel, diphthong or `h` and `-ta/-tä` after consonant + short vowel in
+    three or more syllables (saada, tehdä, haluta), ~45 unambiguous
+    imperatives and ~360 first infinitives that cannot be a finite verb
+    (`src/fi_verbs.rs`);
+  - only as an infinitive (`Trigger::Infinitive`): the 606 verbs whose
+    infinitive is spelled like the 3rd person singular (antaa, pitää,
+    tietää, auttaa, puhua, ...). They geminate only when a governing verb
+    (voida, saada, täytyä, pitää, haluta, osata, aikoa, yrittää ...) stands
+    earlier in the clause, at most six words back, with no pause or clause
+    conjunction between: `Voisitko antaa hänelle` geminates, `Hän antaa
+    meille` does not;
+  - only as an imperative or connegative (`Trigger::Imperative`): käy, juo,
+    syö, vie, luo, tee, muista, avaa, saa, jää, voi, osaa ...: after a negative
+    verb within four words (`en voi tehdä`, `ei saa tulla`, `Se ei käy
+    päinsä`), clause-initially, or after `ja/tai/sekä` when the clause opens
+    with such an imperative; not otherwise (`Tomi käy kirkossa`).
+  `kolme`, `itse` (alone) and `nukke` do not geminate (VISK § 34 — cited from
+  the planning notes, the page returned 403 and was **not read**; unverified).
+  The `-e`, `-sti` and `-da/-ta` rules are the part that would need a real
+  morphological analysis: they are decided by spelling. The rule tables are
+  generated from the gold by `tools/fi_boundary.py build` (words whose every
+  gold entry carries `ˣ`, wordfreq Zipf >= 3.0) and measured with
+  `tools/fi_boundary.py eval`.
+  Word-final `n` -> `ŋ`/`m` before k/p (`mˈennæːŋ kˈotɪːn`), as espeak. `-lle`
+  + enclitic geminates the enclitic (`kˈenellˌekːæːn`, `sˈillekːɪn`);
+  imperative + enclitic inside a word (`otapa` -> `ˈotapːa`, `tulehan` ->
+  `tˈulehhan`).
+- **Numbers and normalisation** (`prenormalize`, `expand_token`):
+  - cardinals as one orthographic word below a million
+    (`kaksisataakolmekymmentäviisi`), `miljoona/miljoonaa`, `miljardi`,
+    `biljoona`, `triljoona`; decimal `pilkku`; beyond a language's scale words
+    digit by digit instead of a panic (shared `num.rs`);
+  - a space as the thousands separator (`2 300 000`, `100 000 euroa`) is one
+    number; not when a leading zero or more digits follow (phone numbers,
+    lists of numbers keep their old reading); minus sign (`-5` -> miinus);
+  - inflected numerals written with a colon: `5:ssä` -> viidessä, `25:n`,
+    `3:lla`, `300:aa`, `7:ään`, `2:ksi`, ordinals `5:s`, `3:nnessa`;
+  - ordinals before a lower-case word: `5. luokka`, `12. joulukuuta`,
+    `5. kerroksessa` (agrees in -ssa/-sta/-lla/-lta/-lle/-ksi, and päivänä,
+    kertana, vuonna); `Olen 25.` and `3.5.` stay cardinal / decimal;
+  - dates `24.12.2023`, `24.12.` (day ordinal, month partitive, year
+    cardinal), clock times after `klo`/`kello` and `14.30`/`14:30`
+    (`14.05` -> neljätoista nolla viisi);
+  - units after a number (`5 kg`, `1 km`, `50 km/h`, `25 °C`, `2 h 30 min`)
+    and abbreviations with a period (`n. 5 km`, `mm.`, `esim.`, `v. 1995`);
+  - abbreviations with a case ending: `EU:n`, `USA:ssa`, `PS:n`, `NATO:n`.
+  Rules follow the Kielitoimiston ohjepankki conventions for colon
+  inflection, dates and clock times; those pages were **not fetched** while
+  writing this, so treat the details (e.g. the `nolla` before minutes below
+  ten) as unverified against them.
 - **Letters, abbreviations, loans**: letter names (`aː beː seː ... kaksoisveː
   æks yː tset`) for spelling, vowel-less tokens and single letters; ~25
-  lower-case initialisms spelled (`oy`, `atk`, `tv`); ~30 abbreviations
-  expanded (klo, esim., jne., ym., ns., tms., vrt., kpl, puh., nro, hra,
-  rva, tri, prof., ap., ip.); ~110 English/French/German words and names
-  respelled (facebook -> feisbuk, show -> šou, design -> disain,
-  washington -> vašinkton, peugeot -> pöžoo).
+  lower-case initialisms spelled (`oy`, `atk`, `tv`); `W` inside a spelled
+  abbreviation is `veː` (`WC`, `BMW`, `www`); ~30 abbreviations expanded
+  (klo, esim., jne., ym., ns., tms., vrt., kpl, puh., nro, hra, rva, tri,
+  prof., ap., ip.); ~110 English/French/German words and names respelled
+  (facebook -> feisbuk, show -> šou, design -> disain, washington ->
+  vašinkton, peugeot -> pöžoo), and loans of five or more letters with a case
+  ending (`Chicagossa`, `Facebookissa`, `Thaimaassa`).
+- **Letter folding**: text is NFC-composed first (`a` + combining diaeresis is
+  `ä`); a macron is a long vowel (`Tōkyō`); `ñ` -> nj, `č ć` -> tš, `ő ű`,
+  `þ ð ł ı`; any other diacritic falls back to its base letter; `ph` -> f,
+  word-initial `th`/`gh` before a vowel (and `thr`) and word-final `th` ->
+  t/ɡ, initial `chr`/`chl` -> k; `ng` before r is a short `ŋ` (kongressi,
+  sangria).
 
 ## Where espeak is wrong and we differ on purpose
 
@@ -106,10 +165,42 @@ the rest is secondary stress in compounds (see below).
 - espeak reads `ch` as `kh` (`khˈikaɡo`), `q` as a literal `q`, English words
   letter by letter (`fˈaseboːk`, `ʃˈov`, `dˈesɪɡn`), doubles `m` in
   `sydämen`, and reads `ruoan` as `ruːan`.
-- espeak's boundary gemination covers only four suffixes and a short list;
-  `kolme miestä`, `anna kissalle`, `ole paikalla` do get it from us.
-- Numbers with spaces (`2 300 000`) are tokenised as three numbers by the
-  shared tokenizer, not by this module.
+- espeak's boundary gemination covers only four suffixes and a short list
+  and ignores context; `anna kissalle` and `ei ole paikalla` get it from us,
+  `kolme miestä` does not (kolme has no final gemination).
+- espeak writes no gemination after connegatives and finite verbs it cannot
+  tell from the infinitive; we geminate `en voi tehdä` and not `Tom pitää
+  siitä`.
+
+## Sentence-level measurements
+
+Tatoeba Finnish, 152,906 sentences (`tools/sentence_cmp.py fi`), before ->
+after: words that differ from espeak 2.29% -> 3.42%; of those, WikiPron
+sides with polyg2p on 1,150 -> 1,214, with espeak on 9,270 -> 13,716,
+cannot decide 6,460 -> 10,342. The increase is notation, not error: the gold
+holds isolated words, so every sandhi we write (and espeak does not) counts as
+"espeak right". Word-level (lexical) differences where espeak is right
+dropped 20 -> 8 (before: kellekään 10, kongressi 6, jollekin 3, millekään 1).
+
+Gemination hand-labelled (150 random events per build from the Tatoeba
+sample, right = a real boundary gemination in that sentence under the rules
+above): origin/main 141 of 150 right (94.0%; the nine wrong are finite verbs
+spelled like the infinitive or a past tense: *laulaa loilotti*, *Mies juo
+vettä*, *Tom pitää siitä*, *varasti*, *pyydysti*); this branch 150 of 150.
+`Trigger::Infinitive`: 99 of 100 right (*tuo kirjailija yrittää sanoa*: finite,
+governor six words back). `Trigger::Imperative`: 99 of 100 right (*ei saa lupaa
+tehdä*: `lupaa` is the noun). Against the gold `ˣ` mark
+(`tools/fi_boundary.py eval`, frequency-weighted): precision 98.2% -> 99.8%
+(never-`ˣ` words we geminate after: 1,186 -> 133 types), recall on always-`ˣ`
+words 64.4% -> 98.1% in infinitive context (67.7% in finite context, by
+design).
+
+Changed output on all 155,032 Tatoeba sentences, origin/main -> this branch:
+13,608 sentences (8.8%) and 13,847 of 754,609 aligned words (1.83%) differ.
+Gemination added 10,665 words (one event changes two neighbouring words; about
+1,700 events are connegative `ei saa / en voi / ei jää / en osaa`, which did not
+geminate before), gemination removed 2,934, numbers and abbreviations 670
+(567 sentences change token count), letters and notation 145.
 
 ## Known gaps
 
@@ -119,8 +210,16 @@ the rest is secondary stress in compounds (see below).
   `pankkitili` is not). False splits are rare but possible after short
   stems (`maa|ilma` is right, `työ|läinen` is blocked by the suffix list).
 - `-e` nominals vs other `-e` words for gemination are decided by
-  orthography only; foreign names in `-e` not in `NO_DOUBLE` trigger it.
-  First infinitives in `-a/-ä` are only recognised from a list.
+  orthography only; foreign names and loans in `-e` not in `NO_DOUBLE`
+  (house, anime, sote) still trigger it. Infinitives are recognised from the
+  generated lists plus the `-da/-ta` shape rule.
+- Sentence-initial `Anna` is the imperative, never the name (5 of ~340 in
+  Tatoeba are the name). `lupaa`, `tapaa` after a negation can be the noun.
+  `tulee`, `toivoa` are not governors; after `rakastaa` an infinitive geminates.
+- Possessive `-nsA` gemination varies by speaker: only yleensä, tahansa,
+  yhteensä, sinänsä, hyvänsä, ympäriinsä are written.
+- Length is written as espeak does (`kː pː tː` for stops, doubled letters for
+  other consonants); not unified to `ː`.
 - `ie uo yö` are diphthongs in every syllable; `iu/eu/ou/ey/iy/äy/öy` in
   non-initial syllables are hiatus for some speakers.
 - Wiktionary is inconsistent about `-lle` + enclitic gemination
@@ -128,4 +227,8 @@ the rest is secondary stress in compounds (see below).
 - English words not in the respelling table are read with Finnish letter
   values; single vowel letters are read as names (`aː`) where the gold has
   the bare sound.
-- No ordinals (`12.` is read as a cardinal), no Roman numerals.
+- Numbers: no Roman numerals, fractions or phone numbers; `1 000 000:n` (a
+  spaced number with a colon ending) is not joined; `1 %` reads prosenttia;
+  ordinal agreement only for -ssa/-sta/-lla/-lta/-lle/-ksi and
+  päivänä/kertana/vuonna; ordinals only below 1,000, case numerals only below
+  10^9.
