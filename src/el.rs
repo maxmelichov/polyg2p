@@ -753,6 +753,54 @@ const HUNDREDS: [&str; 10] = [
 ];
 
 /// Number words (neuter forms; thousands take the feminine as Greek requires).
+/// Greek ordinal for digits + ordinal ending (21ου, 1η, 3ος), 1-100 (en.wiktionary εικοστός; the ending is the one
+/// written: ος ου ο η ης ων α ους). Proparoxytone stems (τέταρτος) move their accent to the penult before a long ending.
+pub fn ordinal(n: u128, ending: &str) -> Option<Vec<String>> {
+    // (stem as written before a short ending, stem before a long ending, oxytone)
+    type St = (&'static str, &'static str, bool);
+    let unit = |u: usize| -> St {
+        [("", "", false), ("πρώτ", "πρώτ", false), ("δεύτερ", "δεύτερ", false), ("τρίτ", "τρίτ", false), ("τέταρτ", "τετάρτ", false),
+            ("πέμπτ", "πέμπτ", false), ("έκτ", "έκτ", false), ("έβδομ", "εβδόμ", false), ("όγδο", "ογδό", false), ("ένατ", "ενάτ", false)][u]
+    };
+    let long = matches!(ending, "ου" | "ης" | "ων" | "ους");
+    let fix = |t: &'static str, o: &'static str, ox: bool, out: &mut Vec<String>| {
+        let stem = if long { o } else { t };
+        let e = if ox {
+            match ending { "ος" => "ός", "ου" => "ού", "ο" => "ό", "η" => "ή", "ης" => "ής", "ων" => "ών", "α" => "ά", "ους" => "ούς", e => e }
+        } else {
+            ending
+        };
+        out.push(format!("{stem}{e}"));
+    };
+    let mut out = Vec::new();
+    let (t, u) = ((n / 10) as usize, (n % 10) as usize);
+    match n {
+        1..=9 => {
+            let (a, b, x) = unit(u);
+            fix(a, b, x, &mut out);
+        }
+        10 => fix("δέκατ", "δεκάτ", false, &mut out),
+        11 => fix("ενδέκατ", "ενδεκάτ", false, &mut out),
+        12 => fix("δωδέκατ", "δωδεκάτ", false, &mut out),
+        13..=19 => {
+            fix("δέκατ", "δεκάτ", false, &mut out);
+            let (a, b, x) = unit(u);
+            fix(a, b, x, &mut out);
+        }
+        20..=99 => {
+            const TENS: [&str; 10] = ["", "", "εικοστ", "τριακοστ", "τεσσαρακοστ", "πεντηκοστ", "εξηκοστ", "εβδομηκοστ", "ογδοηκοστ", "ενενηκοστ"];
+            fix(TENS[t], TENS[t], true, &mut out);
+            if u > 0 {
+                let (a, b, x) = unit(u);
+                fix(a, b, x, &mut out);
+            }
+        }
+        100 => fix("εκατοστ", "εκατοστ", true, &mut out),
+        _ => return None,
+    }
+    Some(out)
+}
+
 pub fn cardinal(n: u128) -> Vec<String> {
     if n == 0 {
         return vec!["μηδέν".into()];

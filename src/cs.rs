@@ -884,6 +884,36 @@ fn below_1000(n: u128, out: &mut Vec<String>) {
 }
 
 /// Czech cardinal number words (nominative; "dvě stě", "tři tisíce", "pět milionů").
+/// Ordinal words 1-31 for `N.` before a lower-case word (Czech: Internetová jazyková příručka, řadové číslovky;
+/// cs.wiktionary pátý). Genitive masculine (-ého) before a month name in the genitive (5. května), else the
+/// nominative masculine (-ý). 32 and above are left to the cardinal.
+pub fn ordinal(n: u128, genitive: bool) -> Option<Vec<String>> {
+    const U: [&str; 20] = [
+        "", "první", "druhý", "třetí", "čtvrtý", "pátý", "šestý", "sedmý", "osmý", "devátý", "desátý", "jedenáctý", "dvanáctý",
+        "třináctý", "čtrnáctý", "patnáctý", "šestnáctý", "sedmnáctý", "osmnáctý", "devatenáctý",
+    ];
+    let words: Vec<&str> = match n {
+        1..=19 => vec![U[n as usize]],
+        20 => vec!["dvacátý"],
+        21..=29 => vec!["dvacátý", U[(n - 20) as usize]],
+        30 => vec!["třicátý"],
+        31 => vec!["třicátý", "první"],
+        _ => return None,
+    };
+    Some(
+        words
+            .into_iter()
+            .map(|w| match (genitive, w) {
+                (false, w) => w.to_string(),
+                (true, "první") => "prvního".to_string(),
+                (true, "třetí") => "třetího".to_string(),
+                (true, w) if w.ends_with('ý') => format!("{}ého", w.trim_end_matches('ý')),
+                (true, w) => format!("{}ího", w.trim_end_matches('í')),
+            })
+            .collect(),
+    )
+}
+
 pub fn cardinal(n: u128) -> Vec<String> {
     let mut out = Vec::new();
     if n == 0 {

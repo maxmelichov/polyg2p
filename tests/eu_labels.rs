@@ -73,3 +73,20 @@ fn french_compass_and_tions() {
     assert!(p("fr", "nous ne portions pas").contains("pɔʁtjˈɔ̃"));
     assert!(p("fr", "les portions sont petites").contains("pɔʁsjˈɔ̃"));
 }
+
+/// Ordinals written with a digit: cs/hu `N.` before a lower-case word, el digits + ending.
+#[test]
+fn digit_ordinals() {
+    assert_eq!(p("cs", "5. května"), p("cs", "pátého května"));
+    assert_eq!(p("cs", "21. ledna"), p("cs", "dvacátého prvního ledna"));
+    assert_eq!(p("cs", "3. patro"), p("cs", "třetí patro"));
+    assert_eq!(p("hu", "5. napon"), p("hu", "ötödik napon"));
+    assert_eq!(p("hu", "21. század"), p("hu", "huszonegyedik század"));
+    assert_eq!(p("hu", "32. nap"), p("hu", "harminckettedik nap"));
+    // a sentence-ending number keeps its period and stays a cardinal
+    assert_eq!(p("cs", "Je to 5."), p("cs", "Je to pět."));
+    assert_eq!(p("el", "21ου αιώνα"), p("el", "εικοστού πρώτου αιώνα"));
+    assert_eq!(p("el", "1η Μαΐου"), p("el", "πρώτη Μαΐου"));
+    assert_eq!(p("el", "4ο"), p("el", "τέταρτο"));
+    assert_eq!(p("el", "4ου"), p("el", "τετάρτου"));
+}

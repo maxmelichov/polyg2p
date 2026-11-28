@@ -624,6 +624,23 @@ fn below_1000(n: u128, last: bool) -> String {
 /// Cardinal number words. Up to 2000 one word (ezernyolcszáznegyvennyolc);
 /// above, the thousand-groups are hyphenated (kétezer-huszonnégy), and `word`
 /// stresses each part.
+/// Ordinal `N.` before a lower-case word, 1-99 (hu.wiktionary ötödik: első, második, harmadik, ...).
+/// Compounds take the combining unit form (tizenegyedik, huszonkettedik).
+pub fn ordinal(n: u128) -> Option<Vec<String>> {
+    const ALONE: [&str; 10] = ["", "első", "második", "harmadik", "negyedik", "ötödik", "hatodik", "hetedik", "nyolcadik", "kilencedik"];
+    const UNIT: [&str; 10] = ["", "egyedik", "kettedik", "harmadik", "negyedik", "ötödik", "hatodik", "hetedik", "nyolcadik", "kilencedik"];
+    const TEN_OR: [&str; 10] = ["", "tizedik", "huszadik", "harmincadik", "negyvenedik", "ötvenedik", "hatvanadik", "hetvenedik", "nyolcvanadik", "kilencvenedik"];
+    const TEN_PRE: [&str; 10] = ["", "tizen", "huszon", "harminc", "negyven", "ötven", "hatvan", "hetven", "nyolcvan", "kilencven"];
+    let (t, u) = ((n / 10) as usize, (n % 10) as usize);
+    let w = match (n, t, u) {
+        (1..=9, _, _) => ALONE[u].to_string(),
+        (10..=99, _, 0) => TEN_OR[t].to_string(),
+        (10..=99, _, _) => format!("{}{}", TEN_PRE[t], UNIT[u]),
+        _ => return None,
+    };
+    Some(vec![w])
+}
+
 pub fn cardinal(n: u128) -> Vec<String> {
     if n == 0 {
         return vec!["nulla".into()];

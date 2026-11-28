@@ -403,6 +403,13 @@ impl G2p {
                     }
                     skip = ti + 2;
                 }
+                // ordinals written with a digit: cs/hu `5. května` (period dropped), el `21ου`
+                Tok::Num(n) if ordinal_tokens(lang, n, &toks, ti, &mut words) => {
+                    skip = if lang == Lang::El { ti + 2 } else { ti + 2 };
+                    for w in words.drain(..) {
+                        self.push_word(&mut outs, &w, lang);
+                    }
+                }
                 Tok::Num(n) => {
                     // look at the next word for context (years, units, currency suffixes)
                     let next = toks[ti + 1..].iter().find_map(|t| match t {
@@ -588,6 +595,56 @@ impl G2p {
             Lang::Ar => ar::word(&lw),
         };
         outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
+    }
+}
+
+/// `N.` + a lower-case word (cs, hu) or digits + a Greek ordinal ending (el) read as the ordinal word(s).
+fn ordinal_tokens(lang: Lang, n: &str, toks: &[Tok], ti: usize, out: &mut Vec<String>) -> bool {
+    if n.is_empty() || n.len() > 3 || !n.chars().all(|c| c.is_ascii_digit()) {
+        return false;
+    }
+    let v: u128 = n.parse().unwrap_or(0);
+    out.clear();
+    let word_after = |from: usize| -> Option<&str> {
+        match toks.get(from..)?.iter().find(|t| !matches!(t, Tok::Sep))? {
+            Tok::Word(w) => Some(w.as_str()),
+            _ => None,
+        }
+    };
+    match lang {
+        Lang::Cs | Lang::Hu if toks.get(ti + 1) == Some(&Tok::Punct('.')) => {
+            let Some(w) = word_after(ti + 2) else { return false };
+            if !w.chars().next().is_some_and(char::is_lowercase) {
+                return false;
+            }
+            let r = if lang == Lang::Cs {
+                const GEN: [&str; 12] = ["ledna", "února", "března", "dubna", "května", "června", "července", "srpna", "září", "října", "listopadu", "prosince"];
+                cs::ordinal(v, GEN.contains(&w))
+            } else {
+                hu::ordinal(v)
+            };
+            match r {
+                Some(x) => {
+                    out.extend(x);
+                    true
+                }
+                None => false,
+            }
+        }
+        Lang::El => {
+            let Some(Tok::Word(e)) = toks.get(ti + 1) else { return false };
+            if !matches!(e.as_str(), "ος" | "ου" | "ο" | "η" | "ης" | "ων" | "α" | "ους") {
+                return false;
+            }
+            match el::ordinal(v, e) {
+                Some(x) => {
+                    out.extend(x);
+                    true
+                }
+                None => false,
+            }
+        }
+        _ => false,
     }
 }
 
