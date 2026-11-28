@@ -107,6 +107,7 @@ adds the optional CC BY-SA lexicons described under [Licensing](#licensing).
 | Polish | `pl` | rules | **99.8%** | | 91.5% |
 | Czech | `cs` | rules | **99.9%** | | 96.4% |
 | Slovak | `sk` | rules | **94.0%** | | 70.4% |
+| Estonian | `et` | rules; length and palatalisation not marked in the score | **97.9%** | | 24.1% |
 | Hungarian | `hu` | rules | **99.8%** | | 95.2% |
 | Greek | `el` | rules | **99.3%** | | 81.0% |
 | Romanian | `ro` | rules | **98.0%** | | 97.8% |
