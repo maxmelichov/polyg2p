@@ -1,0 +1,34 @@
+# Ukrainian stress the lexicon gets wrong for homographs: it picks the infinitive reading for finite -ить / -иться forms (робить, просить), the locative / genitive reading for добрі / добра, and the singular for господар* plurals. word<TAB>stress (vowel index from the end); read before STRESS_TABLE and the lexicon.
+# Source: the stressed forms in the en.wiktionary Ukrainian extract; господарі́ (plural) as in the standard dictionaries. Case homographs with two common readings (тепла, сорока, бджоли ...) are NOT listed: that needs context.
+гасить	1
+голосить	1
+господарям	0
+господарями	1
+господарях	0
+господарі	0
+господарів	0
+губить	1
+дивиться	2
+добра	1
+добрі	1
+душить	1
+журиться	2
+затримка	1
+затримку	1
+зробить	1
+кормить	1
+курить	1
+лупить	1
+навпіл	0
+носить	1
+постать	1
+потяг	1
+просить	1
+робить	1
+робиться	2
+садить	1
+служить	1
+творить	1
+топить	1
+точить	1
+тужить	1

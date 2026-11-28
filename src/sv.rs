@@ -1190,8 +1190,53 @@ pub fn word(w: &str) -> String {
 
 /// Swedish `u` is always long (`ʉː`; the short one is `ɵ`), and every other long vowel carries `ː`: espeak's bare `ʉ`
 /// (hus `hˈʉs`) hid the length the other vowels show (WikiPron hus /hʉːs/, ful /fʉːl/).
+///
+/// Before a consonant cluster the vowel is short (`ɵ`), as the module header says for every stressed vowel: kunskap
+/// `kˈɵnskɑːp`, not `kˈʉːnskɑːp`. The table entries and the lexicon inherit espeak's bare `ʉ` for both lengths, so the
+/// length is decided here from the cluster that follows. Left long: a cluster that starts with `r` (ur-, sorl) or `t`
+/// (the particle prefix ut-: utredning, utsikt), a stop + l/r onset (rubrik, publik), -sn- (frusna, tjusning), hus-,
+/// `ʉ` right after the sj / dj / lj / hj onsets (sjukdom, djupt: WikiPron has the long vowel), and a two-consonant run that ends at the next compound part (`ˌ`: hus-djur; kunskap has three).
 fn long_u(p: &str) -> String {
-    p.replace('ʉ', "ʉː").replace("ʉːː", "ʉː")
+    let c: Vec<char> = p.chars().collect();
+    let mut out = String::with_capacity(p.len() + 4);
+    for (i, &ch) in c.iter().enumerate() {
+        if ch != 'ʉ' {
+            out.push(ch);
+            continue;
+        }
+        let mut k = i + 1;
+        let mut n = 0;
+        let mut first = None;
+        let mut second = None;
+        while k < c.len() && !"ˈˌ.aɛeiouyøæœɪʏʊɵʉɑɔəɐː".contains(c[k]) {
+            if first.is_none() {
+                first = Some(c[k]);
+            } else if second.is_none() {
+                second = Some(c[k]);
+            }
+            n += 1;
+            k += 1;
+        }
+        let compound_cut = n == 2 && k < c.len() && c[k] == 'ˌ';
+        let onset = {
+            let mut b = i;
+            while b > 0 && (c[b - 1] == 'ˈ' || c[b - 1] == 'ˌ') {
+                b -= 1;
+            }
+            b >= 1 && (c[b - 1] == 'x' && b >= 2 && c[b - 2] == 's' || c[b - 1] == 'j')
+        };
+        // consonant + l/r is an onset of the next syllable (rubrik, publik, ukrainska); -sn- stays long (frusna, tjusning, berusning), `ʂ` is rs (ursprung), hus- is a
+        // common compound head
+        let stop_liquid = n == 2 && (matches!(second, Some('l' | 'r')) || (first == Some('s') && second == Some('n')));
+        let hus = c[..i].iter().rev().find(|&&x| x != 'ˈ' && x != 'ˌ') == Some(&'h') && first == Some('s');
+        let cluster = n >= 2 && !matches!(first, Some('r' | 't' | 'ʂ')) && !compound_cut && !onset && !stop_liquid && !hus;
+        if cluster {
+            out.push('ɵ');
+        } else {
+            out.push_str("ʉː");
+        }
+    }
+    out.replace("ʉːː", "ʉː")
 }
 
 fn word_plain(w: &str) -> String {
@@ -1443,6 +1488,15 @@ mod tests {
             ("vakna", "vˈɑːkna"),
             ("jävla", "jˈɛːvla"),
             ("sjukt", "sxˈʉːkt"),
+            // u before a consonant cluster is short (ɵ); ut- / ur- / sj- dj- onsets keep the long vowel
+            ("kunskap", "kˈɵnskˌɑːp"),
+            ("kunskaper", "kˈɵnskˌɑːpər"),
+            ("djupt", "jˈʉːpt"),
+            ("sjukdom", "sxˈʉːkdˌʊm"),
+            ("utredning", "ˈʉːtrˌeːdnɪŋ"),
+            ("utsikt", "ˈʉːtsˌɪkt"),
+            ("husdjur", "hˈʉːsjˌʉːr"),
+            ("frusna", "frˈʉːsna"),
             ("högt", "hˈœkt"),
             ("snabbt", "snˈapt"),
             // sj-sound, tj-sound, softening
