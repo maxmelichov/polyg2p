@@ -381,6 +381,14 @@ impl G2p {
                         false
                     }
                 } => {}
+                // a sentence-initial capital one-letter preposition (pl W/Z, cs S/Z/K/V) is the word, not a letter name
+                Tok::Word(w) if prep_capital(lang, w)
+                    && outs.last().is_none_or(|o| o.punct.ends_with(['.', '?', '!', ':']))
+                    && matches!(toks.get(ti + 1), Some(Tok::Sep))
+                    && matches!(toks.get(ti + 2), Some(Tok::Word(_))) =>
+                {
+                    self.push_word(&mut outs, &w.to_lowercase(), lang)
+                }
                 Tok::Word(w) => self.push_word(&mut outs, w, lang),
                 Tok::Sym(c) if num::is_currency(*c) && matches!(toks.get(ti + 1), Some(Tok::Num(_))) => {
                     let Some(Tok::Num(n)) = toks.get(ti + 1) else { unreachable!() };
@@ -574,6 +582,16 @@ impl G2p {
             Lang::Ar => ar::word(&lw),
         };
         outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
+    }
+}
+
+/// Capital one-letter prepositions/conjunctions that open a sentence (Wiktionary: pl `w`, `z`; cs `s`, `z`, `k`, `v`).
+/// Anywhere else a lone capital (vitamín K, bod Z) stays a letter name.
+fn prep_capital(lang: Lang, w: &str) -> bool {
+    match lang {
+        Lang::Pl => matches!(w, "W" | "Z"),
+        Lang::Cs => matches!(w, "S" | "Z" | "K" | "V"),
+        _ => false,
     }
 }
 
