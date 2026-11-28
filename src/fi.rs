@@ -23,7 +23,9 @@
 //! secondary one (`ˌole`, `mˌinæ`), as in espeak's dictionary.
 
 use crate::fi_verbs::{INFINITIVE, INFINITIVE_CTX};
+use crate::text::Tok;
 use crate::Out;
+use std::borrow::Cow;
 use unicode_normalization::UnicodeNormalization;
 
 pub const IMPLEMENTED: bool = true;
@@ -1934,6 +1936,621 @@ pub fn symbol(c: char) -> Option<&'static str> {
     })
 }
 
+// ---------------------------------------------------------------------------
+// Text normalization: inflected numerals, ordinals, dates, clock times, units
+// and abbreviations (Kielitoimiston ohjepankki: "Numeroiden ja tunnusten
+// taivutus", "Päiväys", "Kellonajat", "Lyhenteet").
+
+/// Grammatical case of a numeral.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Case {
+    Nom,
+    Gen,
+    Part,
+    Ine,
+    Ela,
+    Ill,
+    Ade,
+    Abl,
+    All,
+    Ess,
+    Tra,
+}
+
+/// A numeral word: nominative, weak stem (genitive and the local cases), strong
+/// stem (essive; ordinals also illative), partitive, illative.
+struct NumWord(&'static str, &'static str, &'static str, &'static str, &'static str);
+
+const CARD: [NumWord; 10] = [
+    NumWord("nolla", "nolla", "nolla", "nollaa", "nollaan"),
+    NumWord("yksi", "yhde", "yhte", "yhtä", "yhteen"),
+    NumWord("kaksi", "kahde", "kahte", "kahta", "kahteen"),
+    NumWord("kolme", "kolme", "kolme", "kolmea", "kolmeen"),
+    NumWord("neljä", "neljä", "neljä", "neljää", "neljään"),
+    NumWord("viisi", "viide", "viite", "viittä", "viiteen"),
+    NumWord("kuusi", "kuude", "kuute", "kuutta", "kuuteen"),
+    NumWord("seitsemän", "seitsemä", "seitsemä", "seitsemää", "seitsemään"),
+    NumWord("kahdeksan", "kahdeksa", "kahdeksa", "kahdeksaa", "kahdeksaan"),
+    NumWord("yhdeksän", "yhdeksä", "yhdeksä", "yhdeksää", "yhdeksään"),
+];
+const TEN: NumWord = NumWord("kymmenen", "kymmene", "kymmene", "kymmentä", "kymmeneen");
+const HUNDRED: NumWord = NumWord("sata", "sada", "sata", "sataa", "sataan");
+const THOUSAND: NumWord = NumWord("tuhat", "tuhanne", "tuhante", "tuhatta", "tuhanteen");
+const MILLION: NumWord = NumWord("miljoona", "miljoona", "miljoona", "miljoonaa", "miljoonaan");
+
+const ORD: [NumWord; 10] = [
+    NumWord("nollas", "nollanne", "nollante", "nollatta", "nollanteen"),
+    NumWord("ensimmäinen", "ensimmäise", "ensimmäise", "ensimmäistä", "ensimmäiseen"),
+    NumWord("toinen", "toise", "toise", "toista", "toiseen"),
+    NumWord("kolmas", "kolmanne", "kolmante", "kolmatta", "kolmanteen"),
+    NumWord("neljäs", "neljänne", "neljänte", "neljättä", "neljänteen"),
+    NumWord("viides", "viidenne", "viidente", "viidettä", "viidenteen"),
+    NumWord("kuudes", "kuudenne", "kuudente", "kuudetta", "kuudenteen"),
+    NumWord("seitsemäs", "seitsemänne", "seitsemänte", "seitsemättä", "seitsemänteen"),
+    NumWord("kahdeksas", "kahdeksanne", "kahdeksante", "kahdeksatta", "kahdeksanteen"),
+    NumWord("yhdeksäs", "yhdeksänne", "yhdeksänte", "yhdeksättä", "yhdeksänteen"),
+];
+/// 1 and 2 inside a compound ordinal: yhdestoista, kahdeskymmenes.
+const ORD_1: NumWord = NumWord("yhdes", "yhdenne", "yhdente", "yhdettä", "yhdenteen");
+const ORD_2: NumWord = NumWord("kahdes", "kahdenne", "kahdente", "kahdetta", "kahdenteen");
+const ORD_TEN: NumWord = NumWord("kymmenes", "kymmenenne", "kymmenente", "kymmenettä", "kymmenenteen");
+const ORD_HUNDRED: NumWord = NumWord("sadas", "sadanne", "sadante", "sadatta", "sadanteen");
+
+/// One numeral word in a case. `counted`: the tens / hundreds / thousands word
+/// after a multiplier, partitive in the nominative (kaksikymmentä, kolmesataa).
+fn inflect(w: &NumWord, case: Case, counted: bool) -> String {
+    let a = if w.0.chars().any(|c| matches!(c, 'a' | 'o' | 'u')) { 'a' } else { 'ä' };
+    match case {
+        Case::Nom => (if counted { w.3 } else { w.0 }).to_string(),
+        Case::Part => w.3.to_string(),
+        Case::Ill => w.4.to_string(),
+        Case::Gen => format!("{}n", w.1),
+        Case::Ine => format!("{}ss{a}", w.1),
+        Case::Ela => format!("{}st{a}", w.1),
+        Case::Ade => format!("{}ll{a}", w.1),
+        Case::Abl => format!("{}lt{a}", w.1),
+        Case::All => format!("{}lle", w.1),
+        Case::Tra => format!("{}ksi", w.1),
+        Case::Ess => format!("{}n{a}", w.2),
+    }
+}
+
+fn case_below_100(n: u128, case: Case, out: &mut Vec<String>) {
+    match n {
+        0 => {}
+        1..=9 => out.push(inflect(&CARD[n as usize], case, false)),
+        10 => out.push(inflect(&TEN, case, false)),
+        11..=19 => {
+            out.push(inflect(&CARD[(n - 10) as usize], case, false));
+            out.push("toista".into());
+        }
+        _ => {
+            out.push(inflect(&CARD[(n / 10) as usize], case, false));
+            out.push(inflect(&TEN, case, true));
+            if n % 10 != 0 {
+                out.push(inflect(&CARD[(n % 10) as usize], case, false));
+            }
+        }
+    }
+}
+
+fn case_below_1000(n: u128, case: Case, out: &mut Vec<String>) {
+    match n / 100 {
+        0 => {}
+        1 => out.push(inflect(&HUNDRED, case, false)),
+        h => {
+            out.push(inflect(&CARD[h as usize], case, false));
+            out.push(inflect(&HUNDRED, case, true));
+        }
+    }
+    case_below_100(n % 100, case, out);
+}
+
+fn case_below_million(n: u128, case: Case) -> Vec<String> {
+    let mut out = Vec::new();
+    match n / 1000 {
+        0 => {}
+        1 => out.push(inflect(&THOUSAND, case, false)),
+        t => {
+            case_below_1000(t, case, &mut out);
+            out.push(inflect(&THOUSAND, case, true));
+        }
+    }
+    case_below_1000(n % 1000, case, &mut out);
+    out
+}
+
+/// A cardinal below a milliard in a case, as words made of morphemes; every
+/// part inflects.
+fn cardinal_morphemes(n: u128, case: Case) -> Option<Vec<Vec<String>>> {
+    if n >= 1_000_000_000 {
+        return None;
+    }
+    if n == 0 {
+        return Some(vec![vec![inflect(&CARD[0], case, false)]]);
+    }
+    let mut out = Vec::new();
+    match n / 1_000_000 {
+        0 => {}
+        1 => out.push(vec![inflect(&MILLION, case, false)]),
+        q => {
+            out.push(case_below_million(q, case));
+            out.push(vec![inflect(&MILLION, case, true)]);
+        }
+    }
+    if n % 1_000_000 > 0 {
+        out.push(case_below_million(n % 1_000_000, case));
+    }
+    Some(out)
+}
+
+/// A cardinal below a milliard in a case (5:ssä -> viidessä, 25:n ->
+/// kahdenkymmenenviiden, 300:aa -> kolmeasataa).
+pub fn cardinal_case(n: u128, case: Case) -> Option<Vec<String>> {
+    Some(cardinal_morphemes(n, case)?.iter().map(|w| w.concat()).collect())
+}
+
+/// An ordinal below a thousand in a case, as the morphemes of one word.
+fn ordinal_morphemes(n: u128, case: Case) -> Option<Vec<String>> {
+    if n == 0 || n >= 1000 {
+        return None;
+    }
+    let inner = |d: u128| match d {
+        1 => &ORD_1,
+        2 => &ORD_2,
+        d => &ORD[d as usize],
+    };
+    let mut out = Vec::new();
+    match n / 100 {
+        0 => {}
+        1 => out.push(inflect(&ORD_HUNDRED, case, false)),
+        h => {
+            out.push(inflect(inner(h), case, false));
+            out.push(inflect(&ORD_HUNDRED, case, false));
+        }
+    }
+    let r = n % 100;
+    match r {
+        0 => {}
+        1..=9 => out.push(inflect(&ORD[r as usize], case, false)),
+        10 => out.push(inflect(&ORD_TEN, case, false)),
+        11..=19 => {
+            out.push(inflect(inner(r - 10), case, false));
+            out.push("toista".into());
+        }
+        _ => {
+            out.push(inflect(inner(r / 10), case, false));
+            out.push(inflect(&ORD_TEN, case, false));
+            if r % 10 != 0 {
+                out.push(inflect(&ORD[(r % 10) as usize], case, false));
+            }
+        }
+    }
+    Some(out)
+}
+
+/// An ordinal below a thousand in a case (12. -> kahdestoista, 21. ->
+/// kahdeskymmenesensimmäinen, 3:nnessa -> kolmannessa).
+pub fn ordinal(n: u128, case: Case) -> Option<String> {
+    Some(ordinal_morphemes(n, case)?.concat())
+}
+
+/// Phonemes of a numeral word given as morphemes: the stress pattern restarts
+/// at each one, as in the nominative (kˈaksɪkˌymmentævˌiːsɪ).
+fn numeral_piece(morphemes: &[String]) -> Piece {
+    let mut ph = String::new();
+    for (k, m) in morphemes.iter().enumerate() {
+        let p = word(m);
+        ph.push_str(&if k == 0 { p } else { p.replace('ˈ', "ˌ") });
+    }
+    Piece::Ph(assimilate_nasals(&ph), morphemes.concat())
+}
+
+/// The case (and cardinal / ordinal reading) a written ending after a colon
+/// stands for: 5:n, 5:ssä, 5:een, 5:ttä; 5:s, 5:nnen, 5:nnessä.
+fn colon_case(e: &str) -> Option<(Case, bool)> {
+    Some(match e {
+        "n" => (Case::Gen, false),
+        "ssa" | "ssä" => (Case::Ine, false),
+        "sta" | "stä" => (Case::Ela, false),
+        "lla" | "llä" => (Case::Ade, false),
+        "lta" | "ltä" => (Case::Abl, false),
+        "lle" => (Case::All, false),
+        "ksi" => (Case::Tra, false),
+        "na" | "nä" => (Case::Ess, false),
+        "a" | "ä" | "aa" | "ää" | "ta" | "tä" | "tta" | "ttä" => (Case::Part, false),
+        "een" | "en" | "aan" | "ään" | "teen" | "hen" | "iin" | "seen" => (Case::Ill, false),
+        "s" => (Case::Nom, true),
+        "nnen" => (Case::Gen, true),
+        "nnessa" | "nnessä" => (Case::Ine, true),
+        "nnesta" | "nnestä" => (Case::Ela, true),
+        "nnella" | "nnellä" => (Case::Ade, true),
+        "nnelta" | "nneltä" => (Case::Abl, true),
+        "nnelle" => (Case::All, true),
+        "nneksi" => (Case::Tra, true),
+        "ntena" | "ntenä" => (Case::Ess, true),
+        "nteen" => (Case::Ill, true),
+        _ => return None,
+    })
+}
+
+const MONTHS: [&str; 12] = [
+    "tammikuu", "helmikuu", "maaliskuu", "huhtikuu", "toukokuu", "kesäkuu", "heinäkuu", "elokuu", "syyskuu", "lokakuu",
+    "marraskuu", "joulukuu",
+];
+
+/// Units after a number: partitive, or nominative after 1 (5 kg -> viisi
+/// kilogrammaa, 1 km -> yksi kilometri). Symbols are case-sensitive.
+fn unit(w: &str, one: bool) -> Option<&'static str> {
+    let (sg, pl) = match w {
+        "kg" => ("kilogramma", "kilogrammaa"),
+        "g" => ("gramma", "grammaa"),
+        "mg" => ("milligramma", "milligrammaa"),
+        "km" => ("kilometri", "kilometriä"),
+        "m" => ("metri", "metriä"),
+        "cm" => ("senttimetri", "senttimetriä"),
+        "mm" => ("millimetri", "millimetriä"),
+        "l" => ("litra", "litraa"),
+        "dl" => ("desilitra", "desilitraa"),
+        "cl" => ("senttilitra", "senttilitraa"),
+        "ml" => ("millilitra", "millilitraa"),
+        "h" => ("tunti", "tuntia"),
+        "min" => ("minuutti", "minuuttia"),
+        "s" => ("sekunti", "sekuntia"),
+        "kk" => ("kuukausi", "kuukautta"),
+        "vk" => ("viikko", "viikkoa"),
+        "v" => ("vuosi", "vuotta"),
+        "t" => ("tonni", "tonnia"),
+        "ha" => ("hehtaari", "hehtaaria"),
+        "kpl" => ("kappale", "kappaletta"),
+        "snt" => ("sentti", "senttiä"),
+        "kWh" => ("kilowattitunti", "kilowattituntia"),
+        "kW" => ("kilowatti", "kilowattia"),
+        "MW" => ("megawatti", "megawattia"),
+        "W" => ("watti", "wattia"),
+        "GB" => ("gigatavu", "gigatavua"),
+        "MB" => ("megatavu", "megatavua"),
+        "mrd" => ("miljardi", "miljardia"),
+        "milj" => ("miljoona", "miljoonaa"),
+        _ => return None,
+    };
+    Some(if one { sg } else { pl })
+}
+
+/// Abbreviations written with a period. `n.`, `v.` and `s.` only before a number
+/// (n. 5 km, v. 1995, s. 12); elsewhere they are initials.
+fn abbrev(lw: &str, before_number: bool) -> Option<&'static str> {
+    Some(match lw {
+        "esim" => "esimerkiksi",
+        "jne" => "ja niin edelleen",
+        "ym" => "ynnä muuta",
+        "yms" => "ynnä muuta sellaista",
+        "tms" => "tai muuta sellaista",
+        "ns" => "niin sanottu",
+        "vrt" => "vertaa",
+        "ks" | "kts" => "katso",
+        "mm" => "muun muassa",
+        "nro" => "numero",
+        "puh" => "puhelin",
+        "ko" => "kyseinen",
+        "em" => "edellä mainittu",
+        "ao" => "asianomainen",
+        "ts" => "toisin sanoen",
+        "so" => "se on",
+        "huom" => "huomaa",
+        "prof" => "professori",
+        "tri" => "tohtori",
+        "hra" => "herra",
+        "rva" => "rouva",
+        "nti" => "neiti",
+        "kpl" => "kappaletta",
+        "mrd" => "miljardia",
+        "milj" => "miljoonaa",
+        "klo" => "kello",
+        "pvm" => "päivämäärä",
+        "yht" => "yhteensä",
+        "alk" => "alkaen",
+        "synt" => "syntynyt",
+        "ca" => "noin",
+        "ekr" => "ennen Kristusta",
+        "jkr" => "jälkeen Kristuksen",
+        "n" if before_number => "noin",
+        "v" if before_number => "vuonna",
+        "s" if before_number => "sivu",
+        _ => return None,
+    })
+}
+
+/// What a token group expands to: words for the ordinary word path, or
+/// finished phonemes with their source word.
+pub enum Piece {
+    Word(String),
+    Ph(String, String),
+}
+
+fn digits(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_ascii_digit())
+}
+
+fn lower_initial(w: &str) -> bool {
+    w.chars().next().is_some_and(|c| c.is_lowercase())
+}
+
+/// `H.MM` / `H:MM` as a clock time: kello neljätoista kolmekymmentä; minutes
+/// below ten keep their zero (14.05 -> neljätoista nolla viisi).
+fn clock(n: &str) -> Option<Vec<String>> {
+    let (h, m) = n.split_once(['.', ':'])?;
+    if !digits(h) || h.len() > 2 || !digits(m) || m.len() != 2 {
+        return None;
+    }
+    let (h, m): (u128, u128) = (h.parse().ok()?, m.parse().ok()?);
+    if h > 24 || m > 59 {
+        return None;
+    }
+    let mut out = cardinal(h);
+    if m > 0 {
+        if m < 10 {
+            out.push("nolla".into());
+        }
+        out.extend(cardinal(m));
+    }
+    Some(out)
+}
+
+/// `24.12.2023` and `24.12` as a date: the day as an ordinal, the month in the
+/// partitive, the year as a cardinal (kahdeskymmenesneljäs joulukuuta …).
+fn date(n: &str) -> Option<Vec<Piece>> {
+    let parts: Vec<&str> = n.split('.').collect();
+    if !(2..=3).contains(&parts.len()) || !parts.iter().all(|p| digits(p)) || parts[0].len() > 2 || parts[1].len() > 2 {
+        return None;
+    }
+    let (d, m): (u128, usize) = (parts[0].parse().ok()?, parts[1].parse().ok()?);
+    if !(1..=31).contains(&d) || !(1..=12).contains(&m) {
+        return None;
+    }
+    let mut out = vec![numeral_piece(&ordinal_morphemes(d, Case::Nom)?), Piece::Word(format!("{}ta", MONTHS[m - 1]))];
+    if let Some(y) = parts.get(2) {
+        if y.len() != 4 {
+            return None;
+        }
+        out.extend(cardinal(y.parse().ok()?).into_iter().map(Piece::Word));
+    }
+    Some(out)
+}
+
+/// The case an ordinal before this noun agrees in, read off the noun's ending
+/// where the ending is unmistakable (5. kerroksessa -> viidennessä); the
+/// nominative otherwise (12. joulukuuta, 5. luokka).
+fn noun_case(w: &str) -> Case {
+    if matches!(w, "päivänä" | "kertana" | "vuonna" | "kerroksena") {
+        return Case::Ess;
+    }
+    for (suf, case) in [
+        ("ssa", Case::Ine),
+        ("ssä", Case::Ine),
+        ("sta", Case::Ela),
+        ("stä", Case::Ela),
+        ("lla", Case::Ade),
+        ("llä", Case::Ade),
+        ("lta", Case::Abl),
+        ("ltä", Case::Abl),
+        ("lle", Case::All),
+        ("ksi", Case::Tra),
+    ] {
+        if w.ends_with(suf) && w.chars().count() >= 6 {
+            return case;
+        }
+    }
+    Case::Nom
+}
+
+/// Finnish readings of a token group starting at `toks[i]`: inflected numerals
+/// and abbreviations (5:ssä, EU:n), ordinals (5. luokka), dates, clock times
+/// after klo, units after a number, abbreviations with a period. Returns the
+/// pieces and the number of tokens they replace.
+pub fn expand_token(toks: &[Tok], i: usize, prev: &str) -> Option<(Vec<Piece>, usize)> {
+    let words = |v: Vec<String>| v.into_iter().map(Piece::Word).collect::<Vec<_>>();
+    // the next token that is not a separator, and its index
+    let after = |from: usize| toks.iter().enumerate().skip(from).find(|(_, t)| !matches!(t, Tok::Sep));
+    let colon_ending = || match (toks.get(i + 1), toks.get(i + 2)) {
+        (Some(Tok::Punct(':')), Some(Tok::Word(e))) if e.chars().all(|c| c.is_lowercase()) => Some(e.as_str()),
+        _ => None,
+    };
+    match &toks[i] {
+        Tok::Num(n) => {
+            if digits(n) && n.len() <= 9 {
+                if let Some((case, ord)) = colon_ending().and_then(colon_case) {
+                    let v: u128 = n.parse().ok()?;
+                    let w = if ord {
+                        vec![numeral_piece(&ordinal_morphemes(v, case)?)]
+                    } else {
+                        cardinal_morphemes(v, case)?.iter().map(|m| numeral_piece(m)).collect()
+                    };
+                    return Some((w, 3));
+                }
+            }
+            if n.contains(':') || matches!(prev, "klo" | "kello") {
+                if let Some(w) = clock(n) {
+                    return Some((words(w), 1));
+                }
+            }
+            let dot = toks.get(i + 1) == Some(&Tok::Punct('.'));
+            let next = if dot { after(i + 2) } else { None };
+            let next_lower = matches!(next, Some((_, Tok::Word(w))) if lower_initial(w) && w.chars().count() > 1);
+            match n.matches('.').count() {
+                2 => {
+                    if let Some(w) = date(n) {
+                        return Some((w, 1));
+                    }
+                }
+                // 24.12. needs its closing period and a sentence that goes on
+                1 if dot && next_lower => {
+                    if let Some(w) = date(n) {
+                        return Some((w, 2));
+                    }
+                }
+                _ => {}
+            }
+            // 5. luokka, 12. joulukuuta: a number, a period and a lower-case word
+            if digits(n) && n.len() <= 3 && dot && next_lower {
+                let Some((_, Tok::Word(w))) = next else { return None };
+                let lw = w.to_lowercase();
+                let month = MONTHS.iter().any(|m| lw.starts_with(m));
+                let case = if month { Case::Nom } else { noun_case(&lw) };
+                return Some((vec![numeral_piece(&ordinal_morphemes(n.parse().ok()?, case)?)], 2));
+            }
+            None
+        }
+        Tok::Word(w) => {
+            // EU:n, USA:ssa, A:n: the letter names, then the ending
+            if let Some(e) = colon_ending() {
+                let upper = w.chars().count() <= 6 && w.chars().all(|c| c.is_uppercase());
+                if upper && (colon_case(e).is_some() || matches!(e, "t" | "hun" | "hin" | "hon" | "hyn")) {
+                    let lw = w.to_lowercase();
+                    let ph = if w.chars().count() > 1 && !crate::spell::is_acronym(w) && !SPELLED.contains(&lw.as_str()) {
+                        // read as a word: NATO:n -> naton
+                        word(&format!("{lw}{e}"))
+                    } else {
+                        acronym_case(&lw, e)
+                    };
+                    return Some((vec![Piece::Ph(ph, format!("{lw}{e}"))], 3));
+                }
+            }
+            // a unit right after a number
+            let before = toks[..i].iter().rev().find(|t| !matches!(t, Tok::Sep));
+            if let Some(Tok::Num(n)) = before {
+                if toks.get(i + 1) != Some(&Tok::Punct(':')) {
+                    if let Some(u) = unit(w, n == "1") {
+                        return Some((vec![Piece::Word(u.to_string())], 1));
+                    }
+                }
+            }
+            // an abbreviation with its period
+            if toks.get(i + 1) == Some(&Tok::Punct('.')) {
+                let next = after(i + 2);
+                let full = abbrev(&w.to_lowercase(), matches!(next, Some((_, Tok::Num(_)))))?;
+                // the period ends the sentence only when nothing follows, or when a
+                // capitalized word follows an abbreviation a sentence can end in
+                let closes = matches!(w.to_lowercase().as_str(), "jne" | "ym" | "yms" | "tms");
+                let keep = match next {
+                    None => true,
+                    Some((_, Tok::Word(nw))) => closes && !lower_initial(nw),
+                    _ => false,
+                };
+                return Some((words(full.split(' ').map(String::from).collect()), if keep { 1 } else { 2 }));
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+/// A spelled abbreviation with a case ending: EU:n -> ˌeːˈuːn; after a letter
+/// name that ends in a consonant the ending comes through a doubled consonant
+/// and ä, as it is spoken (PS:n -> pee-ässän, MM:ssä -> äm-ämmässä).
+fn acronym_case(lw: &str, ending: &str) -> String {
+    let c: Vec<char> = lw.chars().collect();
+    let mut out = spell(&c);
+    let mut tail = String::new();
+    match c.last() {
+        Some('f') | Some('l') | Some('m') | Some('n') | Some('r') | Some('s') => {
+            let d = match c[c.len() - 1] {
+                'f' => 'f',
+                'l' => 'l',
+                'm' => 'm',
+                'n' => 'n',
+                'r' => 'r',
+                _ => 's',
+            };
+            tail.push(d);
+            tail.push('ä');
+        }
+        Some('x') => tail.push('ä'),
+        Some('z') => tail.push('a'),
+        _ => {}
+    }
+    tail.push_str(ending);
+    let t: Vec<char> = tail.chars().collect();
+    let u = units(&t, None);
+    render(&u, &[], &mut out);
+    assimilate_nasals(&out)
+}
+
+/// Rewrites done on the raw text before tokenizing: a space as the thousands
+/// separator (2 300 000, the Finnish standard) becomes a no-break space so the
+/// number stays one token; a minus sign before a number is read; km/h and °C.
+pub fn prenormalize(text: &str) -> Cow<'_, str> {
+    if !text.chars().any(|c| c.is_ascii_digit()) {
+        return Cow::Borrowed(text);
+    }
+    let c: Vec<char> = text.chars().collect();
+    let n = c.len();
+    let digit = |i: usize| c.get(i).is_some_and(|x| x.is_ascii_digit());
+    let mut out = String::with_capacity(text.len() + 16);
+    let mut i = 0;
+    while i < n {
+        let ch = c[i];
+        let at_start = i == 0 || matches!(c[i - 1], ' ' | '(' | '\u{00A0}');
+        if matches!(ch, '-' | '−') && digit(i + 1) && at_start {
+            out.push_str("miinus ");
+            i += 1;
+            continue;
+        }
+        if ch == '°' && c.get(i + 1) == Some(&'C') && !c.get(i + 2).is_some_and(|x| x.is_alphanumeric()) {
+            out.push_str("celsiusastetta");
+            i += 2;
+            continue;
+        }
+        if i > 0 && (digit(i - 1) || c[i - 1] == ' ' && i > 1 && digit(i - 2)) {
+            let rate = [("km/h", "kilometriä tunnissa"), ("m/s", "metriä sekunnissa")].into_iter().find(|(sym, _)| {
+                let m = sym.chars().count();
+                c[i..].iter().take(m).copied().eq(sym.chars()) && !c.get(i + m).is_some_and(|x| x.is_alphanumeric())
+            });
+            if let Some((sym, full)) = rate {
+                out.push_str(full);
+                i += sym.chars().count();
+                continue;
+            }
+        }
+        // a digit run that opens a number: not glued to an earlier digit group
+        let opens = ch.is_ascii_digit()
+            && ch != '0'
+            && (i == 0 || !(digit(i - 1) || matches!(c[i - 1], '.' | ',' | ':' | '+')))
+            && !(i >= 2 && c[i - 1] == ' ' && (digit(i - 2) || matches!(c[i - 2], '.' | ',' | ':')));
+        if opens {
+            let mut j = i;
+            while digit(j) {
+                j += 1;
+            }
+            if j - i <= 3 {
+                let mut k = j;
+                let mut groups = 0;
+                while c.get(k) == Some(&' ') && digit(k + 1) && digit(k + 2) && digit(k + 3) && !digit(k + 4) {
+                    k += 4;
+                    groups += 1;
+                }
+                // not when more digits follow (a list, a phone number)
+                let more = c.get(k) == Some(&' ') && digit(k + 1);
+                if groups > 0 && !more {
+                    for &x in &c[i..k] {
+                        out.push(if x == ' ' { '\u{00A0}' } else { x });
+                    }
+                    i = k;
+                    continue;
+                }
+            }
+            for &x in &c[i..j] {
+                out.push(x);
+            }
+            i = j;
+            continue;
+        }
+        out.push(ch);
+        i += 1;
+    }
+    Cow::Owned(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{cardinal, word};
@@ -2169,5 +2786,86 @@ mod tests {
         // a + combining diaeresis is ä
         let g = crate::G2p::new(None);
         assert_eq!(g.phonemize("a\u{308}iti", crate::Lang::Fi), g.phonemize("äiti", crate::Lang::Fi));
+    }
+
+    /// Inflected numerals, ordinals, dates, clock times, units, abbreviations.
+    #[test]
+    fn numbers_and_abbreviations() {
+        check(&[
+            ("5:ssä", "vˈiːdessæ"),
+            ("5:n", "vˈiːden"),
+            ("3:lla", "kˈolmella"),
+            ("25:n", "kˈahdeŋkˌymmenenvˌiːden"),
+            ("300:aa", "kˈolmeasˌataː"),
+            ("3:nnessa kerroksessa", "kˈolmannˌessa kˈerroksˌessa"),
+            ("5:s", "vˈiːdes"),
+            ("2:ksi", "kˈahdeksɪ"),
+            ("7:ään", "sˈeitsemæːn"),
+            ("12. joulukuuta", "kˈahdestˌoista jˈoulukˌuːta"),
+            ("5. luokka", "vˈiːdes lˈuokːa"),
+            ("5. kerroksessa", "vˈiːdennˌessæ kˈerroksˌessa"),
+            ("3. päivänä", "kˈolmantˌena pˈæivænæ"),
+            ("21. kerros", "kˈahdeskˌymmenesˌensɪmmˌæineŋ kˈerros"),
+            ("24.12.2023", "kˈahdeskˌymmenesnˌeljæs jˈoulukˌuːta kˈaksɪtˌuhatːakˌaksɪkˌymmentækˌolme"),
+            ("Tulen 24.12. kotiin", "tˈuleŋ kˈahdeskˌymmenesnˌeljæs jˈoulukˌuːta kˈotɪːn"),
+            ("klo 14.30", "kˈello nˈeljætˌoista kˈolmekˌymmentæ"),
+            ("kello 14.05", "kˈello nˈeljætˌoista nˈolla vˈiːsɪ"),
+            ("2 300 000", "kˈaksɪ mˈiljoːnaː kˈolmesˌataːtˌuhatːa"),
+            ("1 000", "tˈuhat"),
+            ("100 000 euroa", "sˈatatˌuhatːa ˈeuroa"),
+            ("1,5 kg", "ˈyksɪ pˈilkːu vˈiːsɪ kˈiloɡrˌammaː"),
+            ("1 km", "ˈyksɪ kˈilomˌetrɪ"),
+            ("50 km/h", "vˈiːsɪkˌymmentæ kˈilomˌetrɪæ tˈunnɪssa"),
+            ("25 °C", "kˈaksɪkˌymmentævˌiːsɪ sˈelsiusˌastetːa"),
+            ("-5 astetta", "mˈiːnus vˈiːsɪ ˈastetːa"),
+            ("2 h 30 min", "kˈaksɪ tˈuntɪa kˈolmekˌymmentæ mˈinuːtːˌia"),
+            ("n. 5 km", "nˈoin vˈiːsɪ kˈilomˌetrɪæ"),
+            ("mm. tämä", "mˈuːn mˈuassa tˈæmæ"),
+            ("esim. tämä", "ˈesɪmˌerkɪksɪ tˈæmæ"),
+            ("EU:n", "ˌeːˈuːn"),
+            ("EU:ssa", "ˌeːˈuːssa"),
+            ("USA:n", "ˌuːˌæsˈaːn"),
+            ("PS:n", "pˌeːˈæssæn"),
+            ("MM:ssä", "ˌæmˈæmmæssæ"),
+            ("NATO:n", "nˈaton"),
+            ("A:n", "ˈaːn"),
+            ("Tämä on arvosana 3.5. Se on hyvä.", "tˈæmæ on ˈarvosˌana kˈolme pˈilkːu vˈiːsɪ. se on hˈyvæ."),
+        ]);
+    }
+
+    /// Inputs that must keep their old reading: decimals, plain years, cardinals
+    /// with a final period, phone numbers.
+    #[test]
+    fn numbers_stay_as_before() {
+        check(&[
+            ("vuosina 2010 2011", "vˈuosɪna kˈaksɪtˌuhatːakˌymmeneŋ kˈaksɪtˌuhatːaˌyksɪtˌoista"),
+            ("sivut 1 000 ja 2 000", "sˈivut tˈuhat ja kˈaksɪtˌuhatːa"),
+            ("Olen 25. Hän on 30.", "ˌoleŋ kˈaksɪkˌymmentævˌiːsɪ. hæn oŋ kˈolmekˌymmentæ."),
+            ("8.30", "kˈahdeksam pˈilkːu kˈolmekˌymmentæ"),
+            ("Tämä on arvosana 3.5. Se on hyvä.", "tˈæmæ on ˈarvosˌana kˈolme pˈilkːu vˈiːsɪ. se on hˈyvæ."),
+        ]);
+        let g = crate::G2p::new(None);
+        // a leading zero blocks merging into one number
+        let p = g.phonemize("040 123 4567", crate::Lang::Fi);
+        assert!(p.starts_with("nˈolla nˈeljæ nˈolla"), "{p}");
+    }
+
+    #[test]
+    fn case_numerals() {
+        use super::{cardinal_case, ordinal, Case};
+        for n in (0..=100_000u128).step_by(7).chain([1_000_000, 2_300_000, 123_456_789]) {
+            assert_eq!(cardinal_case(n, Case::Nom), Some(cardinal(n)), "{n}");
+        }
+        let want = [
+            "ensimmäinen", "toinen", "kolmas", "neljäs", "viides", "kuudes", "seitsemäs", "kahdeksas", "yhdeksäs",
+            "kymmenes", "yhdestoista", "kahdestoista", "kolmastoista", "neljästoista", "viidestoista", "kuudestoista",
+            "seitsemästoista", "kahdeksastoista", "yhdeksästoista", "kahdeskymmenes", "kahdeskymmenesensimmäinen",
+            "kahdeskymmenestoinen", "kahdeskymmeneskolmas", "kahdeskymmenesneljäs", "kahdeskymmenesviides",
+            "kahdeskymmeneskuudes", "kahdeskymmenesseitsemäs", "kahdeskymmeneskahdeksas",
+            "kahdeskymmenesyhdeksäs", "kolmaskymmenes", "kolmaskymmenesensimmäinen",
+        ];
+        for (i, w) in want.iter().enumerate() {
+            assert_eq!(ordinal(i as u128 + 1, Case::Nom).as_deref(), Some(*w), "{}", i + 1);
+        }
     }
 }

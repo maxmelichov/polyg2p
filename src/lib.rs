@@ -341,7 +341,9 @@ impl G2p {
         } else {
             text
         };
-        let toks = text::tokenize(text);
+        // Finnish: thousands written with a space, minus signs, km/h (fi.rs)
+        let fi_text = if lang == Lang::Fi { Some(fi::prenormalize(text)) } else { None };
+        let toks = text::tokenize(fi_text.as_deref().unwrap_or(text));
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
         let mut words: Vec<String> = Vec::new();
         let mut skip = 0usize;
@@ -356,6 +358,20 @@ impl G2p {
         for (ti, t) in toks.iter().enumerate() {
             if ti < skip {
                 continue;
+            }
+            if lang == Lang::Fi {
+                // inflected numerals and abbreviations, ordinals, dates, clock times, units
+                let exp = fi::expand_token(&toks, ti, outs.last().map(|o| o.src.as_str()).unwrap_or(""));
+                if let Some((pieces, used)) = exp {
+                    for p in pieces {
+                        match p {
+                            fi::Piece::Word(w) => self.push_word(&mut outs, &w, lang),
+                            fi::Piece::Ph(ph, src) => outs.push(Out { ph, punct: String::new(), pause_after: false, src }),
+                        }
+                    }
+                    skip = ti + used;
+                    continue;
+                }
             }
             match t {
                 Tok::Word(w) if lang == Lang::En && w == "St" && toks.get(ti + 1) == Some(&Tok::Punct('.')) => {
