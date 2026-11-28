@@ -22,6 +22,7 @@
 //! the vowel. Function words carry no stress (`ja`, `on`, `se`) or only a
 //! secondary one (`ˌole`, `mˌinæ`), as in espeak's dictionary.
 
+use crate::fi_verbs::{INFINITIVE, INFINITIVE_CTX};
 use crate::Out;
 
 pub const IMPLEMENTED: bool = true;
@@ -98,9 +99,11 @@ const SECONDARY: &[&str] = &[
     "lienneet",
 ];
 
-/// Words that geminate the initial consonant of the next word (boundary
-/// gemination) and are not caught by the suffix rules: imperatives, first
-/// infinitives, connegatives, and a few adverbs / nouns.
+/// Words that always geminate the initial consonant of the next word (boundary
+/// gemination) and are not caught by the suffix rules: imperatives and
+/// connegatives, first infinitives, a few adverbs / nouns. Only forms no other
+/// word is spelled like; the homographs are in `IMPERATIVE_CTX` and
+/// `fi_verbs::INFINITIVE_CTX`.
 const DOUBLE: &[&str] = &[
     "anna",
     "ota",
@@ -116,21 +119,12 @@ const DOUBLE: &[&str] = &[
     "auta",
     "pue",
     "pure",
-    "syö",
-    "tee",
-    "käy",
-    "juo",
-    "vie",
     "lue",
     "istu",
-    "avaa",
-    "muista",
     "lähde",
     "jätä",
     "pidä",
     "nouse",
-    "antaa",
-    "ottaa",
     "sanoa",
     "katsoa",
     "tulla",
@@ -143,56 +137,33 @@ const DOUBLE: &[&str] = &[
     "voida",
     "puhua",
     "lukea",
-    "kirjoittaa",
-    "ymmärtää",
-    "tietää",
     "ajatella",
-    "pitää",
     "haluta",
     "syödä",
     "juoda",
     "käydä",
     "viedä",
     "tuoda",
-    "ostaa",
     "myydä",
-    "maksaa",
-    "elää",
     "kuolla",
     "asua",
     "oppia",
-    "opettaa",
-    "auttaa",
     "etsiä",
-    "löytää",
     "lähteä",
     "jäädä",
     "istua",
     "nukkua",
     "herätä",
     "pelata",
-    "soittaa",
-    "laulaa",
     "tanssia",
     "uida",
     "juosta",
     "kävellä",
-    "ajaa",
-    "lentää",
-    "matkustaa",
-    "rakastaa",
     "tuntea",
-    "muistaa",
-    "unohtaa",
-    "yrittää",
-    "aloittaa",
-    "lopettaa",
-    "jatkaa",
     "avata",
     "sulkea",
     "kysyä",
     "vastata",
-    "pyytää",
     "tarvita",
     "osata",
     "ajeta",
@@ -202,11 +173,7 @@ const DOUBLE: &[&str] = &[
     "pukea",
     "purra",
     "sanota",
-    "tulla",
-    "mennä",
-    "tehdä",
     "kiinni",
-    "luo",
     "taa",
     "terve",
     "tuore",
@@ -218,15 +185,78 @@ const DOUBLE: &[&str] = &[
     "alle",
     "ylle",
     "päälle",
+    "kerro",
+    "puhu",
+    "sovi",
+    "näy",
+    "aio",
+    "tiedä",
+    "ymmärrä",
+    "jaksa",
+    "viitsi",
+    "kysy",
+    "etsi",
+    "nuku",
+    "soita",
+    "osta",
+    "kirjoita",
+    "lopeta",
+    "aloita",
+    "unohda",
+    "löydä",
+    "vedä",
+    "lähetä",
+    "näytä",
+    "käytä",
+    "yritä",
+    "mieti",
+    "pyydä",
+    "kiitä",
+    "seiso",
+    "välitä",
+    "kestä",
+    "estä",
+    "pysty",
+    "elä",
+    "opi",
+    "asti",
+    "yleensä",
+    "tahansa",
+    "yhteensä",
+    "sinänsä",
+    "hyvänsä",
+    "ympäriinsä",
+    "paeta",
+    "havaita",
+    "ansaita",
+    "kyetä",
+    "niellä",
+    "nuolla",
+    "surra",
 ];
-/// Words in -lle / -nne that are not allative / adverb forms (names).
+/// Words the suffix rules would take for triggers and that are not: names in
+/// -lle / -nne / -e, loans and slang in -e without the historical final
+/// consonant (VISK § 34: kolme, itse, nukke), nouns in -da / -ta.
 const NO_DOUBLE: &[&str] = &[
     "kalle", "ville", "pelle", "nalle", "hille", "galle", "polle", "promille", "anne", "hanne",
     "janne", "manne", "marianne", "susanne", "wille", "elle", "belle", "google", "apple", "mike",
     "nike", "one", "some", "line", "online", "home", "office", "service", "jatte", "kate", "me",
-    "te", "he", "se", "ne", "ehkä",
-    // -e words without the historical final consonant (VISK § 34)
-    "kolme", "itse", "nukke",
+    "te", "he", "se", "ne", "ehkä", "kolme", "itse", "nukke", "sote", "steve", "house", "anime",
+    "ale", "eve", "mode", "move", "madame", "ope", "posse", "empire", "ultimate", "jade", "hype",
+    "drone", "karate", "karaoke", "kake", "deadline", "adele", "lime", "tele", "jeppe", "slide",
+    "akne", "sake", "skene", "lande", "saame", "kurre", "striptease", "poke", "veke", "machete",
+    "nasse", "toope", "ukulele", "rope", "nuke", "nisse", "guacamole", "yorkshire", "fore",
+    "mousse", "nysse", "mosse", "kore", "tempe", "mascarpone", "tilde", "andante", "mese", "pose",
+    "nonsense", "bonde", "söde", "mokke", "spede", "jumaliste", "itsenne", "avenue", "fondue",
+    "revue", "reggae", "sundae", "oboe", "aaloe", "niue", "joe", "jane", "pete", "lasse", "tove",
+    "arne", "aune", "tyyne", "irene", "rene", "marlene", "louise", "denise", "eugene", "pierre",
+    "dante", "goethe", "skype", "iphone", "store", "date", "like", "site", "game", "time", "live",
+    "more", "love", "nice", "style", "type", "mobile", "profile", "blue", "true", "rule", "cute",
+    "base", "single", "range", "lounge", "orange", "challenge", "change", "jungle", "iine", "sooda",
+    "gouda", "lauda", "siida", "skeida", "kooda", "aida", "haida", "toyota", "dakota", "anita",
+    "lolita", "nikita", "evita", "margarita", "akita", "emerita", "prostata", "päärata", "jäärata",
+    "suursota", "madeleine", "genre", "freestyle", "franchise", "bisse", "spade", "grape", "flare",
+    "joule", "penne", "sprite", "pointe", "skole", "peseta", "fajita", "smoothie",
 ];
 
 /// Frequent foreign words and abbreviations, respelled in Finnish orthography
@@ -1174,9 +1204,26 @@ fn ends(c: &[char], s: &str) -> bool {
     c.len() >= m && starts(&c[c.len() - m..], s)
 }
 
+/// Imperatives that take an enclitic often enough to list (not käy, syö, juo:
+/// käypä, syöpä and juopa are other words).
+const CLITIC_IMPERATIVE: &[&str] = &[
+    "ole", "anna", "tule", "mene", "ota", "sano", "katso", "kuule", "odota", "laita", "pane", "lue", "istu", "lähde",
+    "nouse", "kerro", "tee", "vie", "pidä", "jätä", "auta", "aja", "mieti", "kokeile", "näytä", "soita",
+];
+
 /// Allative -lle before an enclitic (-kaan, -kin, -ko, -pa, ...) geminates the
 /// enclitic's consonant (kenellekään -> kenellekːään): index of that consonant.
 fn enclitic_geminate(c: &[char]) -> Option<usize> {
+    // imperative + -pa/-pä/-han/-hän: otapa -> otapːa, tulehan -> tulehhan
+    for enc in ["pa", "pä", "han", "hän"] {
+        let m = enc.chars().count();
+        if c.len() > m + 1 && ends(c, enc) {
+            let base: String = c[..c.len() - m].iter().collect();
+            if CLITIC_IMPERATIVE.contains(&base.as_str()) {
+                return Some(c.len() - m);
+            }
+        }
+    }
     for enc in ["kaan", "kään", "kin", "ko", "kö", "pa", "pä", "han", "hän"] {
         let m = enc.chars().count();
         if c.len() > m + 3 && ends(c, enc) && ends(&c[..c.len() - m], "lle") {
@@ -1299,38 +1346,321 @@ fn syllables(w: &str) -> usize {
         .count()
 }
 
-/// Does this word geminate the initial consonant of the next one?
-fn doubles(src: &str) -> bool {
-    if NO_DOUBLE.contains(&src) {
-        return false;
+/// Imperative / connegative forms spelled like another form: the 3rd person
+/// singular (hän käy, juo, syö, vie, luo, avaa, saa), a noun (tee, jää, voi) or a
+/// pronoun (muista). They geminate only as an imperative or connegative: after
+/// a negative verb, or (second field) at the start of a clause.
+const IMPERATIVE_CTX: &[(&str, bool)] = &[
+    ("käy", true),
+    ("juo", true),
+    ("syö", true),
+    ("vie", true),
+    ("luo", true),
+    ("tee", true),
+    ("muista", true),
+    ("avaa", true),
+    ("pelaa", true),
+    ("tapaa", true),
+    ("lupaa", true),
+    ("herää", true),
+    ("palaa", true),
+    ("saa", false),
+    ("jää", false),
+    ("voi", false),
+    ("ui", false),
+    ("myy", false),
+    ("lyö", false),
+    ("osaa", false),
+];
+
+/// Imperatives that open a clause another imperative can be coordinated with
+/// (ole hyvä ja avaa ovi; tule ja syö).
+const IMPERATIVE_HEAD: &[&str] = &[
+    "ole", "anna", "tule", "mene", "ota", "sano", "katso", "kuule", "odota", "laita", "pane", "lue", "istu", "lähde",
+    "nouse", "älä",
+];
+
+/// Words that start a new clause without a comma: the search for a governing
+/// verb or a negation stops there.
+const CLAUSE_BREAK: &[&str] = &[
+    "että", "kun", "jos", "koska", "vaikka", "kunnes", "jotta", "mutta", "vaan", "sillä", "joka", "jota", "jonka",
+    "jotka", "mikä", "minkä", "kuin",
+];
+
+/// Verb forms that take a first infinitive (VISK § 469-470: voida, saada,
+/// täytyä, pitää, haluta, osata, aikoa, yrittää, tarvita, kannattaa, alkaa,
+/// antaa, tahtoa, taitaa, saattaa, ehtiä, jaksaa, uskaltaa, viitsiä, muistaa,
+/// unohtaa, luvata, päättää, …) and the nouns and adjectives of `on pakko /
+/// aika / helppo / mahdollista tehdä`.
+const GOVERNOR: &[&str] = &[
+    "voi", "voin", "voit", "voimme", "voitte", "voivat", "voida", "voidaan", "voitiin", "voinut", "voineet", "voitu",
+    "voinee", "saa", "saan", "saat", "saamme", "saatte", "saavat", "sai", "sain", "sait", "saimme", "saitte", "saivat",
+    "saada", "saadaan", "saatiin", "saanut", "saaneet", "saatu", "pitää", "piti", "pidä", "pitänyt", "pitäneet", "osaa",
+    "osaan", "osaat", "osaamme", "osaatte", "osaavat", "osasi", "osasin", "osasit", "osasimme", "osasivat", "osata",
+    "osannut", "osanneet", "aikoo", "aikoi", "aikovat", "aikoivat", "aikonut", "aikoneet", "aikoa", "tarvita",
+    "kannata", "kannatti", "alkaa", "alkoi", "alkavat", "alkoivat", "alkanut", "alkaneet", "alan", "alat", "alamme",
+    "alatte", "aloin", "aloit", "aloimme", "anna", "antaa", "antoi", "annan", "annat", "annamme", "annatte", "antavat",
+    "antoivat", "annoin", "annoit", "antanut", "taitaa", "taitavat", "taisi", "taisin", "taisit", "päätti", "päätin",
+    "päätit", "päätimme", "päättivät", "päättää", "päätän", "päättänyt", "muista", "muistan", "muistat", "muisti",
+    "muistin", "muistaa", "muistanut", "mahtaa", "mahdan", "mahdat", "mahtoi", "sopii", "sopisi", "kuuluu", "kuului",
+    "kuuluisi", "helppo", "helppoa", "vaikea", "vaikeaa", "vaikeata", "hauska", "hauskaa", "mukava", "mukavaa", "kiva",
+    "kivaa", "ihana", "ihanaa", "hyvä", "parempi", "parasta", "paras", "pakko", "aika", "aikaa", "syytä", "tapana",
+    "tarkoitus", "varaa", "lupa", "oikeus", "tilaisuus", "mahdollisuus", "tärkeää", "tärkeä", "turha", "turhaa",
+    "vaarallista", "kiellettyä", "sallittua", "tarpeen", "kyky", "vaikeuksia", "ongelmia", "hankala", "hankalaa",
+    "järkevää", "viisasta", "pakollista", "mahdollista", "mahdotonta", "mahdoton", "tapa", "keino", "tarve",
+];
+const GOVERNOR_PREFIX: &[&str] = &[
+    "vois", "voitais", "sais", "saatais", "täyty", "pitäis", "halu", "osais", "aio", "aikois", "yrit", "tarvits",
+    "tarvin", "kannatta", "alkais", "antais", "tahdo", "tahto", "taida", "saata", "saatta", "saatto", "ehdi", "ehti",
+    "jaksa", "uskal", "viitsi", "kehta", "kehda", "unoh", "lupa", "luva", "käske", "käski", "salli", "tykkä", "tykä",
+    "rakasta",
+];
+
+/// The word without one enclitic particle (-ko, -han, -pa, -kin, -kaan, -kä).
+fn strip_clitic(s: &str) -> &str {
+    for enc in ["kaan", "kään", "kin", "han", "hän", "pa", "pä", "ko", "kö", "kä"] {
+        if let Some(r) = s.strip_suffix(enc) {
+            if r.chars().count() >= 2 {
+                return r;
+            }
+        }
     }
-    // only a vowel-final word can lengthen the next consonant (tänään, kotiin, pois never do)
-    if !src.chars().last().is_some_and(is_vowel) {
-        return false;
+    s
+}
+
+/// Does this word form take a first infinitive as its complement?
+fn governs_infinitive(src: &str) -> bool {
+    let gov = |s: &str| {
+        GOVERNOR.contains(&s)
+            || GOVERNOR_PREFIX.iter().any(|p| s.starts_with(p)) && !s.starts_with("yrity")
+    };
+    gov(src) || {
+        let s = strip_clitic(src);
+        s != src && gov(s)
     }
-    if DOUBLE.contains(&src) {
+}
+
+/// The negative verb: en, et, ei, emme, ette, eivät, the imperative älä, with
+/// an enclitic (eikä, enhän, eikö) or fused to a conjunction (ettei, ellen,
+/// miksei, muttei, vaikkei, jottei).
+fn is_negative(src: &str) -> bool {
+    const NEG: [&str; 7] = ["en", "et", "ei", "emme", "ette", "eivät", "älä"];
+    let s = strip_clitic(src);
+    NEG.contains(&src)
+        || NEG.contains(&s)
+        || ["ett", "ell", "joll", "miks", "mutt", "vaikk", "jott"]
+            .iter()
+            .any(|p| s.strip_prefix(p).is_some_and(|r| NEG[..6].contains(&r)))
+}
+
+/// Is there a word satisfying `hit` earlier in the same clause, at most `window`
+/// words back, with no pause or clause-opening conjunction in between?
+fn earlier_in_clause(outs: &[Out], k: usize, window: usize, hit: impl Fn(&str) -> bool) -> bool {
+    let mut j = k;
+    while j > 0 && k - j < window {
+        j -= 1;
+        if outs[j].pause_after {
+            return false;
+        }
+        let s = outs[j].src.as_str();
+        if hit(s) {
+            return true;
+        }
+        if CLAUSE_BREAK.contains(&s) {
+            return false;
+        }
+    }
+    false
+}
+
+/// An adverb in -sti (nopeasti, yleisesti, normaalisti, varmasti), as opposed to
+/// a noun (turisti, eversti, protesti) or a past tense (varasti, pelasti, järjesti).
+fn sti_adverb(src: &str) -> bool {
+    const SHORT: &[&str] = &[
+        "varmasti", "helposti", "tietysti", "kovasti", "huonosti", "pahasti", "hienosti", "kahdesti", "monesti",
+        "kolmesti", "reilusti", "aidosti", "avoimesti", "laajasti", "suuresti", "taatusti", "lyhyesti", "rajusti",
+        "tiukasti", "nätisti", "kiltisti", "siististi", "hauskasti", "ihanasti", "lujasti", "hyvästi", "pitkästi",
+        "hullusti", "kamalasti", "ankarasti", "ahkerasti", "heikosti", "niukasti", "kevyesti", "kummasti", "oudosti",
+        "julmasti", "hellästi", "hurjasti", "syvästi", "tyhmästi", "rumasti", "kylmästi", "kuumasti", "laiskasti",
+        "nöyrästi", "köyhästi", "villisti", "äkisti", "leikisti", "rennosti", "paksusti", "herkästi", "jyrkästi",
+        "rutkasti", "näppärästi", "fiksusti", "isosti", "huimasti", "rankasti", "pirusti", "roimasti", "hassusti",
+        "visusti", "täpärästi", "tylysti", "typerästi", "löyhästi", "kehnosti", "jännästi", "ovelasti", "hämärästi",
+        "hankalasti", "tyynesti", "nolosti", "pienesti", "väljästi", "kömpelösti", "tuplasti", "vitusti",
+        "helvetisti", "hemmetisti", "saatanasti", "hitosti", "kolmasti", "neljästi", "viidesti", "kuudesti",
+    ];
+    if SHORT.contains(&src) {
         return true;
+    }
+    if ["siisti", "laasti", "puusti", "rovasti", "insesti", "viesti", "posti", "ksti"]
+        .iter()
+        .any(|x| src.ends_with(x))
+    {
+        return false;
+    }
+    let c: Vec<char> = src.chars().collect();
+    let m = c.len() - 3; // the stem before -sti
+    if m < 3 {
+        return false;
+    }
+    let (a, b) = (c[m - 2], c[m - 1]);
+    // -sesti (yleisesti), a long vowel (hitaasti, kauniisti), -easti / -eästi
+    // (nopeasti), -vasti / -västi (jatkuvasti, selvästi)
+    if (a == 's' && b == 'e') || (a == b && is_vowel(a)) || (a == 'e' && matches!(b, 'a' | 'ä')) {
+        return true;
+    }
+    if a == 'v' && matches!(b, 'a' | 'ä') {
+        return true;
+    }
+    // -io / -iö adjectives (mainiosti) and passive participles in -tu / -ty after a
+    // vowel or l, n, r, t (tunnetusti, perustellusti); vastusti, puolusti are verbs
+    if a == 'i' && matches!(b, 'o' | 'ö') {
+        return true;
+    }
+    if a == 't' && matches!(b, 'u' | 'y') && m >= 4 && syllables(src) >= 4 {
+        let before = c[m - 3];
+        if is_vowel(before) || matches!(before, 'l' | 'n' | 'r' | 't') {
+            return true;
+        }
+    }
+    // -ttomasti / -ttömästi and other long stems in -ma (ehdottomasti, välittömästi)
+    if a == 'm' && matches!(b, 'a' | 'ä') && syllables(src) >= 4 {
+        return true;
+    }
+    // adjective in long vowel + consonant + i: normaalisti, spontaanisti, anonyymisti
+    b == 'i' && m >= 4 && !is_vowel(a) && is_vowel(c[m - 3]) && c[m - 4] == c[m - 3]
+}
+
+/// A nominative in -e with the historical final consonant (perhe, kone, lause,
+/// joukkue, koe) or an imperative / connegative in -e (tule, sulje, kuuntele):
+/// not -mme / -tte verb forms, not the diphthong -ie (tie and its compounds),
+/// not a loan with a foreign letter near the end (college, face, bridge).
+fn e_trigger(src: &str) -> bool {
+    if !src.ends_with('e') || src.ends_with("mme") || src.ends_with("tte") || src.ends_with("ee") {
+        return false;
+    }
+    // compounds of nukke and saame keep their lack of a final consonant
+    if src.ends_with("nukke") || src.ends_with("saame") {
+        return false;
+    }
+    if src.ends_with("ie") {
+        return src.ends_with("aie") || src.ends_with("säie") || src == "hie";
+    }
+    let c: Vec<char> = src.chars().collect();
+    !c[c.len().saturating_sub(4)..]
+        .iter()
+        .any(|x| matches!(x, 'b' | 'c' | 'f' | 'g' | 'q' | 'w' | 'x' | 'z' | 'š' | 'ž'))
+}
+
+/// A first infinitive, imperative or connegative in -da / -dä after a long
+/// vowel, diphthong or h (saada, tuoda, tehdä, arvioida, huuda, vaihda), or in
+/// consonant + short vowel + -ta / -tä with three or more syllables (haluta,
+/// pelata, valita, odota, lopeta). The partitive -ta never follows a short
+/// vowel after a consonant; nouns that end this way are compounds of sota,
+/// rata, pata … (maailmansota, junarata), kept out by their length.
+fn ta_trigger(src: &str, n: usize) -> bool {
+    let c: Vec<char> = src.chars().collect();
+    let m = c.len();
+    if m < 4 || !matches!(c[m - 1], 'a' | 'ä') {
+        return false;
+    }
+    if c[m - 2] == 'd' {
+        return (c[m - 3] == 'h' || is_vowel(c[m - 3]) && is_vowel(c[m - 4])) && !src.ends_with("sooda");
+    }
+    if c[m - 2] != 't' || n < 3 || !is_vowel(c[m - 3]) || is_vowel(c[m - 4]) {
+        return false;
+    }
+    let tail: String = c[m - 4..].iter().collect();
+    let noun = matches!(
+        tail.as_str(),
+        "sota" | "setä" | "hätä" | "rata" | "sata" | "pata" | "kota" | "mätä" | "data" | "kita" | "nata" | "jata" | "muta" | "vita" | "kuta"
+    );
+    // -eerata verbs are long too (riskeerata, parkkeerata)
+    !noun || n == 3 || src.ends_with("eerata")
+}
+
+/// The 2nd person plural possessive -nne on a case form (talossanne,
+/// ystävällenne), which unlike sinne, tänne, tunne, liikenne does not geminate.
+fn possessive_nne(src: &str) -> bool {
+    [
+        "ssanne", "ssänne", "stanne", "stänne", "llanne", "llänne", "ltanne", "ltänne", "llenne", "ksenne", "nanne",
+        "nänne",
+    ]
+    .iter()
+    .any(|x| src.ends_with(x))
+}
+
+/// How a word can trigger boundary gemination.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Trigger {
+    No,
+    Always,
+    /// only as a first infinitive (antaa, oppia, ilmaista)
+    Infinitive,
+    /// only as an imperative / connegative; `true`: also clause-initially
+    Imperative(bool),
+}
+
+fn trigger_class(src: &str) -> Trigger {
+    // only a vowel-final word can lengthen the next consonant (tänään, kotiin, pois never do)
+    if NO_DOUBLE.contains(&src) || !src.chars().last().is_some_and(is_vowel) {
+        return Trigger::No;
+    }
+    if let Some((_, initial)) = IMPERATIVE_CTX.iter().find(|(w, _)| *w == src) {
+        return Trigger::Imperative(*initial);
+    }
+    if DOUBLE.contains(&src) || INFINITIVE.binary_search(&src).is_ok() {
+        return Trigger::Always;
+    }
+    if INFINITIVE_CTX.binary_search(&src).is_ok() {
+        return Trigger::Infinitive;
     }
     let n = syllables(src);
     if n < 2 {
-        return false;
+        return Trigger::No;
     }
-    if src.ends_with("lle") || src.ends_with("nne") {
-        return true;
+    let hit = if src.ends_with("nne") {
+        !possessive_nne(src)
+    } else {
+        src.ends_with("lle")
+            || src.ends_with("tse") && n >= 3
+            || src.ends_with("sti") && n >= 3 && sti_adverb(src)
+            || ta_trigger(src, n)
+            || e_trigger(src)
+    };
+    if hit {
+        Trigger::Always
+    } else {
+        Trigger::No
     }
-    if src.ends_with("tse") && n >= 3 {
-        return true;
+}
+
+/// Does word `k` geminate the initial consonant of the next one?
+fn doubles(outs: &[Out], k: usize) -> bool {
+    match trigger_class(&outs[k].src) {
+        Trigger::No => false,
+        Trigger::Always => true,
+        Trigger::Infinitive => earlier_in_clause(outs, k, 6, governs_infinitive),
+        Trigger::Imperative(initial) => {
+            if earlier_in_clause(outs, k, 4, is_negative) {
+                return true;
+            }
+            if !initial {
+                return false;
+            }
+            if k == 0 || outs[k - 1].pause_after {
+                return true;
+            }
+            // ole hyvä ja avaa ovi: coordinated with the imperative that opens the clause
+            if matches!(outs[k - 1].src.as_str(), "ja" | "tai" | "sekä") {
+                let mut h = k - 1;
+                while h > 0 && !outs[h - 1].pause_after {
+                    h -= 1;
+                }
+                return IMPERATIVE_HEAD.contains(&outs[h].src.as_str());
+            }
+            false
+        }
     }
-    if src.ends_with("sti")
-        && n >= 3
-        && !src.ends_with("viesti")
-        && !src.ends_with("posti")
-        && !src.ends_with("ksti")
-    {
-        return true;
-    }
-    // nominative -e nouns (perhe, kone, lause): not pronouns, not -mme/-tte verb forms
-    src.ends_with('e') && !src.ends_with("mme") && !src.ends_with("tte") && !src.ends_with("ee")
 }
 
 /// First consonant phone of a word's phonemes, if it starts with one.
@@ -1353,12 +1683,13 @@ fn initial_consonant(ph: &str) -> Option<(usize, &str)> {
 pub fn join(outs: &mut [Out]) {
     let n = outs.len();
     for k in 0..n.saturating_sub(1) {
+        if outs[k].pause_after || outs[k].ph.is_empty() || outs[k + 1].ph.is_empty() {
+            continue;
+        }
+        let geminate = doubles(outs, k);
         let (a, b) = outs.split_at_mut(k + 1);
         let prev = &mut a[k];
         let cur = &mut b[0];
-        if prev.pause_after || prev.ph.is_empty() || cur.ph.is_empty() {
-            continue;
-        }
         let Some((off, c)) = initial_consonant(&cur.ph) else {
             continue;
         };
@@ -1367,7 +1698,7 @@ pub fn join(outs: &mut [Out]) {
         }
         let already_long =
             cur.ph[off + c.len()..].starts_with('ː') || cur.ph[off + c.len()..].starts_with(c);
-        if doubles(&prev.src) && !already_long {
+        if geminate && !already_long {
             if is_stop(c) {
                 cur.ph.insert(off + c.len(), 'ː');
             } else {
@@ -1615,5 +1946,96 @@ mod tests {
         ] {
             assert_eq!(g.phonemize(s, crate::Lang::Fi), p, "{s}");
         }
+    }
+
+    fn check(rows: &[(&str, &str)]) {
+        let g = crate::G2p::new(None);
+        for (s, p) in rows {
+            assert_eq!(g.phonemize(s, crate::Lang::Fi), *p, "{s}");
+        }
+    }
+
+    /// Boundary gemination by context: an infinitive geminates only after a
+    /// governing verb, an imperative only after a negative verb or clause-initially
+    /// (Wiktionary, Appendix:Finnish pronunciation, "final gemination").
+    #[test]
+    fn gemination_context() {
+        check(&[
+            ("Hän antaa meille vaatteet.", "hæn ˈantaː mˈeillev vˈaːtːeːt."),
+            ("Voisitko antaa hänelle tämän?", "vˈoisɪtko ˈantaːh hˈænelle tːˈæmæn?"),
+            ("Tomi käy kirkossa.", "tˈomɪ kˈæy kˈirkossa."),
+            ("Se ei käy päinsä.", "se ei kˈæy pːˈæinsæ."),
+            ("Tule tänne.", "tˈule tːˈænne."),
+            ("Gangsterijoukko varasti rahaa.", "ɡˈaŋsterɪjˌoukːo vˈarastɪ rˈahaː."),
+            ("Tom pitää siitä.", "tˈom pˈitæː sˈiːtæ."),
+            ("Minun pitää lähteä.", "mˈinum pˈitæː lˈæhteæ."),
+            ("Hän haluaa tehdä sen.", "hæn hˈaluaː tˈehdæs sˈen."),
+            ("Voin antaa sen sinulle.", "vˈoin ˈantaːs sˈen sˈinulle."),
+            ("En voi tehdä sitä.", "en vˈoi tːˈehdæs sˈitæ."),
+            ("Ei saa tulla sisään.", "ei sˈaː tːˈullas sˈisæːn."),
+            ("Tom käy koulua.", "tˈom kˈæy kˈoulua."),
+            ("Älä käy kimppuun.", "ˈælæ kˈæy kːˈimpːuːn."),
+            ("Mene ja avaa kaikki ovet.", "mˈenej ja ˈavaː kːˈaikːɪ ˈovet."),
+            ("He puhuvat helposti kaikesta.", "he pˈuhuvat hˈelpostɪ kːˈaikesta."),
+            ("Turisti kävi kaupassa.", "tˈurɪstɪ kˈævɪ kˈaupassa."),
+            ("Hän pelasti kissan.", "hæm pˈelastɪ kˈissan."),
+            ("Tie kulkee kylään.", "tˈie kˈulkeː kˈylæːn."),
+            ("Steve kysyi tietä.", "stˈeve kˈysyi tˈietæ."),
+            ("Koe kesti kauan.", "kˈoe kːˈestɪ kˈauan."),
+            ("Talossanne kukaan ei asu.", "tˈalossˌanne kˈukaːn ei ˈasu."),
+            ("otapa kakku", "ˈotapːa kˈakːu"),
+            ("tulehan tänne", "tˈulehhan tˈænne"),
+            ("Voimme mennä kotiin ja syödä kakkua.", "vˈoimme mˈennæ kːˈotɪːn ja sˈyødæ kːˈakːua."),
+            ("Hän tuo kukkia.", "hæn tˈuo kˈukːɪa."),
+            ("kuusi koiraa", "kˈuːsɪ kˈoiraː"),
+            ("Tämä on hyvä asia.", "tˈæmæ on hˈyvæ ˈasɪa."),
+        ]);
+    }
+
+    /// -sti: adverbs geminate, nouns and past tenses do not.
+    #[test]
+    fn sti_adverb_rule() {
+        use super::sti_adverb;
+        for w in ["nopeasti", "yleisesti", "varmasti", "helposti", "normaalisti", "hitaasti", "jatkuvasti", "ehdottomasti"] {
+            assert!(sti_adverb(w), "{w}");
+        }
+        for w in ["turisti", "artisti", "eversti", "protesti", "varasti", "pelasti", "asti", "posti", "viesti"] {
+            assert!(!sti_adverb(w), "{w}");
+        }
+    }
+
+    /// -e nominatives geminate, the diphthong -ie and loans do not; -da/-ta.
+    #[test]
+    fn e_and_ta_rules() {
+        use super::{e_trigger, syllables, ta_trigger};
+        for w in ["perhe", "kone", "lause", "joukkue", "koe", "tule", "aie"] {
+            assert!(e_trigger(w), "{w}");
+        }
+        // the diphthong -ie, a foreign letter near the end, nukke / saame compounds
+        for w in ["tie", "college", "face", "bridge", "nukke", "saame", "lapsinukke"] {
+            assert!(!e_trigger(w), "{w}");
+        }
+        for w in ["saada", "tuoda", "tehdä", "arvioida", "haluta", "pelata", "valita", "odota", "lopeta"] {
+            assert!(ta_trigger(w, syllables(w)), "{w}");
+        }
+        for w in ["sota", "rata", "maailmansota", "junarata", "kaupunkia"] {
+            assert!(!ta_trigger(w, syllables(w)), "{w}");
+        }
+    }
+
+    #[test]
+    fn trigger_tables_sorted_and_disjoint() {
+        use super::{Trigger, trigger_class};
+        use crate::fi_verbs::{INFINITIVE, INFINITIVE_CTX};
+        assert!(INFINITIVE.windows(2).all(|w| w[0] < w[1]));
+        assert!(INFINITIVE_CTX.windows(2).all(|w| w[0] < w[1]));
+        for w in INFINITIVE_CTX {
+            assert!(INFINITIVE.binary_search(w).is_err(), "{w} in both lists");
+        }
+        for w in super::NO_DOUBLE.iter() {
+            assert_eq!(trigger_class(w), Trigger::No, "{w}");
+        }
+        assert_eq!(trigger_class("antaa"), Trigger::Infinitive);
+        assert_eq!(trigger_class("tehdä"), Trigger::Always);
     }
 }

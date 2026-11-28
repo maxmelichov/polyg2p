@@ -30,6 +30,7 @@ pub mod el;
 pub mod ro;
 pub mod hu;
 pub mod fi;
+mod fi_verbs;
 pub mod sv;
 pub mod id;
 pub mod ca;
