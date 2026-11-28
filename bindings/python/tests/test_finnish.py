@@ -25,7 +25,7 @@ class Finnish(unittest.TestCase):
 
     def test_infinitive_only_after_governor(self):
         self.assertEqual(self.e.phonemize("Tom pitää siitä.", "fi"), "tˈom pˈitæː sˈiːtæ.")
-        self.assertEqual(self.e.phonemize("Voisitko antaa hänelle tämän?", "fi"), "vˈoisɪtko ˈantaːh hˈænelle tːˈæmæn?")
+        self.assertEqual(self.e.phonemize("Voisitko antaa hänelle tämän?", "fi"), "vˈoisɪtko ˈantaː hːˈænelːe tːˈæmæn?")
 
     def test_grouped_number_after_punctuation(self):
         ph = lambda t: self.e.phonemize(t, "fi")
