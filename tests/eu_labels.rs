@@ -51,3 +51,14 @@ fn abbreviations_sv_cs() {
     assert!(p("sv", "Tom är här.").starts_with("tˈɔm "));
     assert!(p("sv", "en tom flaska").contains("tˈuːm"));
 }
+
+/// Turkish -ca/-ce takes no stress, -ınca/-ince stresses its own first vowel; stems that merely end in them keep final stress.
+#[test]
+fn turkish_ce_stress() {
+    assert_eq!(p("tr", "güzelce"), "ɟyzˈælʤɛ");
+    assert_eq!(p("tr", "gelince"), "ɟelˈɪnʤɛ");
+    assert!(p("tr", "İngilizce").contains("lˈɪzʤɛ"));
+    for (w, ph) in [("gece", "ɟeʤˈɛ"), ("hoca", "hoʤˈa"), ("bahçe", "bahʧˈɛ"), ("karınca", "kaɾɯnʤˈa"), ("Türkçe", "tˈʏrkʧɛ"), ("bence", "bˈænʤɛ")] {
+        assert_eq!(p("tr", w), ph, "{w}");
+    }
+}
