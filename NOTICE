@@ -8,8 +8,8 @@ phoneme symbol conventions (which are not copyrightable).
 
 Data files and their sources
 ----------------------------
-data/en_func.tsv, data/en_merge.tsv, data/de_func.tsv
-    Short lists of function-word forms written by the polyg2p authors.
+data/en_func.tsv, data/en_merge.tsv, data/de_func.tsv, data/hetero_<lang>.tsv
+    Short lists of function-word forms and of heteronyms with their readings, written by the polyg2p authors.
 
 en.lex (English lexicon) and en.g2p (English out-of-vocabulary model)
     Derived from the CMU Pronouncing Dictionary:
@@ -90,3 +90,17 @@ OPTIONAL data packs (not part of the Apache-2.0 distribution)
     it.lex  - from WikiPron / Wiktionary, CC BY-SA 3.0/4.0
     de.lex  - from german-ipa-dict (devio-at) via ipa-dict, from Wiktionary, CC BY-SA
     These must be distributed under their own share-alike terms.
+
+<lang>-ctx.g2p (heteronym context models, optional pack, not in the wheel)
+    Character-level encoders trained on sentences from Tatoeba (https://tatoeba.org, CC BY 2.0 FR),
+    labelled by Stanza (Apache-2.0) models that were trained on Universal Dependencies treebanks
+    (CC BY-SA 4.0 for Portuguese Bosque; CC BY 4.0 for Italian MarkIT).
+    The label chain carries CC BY-SA terms, so these files are distributed apart from the wheel,
+    like the CC BY-SA lexicons. See docs/heteronyms.md.
+
+uk.lex (optional Ukrainian stress lexicon, data pack, not in the wheel)
+    Built by tools/uk_kaikki.py from the kaikki.org extract of en.wiktionary (stress-marked headwords and inflected
+    forms) plus tools/uk_stress.py output from WikiPron / Wiktionary. Wiktionary text is dual-licensed CC BY-SA 4.0
+    and GFDL (https://en.wiktionary.org/wiki/Wiktionary:Copyrights, checked 2026-11-28; the kaikki.org index page
+    itself states no licence, only a citation request). The data is share-alike and therefore kept outside the
+    Apache-licensed package. Data from dict_uk / ukrainian-word-stress (non-commercial licence) is not used.

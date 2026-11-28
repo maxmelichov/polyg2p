@@ -10,6 +10,7 @@ pub mod en_accent;
 pub mod es;
 pub mod fold;
 pub mod he;
+pub mod hetero;
 pub mod homograph;
 pub mod tagger;
 pub mod it;
@@ -384,6 +385,7 @@ impl G2p {
     /// The sentence pass of `lang` over the words of `text` (`token_outs`).
     fn plain_outs(&self, text: &str, lang: Lang, accent: Option<en_accent::Accent>) -> Vec<Out> {
         let mut outs = self.token_outs(text, lang);
+        hetero::apply(self, lang, &mut outs);
         match lang {
             Lang::Es | Lang::EsLa => es::join(&mut outs),
             Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => {
@@ -483,22 +485,26 @@ impl G2p {
                 }
                 Tok::Word(w) if toks.get(ti + 1) == Some(&Tok::Punct('.')) && {
                     let lw = w.to_lowercase();
-                    // two-part abbreviations: z.B., d.h., sig.ra
-                    let two = match (toks.get(ti + 2), toks.get(ti + 3)) {
-                        (Some(Tok::Word(b)), after) => {
-                            let key = format!("{lw}.{}", b.to_lowercase());
-                            norm::abbrev(lang, &key).map(|x| (x, if after == Some(&Tok::Punct('.')) { ti + 4 } else { ti + 3 }))
+                    // multi-part abbreviations: z.B., d.h., sig.ra, i.d.R., d.v.s. (the longest key wins)
+                    let mut found = norm::abbrev(lang, &lw).map(|x| (x, ti + 2, lw.clone()));
+                    let (mut key, mut pos) = (lw.clone(), ti + 2);
+                    while let Some(Tok::Word(b)) = toks.get(pos) {
+                        key = format!("{key}.{}", b.to_lowercase());
+                        let dotted = toks.get(pos + 1) == Some(&Tok::Punct('.'));
+                        if let Some(x) = norm::abbrev(lang, &key) {
+                            found = Some((x, if dotted { pos + 2 } else { pos + 1 }, key.clone()));
                         }
-                        _ => None,
-                    };
-                    let one = norm::abbrev(lang, &lw).map(|x| (x, ti + 2));
-                    if let Some((full, end)) = two.or(one) {
+                        if !dotted {
+                            break;
+                        }
+                        pos += 2;
+                    }
+                    if let Some((full, end, key)) = found {
                         for part in full.split(' ') {
                             self.push_word(&mut outs, part, lang);
                         }
                         // the period is the abbreviation's, not a sentence end, unless a sentence
                         // can end there (etc.) and the next word is capitalized
-                        let key = if end == ti + 2 { lw.clone() } else { format!("{lw}.{}", match &toks[ti + 2] { Tok::Word(b) => b.to_lowercase(), _ => String::new() }) };
                         let cap_next = next_word(end).is_some_and(|w| w.chars().next().is_some_and(|c| c.is_uppercase()));
                         let title = norm::is_title(lang, &key);
                         let keep_dot = next_word(end).is_none() || cap_next && (norm::sentence_final(&key) || lang != Lang::De && !title);
@@ -508,6 +514,14 @@ impl G2p {
                         false
                     }
                 } => {}
+                // a sentence-initial capital one-letter preposition (pl W/Z, cs S/Z/K/V) is the word, not a letter name
+                Tok::Word(w) if prep_capital(lang, w)
+                    && outs.last().is_none_or(|o| o.punct.ends_with(['.', '?', '!', ':']))
+                    && matches!(toks.get(ti + 1), Some(Tok::Sep))
+                    && matches!(toks.get(ti + 2), Some(Tok::Word(_))) =>
+                {
+                    self.push_word(&mut outs, &w.to_lowercase(), lang)
+                }
                 Tok::Word(w) => self.push_word(&mut outs, w, lang),
                 Tok::Sym(c) if num::is_currency(*c) && matches!(toks.get(ti + 1), Some(Tok::Num(_))) => {
                     let Some(Tok::Num(n)) = toks.get(ti + 1) else { unreachable!() };
@@ -517,6 +531,13 @@ impl G2p {
                         self.push_word(&mut outs, &w, lang);
                     }
                     skip = ti + 2;
+                }
+                // ordinals written with a digit: cs/hu `5. května` (period dropped), el `21ου`
+                Tok::Num(n) if ordinal_tokens(lang, n, &toks, ti, &mut words) => {
+                    skip = if lang == Lang::El { ti + 2 } else { ti + 2 };
+                    for w in words.drain(..) {
+                        self.push_word(&mut outs, &w, lang);
+                    }
                 }
                 Tok::Num(n) => {
                     // look at the next word for context (years, units, currency suffixes)
@@ -680,6 +701,8 @@ impl G2p {
             Lang::Ro => ro::word(&lw),
             Lang::Hu => hu::word(&lw),
             Lang::Fi => fi::word(&lw),
+            // capitalised Tom is the name (tˈɔm); the adjective tom is lower case (sv.wiktionary tom: tʊm / toːm)
+            Lang::Sv if w == "Tom" => "tˈɔm".to_string(),
             Lang::Sv => sv::word(&lw),
             Lang::Id => id::word(&lw),
             Lang::Ca => ca::word(&lw),
@@ -687,6 +710,74 @@ impl G2p {
             Lang::Am => am::word(&lw),
         };
         outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw, cap: w.chars().next().is_some_and(char::is_uppercase) });
+    }
+}
+
+/// `N.` + a lower-case word (cs, hu) or digits + a Greek ordinal ending (el) read as the ordinal word(s).
+fn ordinal_tokens(lang: Lang, n: &str, toks: &[Tok], ti: usize, out: &mut Vec<String>) -> bool {
+    if n.is_empty() || n.len() > 3 || !n.chars().all(|c| c.is_ascii_digit()) {
+        return false;
+    }
+    let v: u128 = n.parse().unwrap_or(0);
+    out.clear();
+    let word_after = |from: usize| -> Option<&str> {
+        match toks.get(from..)?.iter().find(|t| !matches!(t, Tok::Sep))? {
+            Tok::Word(w) => Some(w.as_str()),
+            _ => None,
+        }
+    };
+    match lang {
+        Lang::Cs | Lang::Hu if toks.get(ti + 1) == Some(&Tok::Punct('.')) => {
+            let Some(w) = word_after(ti + 2) else { return false };
+            if !w.chars().next().is_some_and(char::is_lowercase) {
+                return false;
+            }
+            let r = if lang == Lang::Cs {
+                const GEN: [&str; 12] = ["ledna", "února", "března", "dubna", "května", "června", "července", "srpna", "září", "října", "listopadu", "prosince"];
+                let g = cs::noun_gender(w);
+                // locative after v / ve / na ("v 19. století"); only with a recognised feminine or neuter noun
+                let loc = g != cs::Gender::Masc
+                    && toks[..ti]
+                        .iter()
+                        .rev()
+                        .find(|t| !matches!(t, Tok::Sep))
+                        .is_some_and(|t| matches!(t, Tok::Word(p) if matches!(p.to_lowercase().as_str(), "v" | "ve" | "na")));
+                cs::ordinal_agr(v, GEN.contains(&w), g, loc)
+            } else {
+                hu::ordinal(v)
+            };
+            match r {
+                Some(x) => {
+                    out.extend(x);
+                    true
+                }
+                None => false,
+            }
+        }
+        Lang::El => {
+            let Some(Tok::Word(e)) = toks.get(ti + 1) else { return false };
+            if !matches!(e.as_str(), "ος" | "ου" | "ο" | "η" | "ης" | "ων" | "α" | "ους") {
+                return false;
+            }
+            match el::ordinal(v, e) {
+                Some(x) => {
+                    out.extend(x);
+                    true
+                }
+                None => false,
+            }
+        }
+        _ => false,
+    }
+}
+
+/// Capital one-letter prepositions/conjunctions that open a sentence (Wiktionary: pl `w`, `z`; cs `s`, `z`, `k`, `v`).
+/// Anywhere else a lone capital (vitamín K, bod Z) stays a letter name.
+fn prep_capital(lang: Lang, w: &str) -> bool {
+    match lang {
+        Lang::Pl => matches!(w, "W" | "Z"),
+        Lang::Cs => matches!(w, "S" | "Z" | "K" | "V"),
+        _ => false,
     }
 }
 

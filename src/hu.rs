@@ -568,6 +568,17 @@ pub fn join(outs: &mut [Out]) {
         "egy", "kettő", "három", "négy", "öt", "hat", "hét", "nyolc", "kilenc", "tíz", "húsz", "harminc", "negyven",
         "ötven", "hatvan", "hetven", "nyolcvan", "kilencven", "száz", "ezer", "millió", "milliárd", "nulla",
     ];
+    // the articles a/az and the indefinite egy are proclitic: no stress of their own before their noun phrase
+    // (Siptár & Törkenczy, The Phonology of Hungarian: the article is a clitic; en.wiktionary az/egy list only the
+    // isolated, stressed form). Standing alone (before punctuation) they keep it.
+    for k in 0..outs.len().saturating_sub(1) {
+        // "az a ház": az before the article a is the demonstrative and keeps its stress
+        let article = (matches!(outs[k].src.as_str(), "a" | "az") && !(outs[k].src == "az" && outs[k + 1].src == "a"))
+            || outs[k].src == "egy" && !NUMBER_ENDS.contains(&outs[k + 1].src.as_str()) && !outs[k + 1].src.starts_with("két");
+        if article && !outs[k].pause_after && !outs[k + 1].ph.is_empty() {
+            outs[k].ph = outs[k].ph.replace('ˈ', "");
+        }
+    }
     for k in 1..outs.len() {
         let (a, b) = outs.split_at_mut(k);
         let prev = &mut a[k - 1];
@@ -624,6 +635,23 @@ fn below_1000(n: u128, last: bool) -> String {
 /// Cardinal number words. Up to 2000 one word (ezernyolcszáznegyvennyolc);
 /// above, the thousand-groups are hyphenated (kétezer-huszonnégy), and `word`
 /// stresses each part.
+/// Ordinal `N.` before a lower-case word, 1-99 (hu.wiktionary ötödik: első, második, harmadik, ...).
+/// Compounds take the combining unit form (tizenegyedik, huszonkettedik).
+pub fn ordinal(n: u128) -> Option<Vec<String>> {
+    const ALONE: [&str; 10] = ["", "első", "második", "harmadik", "negyedik", "ötödik", "hatodik", "hetedik", "nyolcadik", "kilencedik"];
+    const UNIT: [&str; 10] = ["", "egyedik", "kettedik", "harmadik", "negyedik", "ötödik", "hatodik", "hetedik", "nyolcadik", "kilencedik"];
+    const TEN_OR: [&str; 10] = ["", "tizedik", "huszadik", "harmincadik", "negyvenedik", "ötvenedik", "hatvanadik", "hetvenedik", "nyolcvanadik", "kilencvenedik"];
+    const TEN_PRE: [&str; 10] = ["", "tizen", "huszon", "harminc", "negyven", "ötven", "hatvan", "hetven", "nyolcvan", "kilencven"];
+    let (t, u) = ((n / 10) as usize, (n % 10) as usize);
+    let w = match (n, t, u) {
+        (1..=9, _, _) => ALONE[u].to_string(),
+        (10..=99, _, 0) => TEN_OR[t].to_string(),
+        (10..=99, _, _) => format!("{}{}", TEN_PRE[t], UNIT[u]),
+        _ => return None,
+    };
+    Some(vec![w])
+}
+
 pub fn cardinal(n: u128) -> Vec<String> {
     if n == 0 {
         return vec!["nulla".into()];

@@ -60,6 +60,18 @@ pub fn abbrev(lang: Lang, key: &str) -> Option<&'static str> {
             ("cf", "confer"), ("vol", "volume"), ("chap", "chapitre"), ("art", "article"), ("réf", "référence"),
             ("j.-c", "Jésus-Christ"),
         ],
+        Lang::Sv => &[
+            ("t.ex", "till exempel"), ("bl.a", "bland annat"), ("d.v.s", "det vill säga"), ("o.s.v", "och så vidare"),
+            ("s.k", "så kallad"), ("m.m", "med mera"), ("m.fl", "med flera"), ("t.o.m", "till och med"),
+            ("f.n", "för närvarande"), ("ca", "cirka"), ("kl", "klockan"), ("bl.a", "bland annat"), ("osv", "och så vidare"),
+            ("dvs", "det vill säga"), ("mfl", "med flera"), ("fr.o.m", "från och med"),
+            ("jfr", "jämför"), ("resp", "respektive"), ("nr", "nummer"),
+        ],
+        Lang::Cs => &[
+            ("tzv", "takzvaný"), ("atd", "a tak dále"), ("apod", "a podobně"), ("např", "například"), ("tj", "to je"),
+            ("resp", "respektive"), ("mj", "mimo jiné"), ("popř", "popřípadě"), ("tzn", "to znamená"), ("atp", "a tak podobně"),
+            ("příp", "případně"), ("zvl", "zvláště"), ("pozn", "poznámka"), ("srov", "srovnej"),
+        ],
         _ => return None,
     };
     table.iter().find(|(k, _)| *k == key).map(|(_, v)| *v)
@@ -67,7 +79,7 @@ pub fn abbrev(lang: Lang, key: &str) -> Option<&'static str> {
 
 /// Abbreviations a sentence can end with (etc.).
 pub fn sentence_final(key: &str) -> bool {
-    matches!(key, "etc" | "usw" | "ecc" | "u.ä" | "o.ä" | "u.v.m")
+    matches!(key, "etc" | "usw" | "ecc" | "u.ä" | "o.ä" | "u.v.m" | "osv" | "o.s.v" | "m.m" | "m.fl" | "atd" | "apod" | "atp")
 }
 
 /// Titles and other abbreviations normally followed by a capitalized name.

@@ -29,7 +29,7 @@ const EREN_TSV: &str = include_str!("../data/nl_eren.tsv");
 /// Whole-word pronunciations: function words (reduced forms), frequent loans
 /// and words the rules get wrong.
 const EXC: &[(&str, &str)] = &[
-    ("de", "də"), ("het", "ət"), ("een", "ən"), ("één", "ˈeːn"), ("er", "ər"), ("je", "jə"), ("ze", "zə"), ("we", "ʋə"),
+    ("de", "də"), ("eene", "ənə"), ("den", "dən"), ("der", "dɛr"), ("des", "dɛs"), ("het", "ət"), ("een", "ən"), ("één", "ˈeːn"), ("er", "ər"), ("je", "jə"), ("ze", "zə"), ("we", "ʋə"),
     ("me", "mə"), ("te", "tə"), ("ik", "ɪk"), ("en", "ɛn"), ("ge", "ɣə"), ("'t", "ət"), ("'n", "ən"), ("'s", "s"), ("'k", "ək"),
     ("'m", "əm"), ("z'n", "zən"), ("m'n", "mən"), ("d'r", "dər"), ("zo'n", "zoːn"), ("hun", "hɵn"), ("hen", "hɛn"),
     ("mijn", "mɛɪn"), ("zijn", "zɛɪn"), ("zich", "zɪx"), ("ons", "ɔns"), ("niet", "nit"), ("wat", "ʋɑt"), ("dat", "dɑt"),
@@ -340,6 +340,42 @@ fn compound(lw: &str) -> Option<String> {
 
 // ---------------------------------------------------------------- public API
 
+/// Pre-1934 (Marchant) spelling: `sch` after a consonant at the end of a word or before the suffix -e/-en/-er/-ers
+/// reads `s` (mensch, versch, Duitsche, Haagsche, menschen), and `ssch` is `ss` (tusschen, wasschen, frissche); today's
+/// spelling is mens, vers, Duitse, Haagse, mensen, tussen. Word-initial and seam `sch` (school, handschoen, geschenk,
+/// misschien) is untouched because the pattern needs a preceding consonant and a word end/suffix after it.
+/// (nl.wiktionary `mensch`: "verouderde spelling van mens".)
+fn reform_sch(w: &str) -> String {
+    if w.starts_with("sch") || w == "misschien" || w.starts_with("misschien") {
+        return w.to_string();
+    }
+    let c: Vec<char> = w.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < c.len() {
+        let rest: String = c[i..].iter().collect();
+        let prev = if i > 0 { c[i - 1] } else { ' ' };
+        if rest.starts_with("sch") && i > 0 {
+            let tail = &rest[3..];
+            let suffix_ok = matches!(tail, "" | "e" | "en" | "er" | "ers");
+            if suffix_ok && prev == 's' && i >= 2 && !"aeiou".contains(c[i - 2]) {
+                // ssch after a consonant is not the pattern; fall through
+            } else if suffix_ok && prev == 's' {
+                out.push('s'); // ssch -> ss (the first s is already in `out`)
+                i += 3;
+                continue;
+            } else if suffix_ok && !"aeiouyäëïöüsc".contains(prev) {
+                out.push('s');
+                i += 3;
+                continue;
+            }
+        }
+        out.push(c[i]);
+        i += 1;
+    }
+    out
+}
+
 pub fn word(lw: &str) -> String {
     let w: String = lw.chars().filter(|c| c.is_alphabetic() || matches!(c, '\'' | '-' | '’')).collect::<String>().replace('’', "'");
     if !w.chars().any(|c| c.is_alphabetic()) {
@@ -369,13 +405,34 @@ pub fn word(lw: &str) -> String {
     if let Some(p) = lookup(&w) {
         return p;
     }
+    let new = reform_sch(&w);
+    if new != w {
+        return word(&new);
+    }
     if let Some(p) = compound(&w) {
         return p;
     }
     finalize(&analyze(&w, 0))
 }
 
-pub fn join(_outs: &mut [Out]) {}
+/// Word-level context rules. A stand-alone `t` before a word is the clitic 't (the apostrophe was lost in the text:
+/// `t is`), and a stand-alone `s` before a time word is 's (`s avonds`), as with the apostrophe (`'t is` -> `ət ɪs`,
+/// `'s avonds`). "Den Haag" keeps the full `dɛn` (the article reduction below is for the archaic article).
+pub fn join(outs: &mut [Out]) {
+    for i in 0..outs.len() {
+        let next = outs[i + 1..].iter().find(|o| !o.ph.is_empty()).map(|o| o.src.clone());
+        let Some(next) = next else { continue };
+        if outs[i].pause_after {
+            continue;
+        }
+        match outs[i].src.as_str() {
+            "t" => outs[i].ph = "ət".into(),
+            "s" if matches!(next.as_str(), "avonds" | "morgens" | "middags" | "nachts" | "winters" | "zomers" | "maandags" | "zondags") => outs[i].ph = "s".into(),
+            "den" if matches!(next.as_str(), "haag" | "bosch" | "helder" | "burg" | "oever" | "hoorn" | "dolder" | "ham" | "briel") => outs[i].ph = "dɛn".into(),
+            _ => {}
+        }
+    }
+}
 
 const ONES: [&str; 20] = [
     "nul", "één", "twee", "drie", "vier", "vijf", "zes", "zeven", "acht", "negen", "tien", "elf", "twaalf", "dertien",

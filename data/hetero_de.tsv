@@ -1,0 +1,14 @@
+# German heteronyms decided by part of speech or lemma. The engine reads prefix verbs with prefix stress; the verb reading moves it to the stem.
+# word	k	reading	tag	note	mode
+modern	0	rule	ADJ	adjective /moˈdɛʁn/	
+modern	1	ph:mˈoːdɜn	VERB	verb (to rot), first-syllable stress	
+montage	0	rule	lemma=Montage	Montage (assembly)	
+montage	1	ph:mˈoːntɑːɡə	lemma=Montag	plural of Montag	
+überlegen	0	rule	ADJ	superior, prefix stress	
+überlegen	1	sub:ˈyːbɜlˌ>yːbɜlˈ	VERB	to consider, stem stress	
+wiederholt	0	rule	ADJ/ADV	repeated(ly), prefix stress	
+wiederholt	1	sub:vˈiːdɜhˌ>viːdɜhˈ	VERB	to repeat, stem stress	
+wiederholte	0	rule	ADJ/ADV	repeated(ly), prefix stress	
+wiederholte	1	sub:vˈiːdɜhˌ>viːdɜhˈ	VERB	to repeat, stem stress	
+wiederholten	0	rule	ADJ/ADV	repeated(ly), prefix stress	
+wiederholten	1	sub:vˈiːdɜhˌ>viːdɜhˈ	VERB	to repeat, stem stress	

@@ -318,6 +318,42 @@ fn x_kind(c: &[char], i: usize) -> &'static str {
 
 /// Phonemize one lower-case word (hyphen/apostrophe parts are read one by one).
 pub fn word(lw: &str) -> String {
+    drop_adjacent_secondary(&word_stressed(lw))
+}
+
+/// A secondary stress on the syllable directly before the primary one is dropped (cidade `sidˈadʒy`, not `sˌidˈadʒy`):
+/// the two marks would sit on neighbouring syllables, which stress alternation does not produce. A secondary mark with a
+/// whole unstressed syllable between it and the primary one (fˌeɪsibˈuki) stays.
+fn drop_adjacent_secondary(ph: &str) -> String {
+    let c: Vec<char> = ph.chars().collect();
+    let is_nuc = |x: char| "aeiouɛɔɐyæɪʊəɨ".contains(x);
+    let mut out = String::new();
+    for (i, &ch) in c.iter().enumerate() {
+        if ch == 'ˌ' {
+            if let Some(off) = c[i + 1..].iter().position(|&x| x == 'ˈ') {
+                let seg = &c[i + 1..i + 1 + off];
+                if !seg.contains(&'ˌ') {
+                    let mut runs = 0;
+                    let mut prev_nuc = false;
+                    for &x in seg {
+                        let n = is_nuc(x);
+                        if n && !prev_nuc {
+                            runs += 1;
+                        }
+                        prev_nuc = n;
+                    }
+                    if runs <= 1 {
+                        continue;
+                    }
+                }
+            }
+        }
+        out.push(ch);
+    }
+    out
+}
+
+fn word_stressed(lw: &str) -> String {
     let parts: Vec<&str> = lw.split(['-', '\'', '’']).filter(|p| p.chars().any(char::is_alphabetic)).collect();
     let mut out = String::new();
     for (k, p) in parts.iter().enumerate() {
@@ -875,7 +911,7 @@ mod tests {
             ("casa", "kˈazæ"),
             ("tempo", "tˈeɪmpʊ"),
             ("porta", "pˈɔɾətæ"),
-            ("cidade", "sˌidˈadʒy"),
+            ("cidade", "sidˈadʒy"),
             ("tia", "tʃˈiæ"),
             ("não", "nˈɐ̃ʊ̃"),
             ("mãe", "mˈɐ̃y"),
@@ -897,7 +933,7 @@ mod tests {
             ("sol", "sˈɔw"),
             ("fácil", "fˈasiʊ"),
             ("caixa", "kˈaɪʃæ"),
-            ("exame", "ˌezˈɐ̃my"),
+            ("exame", "ezˈɐ̃my"),
             ("texto", "tˈestʊ"),
             ("táxi", "tˈaksi"),
             ("próximo", "prˈɔsimʊ"),
@@ -908,17 +944,17 @@ mod tests {
             ("água", "ˈaɡwæ"),
             ("quase", "kwˈazy"),
             ("quem", "kˈeɪŋ"),
-            ("cinquenta", "sˌiŋkwˈeɪŋtæ"),
+            ("cinquenta", "siŋkwˈeɪŋtæ"),
             ("mesmo", "mˈezmʊ"),
             ("casas", "kˈazæs"),
             ("luz", "lˈus"),
             ("nascer", "nasˈer"),
-            ("história", "ˌistˈɔɾjæ"),
+            ("história", "istˈɔɾjæ"),
             ("dia", "dʒˈiæ"),
             ("sair", "saˈir"),
-            ("rainha", "xˌaˈiɲæ"),
+            ("rainha", "xaˈiɲæ"),
             ("ruim", "xuˈiŋ"),
-            ("cuidado", "kˌuɪdˈadʊ"),
+            ("cuidado", "kuɪdˈadʊ"),
             ("avó", "avˈɔ"),
             ("avô", "avˈo"),
             ("pé", "pˈɛ"),
@@ -927,38 +963,38 @@ mod tests {
             ("ele", "ˌely"),
             ("coração", "kˌoɾasˈɐ̃ʊ̃"),
             ("comunicação", "kˌomunˌikasˈɐ̃ʊ̃"),
-            ("agora", "ˌaɡˈɔɾæ"),
-            ("escola", "ˌeskˈɔlæ"),
+            ("agora", "aɡˈɔɾæ"),
+            ("escola", "eskˈɔlæ"),
             ("importante", "ˌimpoɾətˈɐ̃ŋtʃy"),
             ("de", "dʒy"),
             ("os", "ʊs"),
             ("muito", "mwˈiŋtʊ"),
             ("pouco", "pˈowkʊ"),
-            ("primeiro", "prˌimˈeɪɾʊ"),
-            ("ideia", "ˌidˈɛɪæ"),
-            ("pessoa", "pˌesˈoæ"),
+            ("primeiro", "primˈeɪɾʊ"),
+            ("ideia", "idˈɛɪæ"),
+            ("pessoa", "pesˈoæ"),
             ("bêbado", "bˈebædʊ"),
             ("órgão", "ˈɔɾəɡɐ̃ʊ̃"),
-            ("sobre-humano", "sˈobryˌumˈɐ̃nʊ"),
+            ("sobre-humano", "sˈobryumˈɐ̃nʊ"),
             ("novamente", "nˌɔvæmˈeɪŋtʃy"),
             ("provavelmente", "prˌovaveʊmˈeɪŋtʃy"),
             ("seriamente", "sˌɛɾiæmˈeɪŋtʃy"),
             ("máximo", "mˈasimʊ"),
             ("maxilar", "mˌaksilˈar"),
             ("peixe", "pˈeɪʃy"),
-            ("auxílio", "ˌaʊsˈiljʊ"),
-            ("exceto", "ˌesˈɛtʊ"),
+            ("auxílio", "aʊsˈiljʊ"),
+            ("exceto", "esˈɛtʊ"),
             ("enxergar", "ˌeɪŋʃeɾəɡˈar"),
             ("internet", "ˌiŋteɾənˈɛtʃi"),
             ("advogado", "ˌadʒivoɡˈadʊ"),
             ("show", "ʃˈow"),
-            ("tranquilo", "trˌɐ̃ŋkwˈilʊ"),
-            ("linguiça", "lˌiŋɡwˈisæ"),
+            ("tranquilo", "trɐ̃ŋkwˈilʊ"),
+            ("linguiça", "liŋɡwˈisæ"),
             ("quiser", "kizˈɛr"),
             ("número", "nˈũmeɾʊ"),
             ("espanhol", "ˌespɐ̃ɲˈɔw"),
             ("óleo", "ˈɔljʊ"),
-            ("tv", "tˌevˈe"),
+            ("tv", "tevˈe"),
         ] {
             assert_eq!(word(w), p, "{w}");
         }
@@ -972,7 +1008,7 @@ mod tests {
             .collect();
         join(&mut outs);
         let got: Vec<&str> = outs.iter().map(|o| o.ph.as_str()).collect();
-        assert_eq!(got, ["ʊz", "ˌæmˈiɡʊz", "mˈaɪz", "ow", "mˈenʊz", "dˈɛs", "kˈazæs"]);
+        assert_eq!(got, ["ʊz", "æmˈiɡʊz", "mˈaɪz", "ow", "mˈenʊz", "dˈɛs", "kˈazæs"]);
     }
 
     #[test]

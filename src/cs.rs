@@ -884,6 +884,80 @@ fn below_1000(n: u128, out: &mut Vec<String>) {
 }
 
 /// Czech cardinal number words (nominative; "dvě stě", "tři tisíce", "pět milionů").
+/// Ordinal words 1-31 for `N.` before a lower-case word (Czech: Internetová jazyková příručka, řadové číslovky;
+/// cs.wiktionary pátý). Genitive masculine (-ého) before a month name in the genitive (5. května), else the
+/// nominative masculine (-ý). 32 and above are left to the cardinal.
+pub fn ordinal(n: u128, genitive: bool) -> Option<Vec<String>> {
+    ordinal_agr(n, genitive, Gender::Masc, false)
+}
+
+/// Gender of the noun an ordinal agrees with (only the clear cases are recognised, see `noun_gender`).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Gender {
+    Masc,
+    Fem,
+    Neut,
+}
+
+/// Gender of the word after `N.` when it is a common noun or adjective whose gender is certain; anything else is
+/// left masculine (the previous behaviour). Feminine: -á adjectives and a short list of feminine nouns; neuter:
+/// a short list of neuter nouns (století, místo, patro, kolo, výročí, ...).
+pub fn noun_gender(w: &str) -> Gender {
+    const NEUT: &[&str] = &[
+        "století", "místo", "patro", "kolo", "výročí", "tisíciletí", "desetiletí", "čtvrtletí", "pololetí", "výstupní", "období",
+        "datum", "vydání", "kolo", "skóre", "finále", "semifinále", "čtvrtfinále", "podlaží", "stání", "zasedání", "setkání",
+    ];
+    const FEM: &[&str] = &[
+        "válka", "liga", "třída", "cena", "kapitola", "kategorie", "řada", "epizoda", "sezóna", "verze", "generace", "dynastie",
+        "republika", "symfonie", "etapa", "skupina", "část", "příčka", "pozice", "dekáda", "hodina", "směna", "linie", "dráha",
+    ];
+    if NEUT.contains(&w) {
+        Gender::Neut
+    } else if FEM.contains(&w) || (w.chars().count() > 3 && w.ends_with('á') && !w.ends_with("tá")) || w.ends_with("ová") {
+        Gender::Fem
+    } else {
+        Gender::Masc
+    }
+}
+
+/// Ordinals 1-31 agreeing in gender and (locative after v/na) case with the noun that follows.
+pub fn ordinal_agr(n: u128, genitive: bool, g: Gender, loc: bool) -> Option<Vec<String>> {
+    const U: [&str; 20] = [
+        "", "první", "druhý", "třetí", "čtvrtý", "pátý", "šestý", "sedmý", "osmý", "devátý", "desátý", "jedenáctý", "dvanáctý",
+        "třináctý", "čtrnáctý", "patnáctý", "šestnáctý", "sedmnáctý", "osmnáctý", "devatenáctý",
+    ];
+    let words: Vec<&str> = match n {
+        1..=19 => vec![U[n as usize]],
+        20 => vec!["dvacátý"],
+        21..=29 => vec!["dvacátý", U[(n - 20) as usize]],
+        30 => vec!["třicátý"],
+        31 => vec!["třicátý", "první"],
+        _ => return None,
+    };
+    Some(
+        words
+            .into_iter()
+            .map(|w| {
+                let hard = w.ends_with('ý');
+                let stem = w.trim_end_matches(|c| c == 'ý' || c == 'í');
+                match (g, loc, genitive) {
+                    (Gender::Fem, false, _) => if hard { format!("{stem}á") } else { w.to_string() },
+                    (Gender::Fem, true, _) => if hard { format!("{stem}é") } else { w.to_string() },
+                    (Gender::Neut, false, _) => if hard { format!("{stem}é") } else { w.to_string() },
+                    (Gender::Neut, true, _) => if hard { format!("{stem}ém") } else { format!("{stem}ím") },
+                    (Gender::Masc, _, false) => w.to_string(),
+                    (Gender::Masc, _, true) => match w {
+                        "první" => "prvního".to_string(),
+                        "třetí" => "třetího".to_string(),
+                        w if hard => format!("{stem}ého"),
+                        w => format!("{stem}ího"),
+                    },
+                }
+            })
+            .collect(),
+    )
+}
+
 pub fn cardinal(n: u128) -> Vec<String> {
     let mut out = Vec::new();
     if n == 0 {

@@ -5,6 +5,8 @@ The wheel bundles ``bindings/python/python/polyg2p/data/`` (see pyproject.toml),
 so ``Phonemizer()`` works with no arguments. Only Apache/BSD-compatible files
 go in; the CC BY-SA Wiktionary lexicons (de, it, uk, nl, sv, pt) stay out and
 can be added at run time with ``POLYG2P_DATA`` or ``Phonemizer(data_dir=...)``.
+The heteronym context models (``<lang>-ctx.g2p``, docs/heteronyms.md) have CC BY-SA labels in their chain
+and stay out for the same reason; ``ru-ctx.g2p`` is compiled into the crate.
 
 usage: tools/bundle_wheel_data.py [DATA_DIR]   (default: data-out)
 """

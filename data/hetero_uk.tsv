@@ -1,0 +1,52 @@
+# Ukrainian stress homographs. Readings: engine phonemes of the plain spelling with the stress mark moved (tools/hetero_table_uk.py).
+# word	k	reading	tag	note	mode
+замок	0	ph:zˈamok	-	за́мок  castle / lock	
+замок	1	ph:zamˈok	-	замо́к  castle / lock	
+мука	0	ph:mˈuka	-	му́ка  torment / flour	
+мука	1	ph:mukˈa	-	мука́  torment / flour	
+атлас	0	ph:ˈat̪las	-	а́тлас  atlas / satin	
+атлас	1	ph:at̪lˈas	-	атла́с  atlas / satin	
+орган	0	ph:ˈorhan	-	о́рган  organ (body, institution) / musical organ	
+орган	1	ph:orhˈan	-	орга́н  organ (body, institution) / musical organ	
+дорога	0	ph:dorˈoha	-	доро́га  road / dear (short fem. adjective)	
+дорога	1	ph:dorohˈa	-	дорога́  road / dear (short fem. adjective)	
+брати	0	ph:brˈat̪ɪ	-	бра́ти  to take / brothers	
+брати	1	ph:brat̪ˈɪ	-	брати́  to take / brothers	
+плачу	0	ph:plˈaʧu	-	пла́чу  I cry / I pay	
+плачу	1	ph:plaʧˈu	-	плачу́  I cry / I pay	
+мала	0	ph:mˈala	-	ма́ла  had / small (fem.)	
+мала	1	ph:malˈa	-	мала́  had / small (fem.)	
+руки	0	ph:rˈukɪ	-	ру́ки  hands (pl.) / of the hand (gen. sg.)	
+руки	1	ph:rukˈɪ	-	руки́  hands (pl.) / of the hand (gen. sg.)	
+ноги	0	ph:nˈohɪ	-	но́ги  legs (pl.) / of the leg	
+ноги	1	ph:nohˈɪ	-	ноги́  legs (pl.) / of the leg	
+книжки	0	ph:knˈɪʒkɪ	-	кни́жки  books (pl.) / of the book	
+книжки	1	ph:knɪʒkˈɪ	-	книжки́  books (pl.) / of the book	
+сестри	0	ph:sˈɛst̪rɪ	-	се́стри  sisters (pl.) / of the sister	
+сестри	1	ph:sɛst̪rˈɪ	-	сестри́  sisters (pl.) / of the sister	
+гори	0	ph:hˈorɪ	-	го́ри  mountains (pl.) / burn! (imperative) / of the mountain	
+гори	1	ph:horˈɪ	-	гори́  mountains (pl.) / burn! (imperative) / of the mountain	
+води	0	ph:βˈodɪ	-	во́ди  waters (pl.) / of the water	
+води	1	ph:βodˈɪ	-	води́  waters (pl.) / of the water	
+голови	0	ph:hˈoloβɪ	-	го́лови  heads (pl.) / of the head	
+голови	1	ph:holoβˈɪ	-	голови́  heads (pl.) / of the head	
+слова	0	ph:sloβˈa	-	слова́  words (pl.) / of the word	
+слова	1	ph:slˈoβa	-	сло́ва  words (pl.) / of the word	
+міста	0	ph:miːst̪ˈa	-	міста́  cities (pl.) / of the city	
+міста	1	ph:mˈiːst̪a	-	мі́ста  cities (pl.) / of the city	
+поля	0	ph:poʎˈa	-	поля́  fields (pl.) / of the field	
+поля	1	ph:pˈoʎa	-	по́ля  fields (pl.) / of the field	
+моря	0	ph:morʲˈa	-	моря́  seas (pl.) / of the sea	
+моря	1	ph:mˈorʲa	-	мо́ря  seas (pl.) / of the sea	
+викидати	0	ph:βɪkɪdˈat̪ɪ	-	викида́ти  to throw out (imperf.) / (perf.)	
+викидати	1	ph:βˈɪkɪdat̪ɪ	-	ви́кидати  to throw out (imperf.) / (perf.)	
+насипати	0	ph:nasɪpˈat̪ɪ	-	насипа́ти  to pour (imperf.) / (perf.)	
+насипати	1	ph:nasˈɪpat̪ɪ	-	наси́пати  to pour (imperf.) / (perf.)	
+розрізати	0	ph:rozʲrʲiːzˈat̪ɪ	-	розріза́ти  to cut (imperf.) / (perf.)	
+розрізати	1	ph:rozʲrʲˈiːzat̪ɪ	-	розрі́зати  to cut (imperf.) / (perf.)	
+скликати	0	ph:sklɪkˈat̪ɪ	-	склика́ти  to call together (imperf.) / (perf.)	
+скликати	1	ph:sklˈɪkat̪ɪ	-	скли́кати  to call together (imperf.) / (perf.)	
+пізнаю	0	ph:piːznˈaju	-	пізна́ю  I will recognize (perf.) / I recognize (imperf.)	
+пізнаю	1	ph:piːznajˈu	-	пізнаю́  I will recognize (perf.) / I recognize (imperf.)	
+узнаю	0	ph:uznˈaju	-	узна́ю  I will find out / I recognize	
+узнаю	1	ph:uznajˈu	-	узнаю́  I will find out / I recognize	

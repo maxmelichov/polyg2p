@@ -247,7 +247,13 @@ fn lexicon() -> &'static HashMap<String, usize> {
 }
 
 /// Phonemize one lower-case word (no context).
+/// A final `-i` after a consonant is one palatal offglide `ʲ` (buni `bˈunʲ`, en.wiktionary buni /bunʲ/); the
+/// doubled `ʲʲ` of the espeak notation is written once so the label does not carry a symbol twice.
 pub fn word(w: &str) -> String {
+    word_raw(w).replace("ʲʲ", "ʲ")
+}
+
+fn word_raw(w: &str) -> String {
     let w = w.trim_matches(|c: char| !c.is_alphanumeric());
     let w = w.replace('ş', "ș").replace('ţ', "ț");
     if let Some(p) = fixed().get(w.as_str()) {
@@ -1046,7 +1052,7 @@ mod tests {
     #[test]
     fn stress() {
         for (w, p) in [
-            ("oameni", "ˈɔamenʲʲ"),
+            ("oameni", "ˈɔamenʲ"),
             ("oamenilor", "ˈɔamenˌilor"),
             ("lucrurile", "lˈukruɾˌile"),
             ("anului", "ˈanulˌuɪ"),
@@ -1058,8 +1064,8 @@ mod tests {
             ("sâmbătă", "sˈɨmbətˌə"),
             ("pasăre", "pˈasəɾˌe"),
             ("facem", "fˈatʃem"),
-            ("faceți", "fˈatʃetsʲʲ"),
-            ("lucrați", "lukrˈatsʲʲ"),
+            ("faceți", "fˈatʃetsʲ"),
+            ("lucrați", "lukrˈatsʲ"),
             ("vorbim", "vorbˈim"),
             ("hotărî", "hˌotəɾˈɨ"),
             ("început", "ˌɨntʃepˈut"),
