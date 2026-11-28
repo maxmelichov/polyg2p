@@ -280,6 +280,25 @@ fn is_cyr_letter(c: char) -> bool {
     matches!(c, 'а'..='я' | 'ё')
 }
 
+/// `data/ru_stress_exceptions.tsv`: context-free forms the lexicon tiers or the context student get
+/// wrong (past tense of быть, the -ла past of понять/поднять/принять). Built into the crate, so it also
+/// holds with no data folder. Each row names its source; true homographs are deliberately absent.
+const STRESS_EXCEPTIONS_TSV: &str = include_str!("../data/ru_stress_exceptions.tsv");
+
+fn stress_exceptions() -> &'static HashMap<&'static str, i64> {
+    static T: std::sync::OnceLock<HashMap<&'static str, i64>> = std::sync::OnceLock::new();
+    T.get_or_init(|| {
+        STRESS_EXCEPTIONS_TSV
+            .lines()
+            .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
+            .filter_map(|l| {
+                let mut f = l.split('\t');
+                Some((f.next()?, f.next()?.trim().parse().ok()?))
+            })
+            .collect()
+    })
+}
+
 fn lookup(table: &[(&str, &'static str)], k: &str) -> Option<&'static str> {
     table.iter().find(|(a, _)| *a == k).map(|(_, v)| *v)
 }
@@ -1767,7 +1786,11 @@ impl Russian {
             return (insert_plus(&w, vs[0]), "mono");
         }
         let (k, tier);
-        if let Some(hv) = self.hom.get(&w) {
+        if let Some(&e) = stress_exceptions().get(w.as_str()) {
+            // before the tiers: the exception holds even where the lexicon lists the word as a homograph
+            k = e;
+            tier = "exception";
+        } else if let Some(hv) = self.hom.get(&w) {
             let cands: Vec<i64> = hv.split(',').filter_map(|x| x.trim().parse().ok()).collect();
             if let (Some(m), Some(marked)) = (models, marked) {
                 // [c for c in hom[w] if c < len(vs)], then vs[c] (Python indexing)
@@ -2165,6 +2188,26 @@ mod tests {
         assert_eq!(proclitic("pVD", "ɐknˈom", false), "pəd");
         assert_eq!(proclitic("ʧˈerʲɪZ", "dɐrˈoɡʊ", false), "ʧˈerʲɪz");
         assert_eq!(proclitic("ʧˈerʲɪZ", "ʧas", false), "ʧˈerʲɪs");
+    }
+
+    #[test]
+    fn stress_exceptions_hold_without_a_lexicon() {
+        let ru = Russian::load(None);
+        for (text, ipa) in [
+            ("была", "bɨɫˈa."), ("было", "bˈɨɫə."), ("были", "bˈɨlʲɪ."), ("поняла", "pənʲɪɫˈa."),
+            ("подняла", "pədʲnʲɪɫˈa."), ("приняла", "prʲɪnʲɪɫˈa."), ("принялась", "prʲɪnʲɪɫˈasʲ."),
+        ] {
+            assert_eq!(ru.phonemize(text), ipa, "{text}");
+        }
+        let rep = ru.stress_report("была");
+        assert_eq!(rep[0].1, "exception");
+        // every table row is well formed: a vowel index inside the word
+        for l in STRESS_EXCEPTIONS_TSV.lines().filter(|l| !l.starts_with('#') && !l.trim().is_empty()) {
+            let f: Vec<&str> = l.split('\t').collect();
+            assert_eq!(f.len(), 3, "{l}");
+            let k: usize = f[1].parse().expect(l);
+            assert!(k < vowel_offsets(f[0]).len(), "{l}");
+        }
     }
 
     #[test]
