@@ -188,7 +188,8 @@ Raw text can go straight in:
 | `ru-ctx.g2p` | distilled from RUAccent | Apache-2.0 | compiled in | |
 | `he-int8.g2p` | distilled from RenikudPlus | Apache-2.0 | yes | Hebrew needs it or renikud-onnx |
 | `de.lex` | ipa-dict, Wiktionary | CC BY-SA | no | German uses rules |
-| `it.lex`, `uk.lex`, `nl.lex`, `sv.lex`, `pt.lex` | WikiPron, Wiktionary | CC BY-SA | no | rules only |
+| `it.lex`, `nl.lex`, `sv.lex`, `pt.lex` | WikiPron, Wiktionary | CC BY-SA | no | rules only |
+| `uk.lex` | Wiktionary stress marks (kaikki.org extract, `tools/uk_kaikki.py`) + WikiPron | CC BY-SA 4.0 / GFDL | no | stress from endings and word starts |
 
 Rebuild from the public sources in `sources/`:
 

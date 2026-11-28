@@ -81,3 +81,10 @@ OPTIONAL data packs (not part of the Apache-2.0 distribution)
     it.lex  - from WikiPron / Wiktionary, CC BY-SA 3.0/4.0
     de.lex  - from german-ipa-dict (devio-at) via ipa-dict, from Wiktionary, CC BY-SA
     These must be distributed under their own share-alike terms.
+
+uk.lex (optional Ukrainian stress lexicon, data pack, not in the wheel)
+    Built by tools/uk_kaikki.py from the kaikki.org extract of en.wiktionary (stress-marked headwords and inflected
+    forms) plus tools/uk_stress.py output from WikiPron / Wiktionary. Wiktionary text is dual-licensed CC BY-SA 4.0
+    and GFDL (https://en.wiktionary.org/wiki/Wiktionary:Copyrights, checked 2026-11-28; the kaikki.org index page
+    itself states no licence, only a citation request). The data is share-alike and therefore kept outside the
+    Apache-licensed package. Data from dict_uk / ukrainian-word-stress (non-commercial licence) is not used.
