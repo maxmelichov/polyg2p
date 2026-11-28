@@ -81,3 +81,12 @@ OPTIONAL data packs (not part of the Apache-2.0 distribution)
     it.lex  - from WikiPron / Wiktionary, CC BY-SA 3.0/4.0
     de.lex  - from german-ipa-dict (devio-at) via ipa-dict, from Wiktionary, CC BY-SA
     These must be distributed under their own share-alike terms.
+
+tests/data/zh_poly_fixture.g2p, tests/zh_poly_cases.tsv
+    A 64-dimensional test fixture trained on the hand-written sentences in tests/zh_poly_cases.tsv
+    (written by the polyg2p authors). No corpus data.
+
+Polyphone models (zh-poly.g2p, yue-poly.g2p, ja-poly.g2p; trained with tools/train_polyphone.py, not shipped)
+    Sources of any model trained for these slots must be listed here before the file is distributed. The Mandarin
+    model evaluated in docs/polyphones.md used: the g2pM benchmark and model (Apache-2.0, Kakao Brain; sentences
+    from Chinese Wikipedia, CC BY-SA) and CC0 Common Voice sentences.

@@ -11,6 +11,7 @@ pub mod es;
 pub mod fold;
 pub mod he;
 pub mod tagger;
+pub mod polyphone;
 pub mod it;
 pub mod lexicon;
 pub mod nn;
@@ -229,6 +230,7 @@ pub struct G2p {
     it: OnceLock<it::Italian>,
     ru: OnceLock<ru::Russian>,
     he: OnceLock<he::Hebrew>,
+    poly: [OnceLock<Option<polyphone::Polyphone>>; 3],
 }
 
 impl G2p {
@@ -236,7 +238,7 @@ impl G2p {
     /// Without it, each language falls back to its built-in resources and rules.
     pub fn new(data_dir: Option<&Path>) -> Self {
         let _ = DATA_DIR.set(data_dir.map(|p| p.to_path_buf()));
-        G2p { data_dir: data_dir.map(|p| p.to_path_buf()), en: OnceLock::new(), de: OnceLock::new(), it: OnceLock::new(), ru: OnceLock::new(), he: OnceLock::new() }
+        G2p { data_dir: data_dir.map(|p| p.to_path_buf()), en: OnceLock::new(), de: OnceLock::new(), it: OnceLock::new(), ru: OnceLock::new(), he: OnceLock::new(), poly: [OnceLock::new(), OnceLock::new(), OnceLock::new()] }
     }
 
     fn file(&self, name: &str) -> Option<PathBuf> {
@@ -270,6 +272,20 @@ impl G2p {
                 p
             })
         })
+    }
+
+    /// The polyphone model of `lang`, if its file (`zh-poly.g2p`, ...) is in the data directory.
+    pub fn polyphone(&self, lang: polyphone::PolyLang) -> Option<&polyphone::Polyphone> {
+        self.poly[lang.idx()].get_or_init(|| self.file(lang.file()).and_then(|p| polyphone::Polyphone::open(&p).ok())).as_ref()
+    }
+
+    /// Context readings of every polyphonic character of `text` (`zh`, `yue`, `ja`):
+    /// `(character index, reading)`. Empty when the language is unknown or its model file is absent.
+    pub fn readings(&self, text: &str, lang: &str) -> Vec<(usize, String)> {
+        match polyphone::PolyLang::parse(lang).and_then(|l| self.polyphone(l)) {
+            Some(m) => m.readings(text).into_iter().map(|r| (r.index, r.reading)).collect(),
+            None => Vec::new(),
+        }
     }
 
     pub fn hebrew(&self) -> &he::Hebrew {

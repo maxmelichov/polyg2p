@@ -25,7 +25,9 @@ pub struct Cfg {
     pub layers: usize,
     pub ff: usize,
     pub max_len: usize,
+    #[serde(default)]
     pub n_cons: usize,
+    #[serde(default)]
     pub n_vow: usize,
 }
 
@@ -45,7 +47,6 @@ struct Header {
     cons_vocab: Vec<String>,
     vow_vocab: Vec<String>,
     letter_cons: HashMap<String, Vec<usize>>,
-    tensors: Vec<TensorMeta>,
 }
 
 // ---------------------------------------------------------------- kernels
@@ -312,14 +313,14 @@ fn quantize_rows(x: &[f32], l: usize, k: usize) -> (Vec<i8>, Vec<f32>) {
 }
 
 /// Int8 weight rows with a scale per output row.
-struct Q8 {
+pub(crate) struct Q8 {
     w: Vec<i8>,
     scale: Vec<f32>,
 }
 
 /// Linear layer, weight in PyTorch layout `[out, in]`; `q` holds the int8
 /// weights when the layer runs the int8 kernel (then `w` is empty).
-struct Lin {
+pub(crate) struct Lin {
     w: Vec<f32>,
     q: Option<Q8>,
     b: Vec<f32>,
@@ -329,7 +330,7 @@ struct Lin {
 
 impl Lin {
     /// `y[l, o] = x[l, i] · Wᵀ + b` for `l` rows.
-    fn apply(&self, x: &[f32], l: usize, y: &mut [f32]) {
+    pub(crate) fn apply(&self, x: &[f32], l: usize, y: &mut [f32]) {
         debug_assert_eq!(x.len(), l * self.i);
         debug_assert_eq!(y.len(), l * self.o);
         #[cfg(target_arch = "aarch64")]
@@ -383,15 +384,11 @@ pub struct Logits {
 
 pub struct Tagger {
     pub cfg: Cfg,
-    vocab: HashMap<char, usize>,
+    enc: Encoder,
     pub cons_vocab: Vec<String>,
     pub vow_vocab: Vec<String>,
     /// legal consonant classes per Hebrew letter
     pub letter_cons: HashMap<char, Vec<usize>>,
-    emb: Vec<f32>,
-    pos: Vec<f32>,
-    blocks: Vec<Block>,
-    norm: Ln,
     h_cons: Lin,
     h_vow: Lin,
     h_stress: Lin,
@@ -412,97 +409,114 @@ fn int8_kernel() -> bool {
     }
 }
 
-impl Tagger {
-    pub fn open(path: &Path) -> io::Result<Tagger> {
-        Self::from_bytes(&std::fs::read(path)?)
+fn bad(m: &str) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, m.to_string())
+}
+
+/// The tensors of a G2PT file, taken out by name (`take`, [`Weights::lin`], [`Weights::ln`]).
+pub(crate) struct Weights {
+    t: Tensors,
+    q8: HashMap<String, Q8>,
+}
+
+/// Parse a G2PT container: the JSON header (as a value, so each model kind reads
+/// its own fields) and its tensors.
+pub(crate) fn read_g2pt(bytes: &[u8]) -> io::Result<(serde_json::Value, Weights)> {
+    if bytes.len() < 8 || &bytes[..4] != b"G2PT" {
+        return Err(bad("not a G2PT file"));
+    }
+    let hl = u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize;
+    if bytes.len() < 8 + hl {
+        return Err(bad("truncated header"));
+    }
+    let hv: serde_json::Value = serde_json::from_slice(&bytes[8..8 + hl]).map_err(|e| bad(&e.to_string()))?;
+    let tensors: Vec<TensorMeta> =
+        serde_json::from_value(hv.get("tensors").cloned().ok_or_else(|| bad("no tensors"))?).map_err(|e| bad(&e.to_string()))?;
+    let data = &bytes[8 + hl..];
+    let f32s = |off: usize, n: usize| -> Vec<f32> {
+        data[off..off + n * 4].chunks_exact(4).map(|c| f32::from_le_bytes(c.try_into().unwrap())).collect()
+    };
+    let use_q8 = int8_kernel();
+    let mut t: Tensors = HashMap::new();
+    let mut q8: HashMap<String, Q8> = HashMap::new();
+    let metas: HashMap<&str, &TensorMeta> = tensors.iter().map(|m| (m.name.as_str(), m)).collect();
+    for m in &tensors {
+        let n: usize = m.shape.iter().product();
+        if m.dtype.as_deref() == Some("i8") {
+            let sm = metas.get(format!("{}.scale", m.name).as_str()).ok_or_else(|| bad("missing scale"))?;
+            let scale = f32s(sm.offset, m.shape[0]);
+            let cols = n / m.shape[0];
+            let raw = &data[m.offset..m.offset + n];
+            if use_q8 && m.shape.len() == 2 && cols % 16 == 0 {
+                q8.insert(m.name.clone(), Q8 { w: raw.iter().map(|&b| b as i8).collect(), scale });
+                t.insert(m.name.clone(), (m.shape.clone(), Vec::new()));
+            } else {
+                let v: Vec<f32> = raw.iter().enumerate().map(|(i, &b)| (b as i8) as f32 * scale[i / cols]).collect();
+                t.insert(m.name.clone(), (m.shape.clone(), v));
+            }
+        } else if !m.name.ends_with(".scale") {
+            t.insert(m.name.clone(), (m.shape.clone(), f32s(m.offset, n)));
+        }
+    }
+    Ok((hv, Weights { t, q8 }))
+}
+
+impl Weights {
+    fn take(&mut self, name: &str) -> io::Result<(Vec<usize>, Vec<f32>, Option<Q8>)> {
+        let (s, v) = self.t.remove(name).ok_or_else(|| bad(&format!("missing tensor {name}")))?;
+        Ok((s, v, self.q8.remove(name)))
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> io::Result<Tagger> {
-        let bad = |m: &str| io::Error::new(io::ErrorKind::InvalidData, m.to_string());
-        if bytes.len() < 8 || &bytes[..4] != b"G2PT" {
-            return Err(bad("not a G2PT file"));
-        }
-        let hl = u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize;
-        let h: Header = serde_json::from_slice(&bytes[8..8 + hl]).map_err(|e| bad(&e.to_string()))?;
-        let data = &bytes[8 + hl..];
-        let f32s = |off: usize, n: usize| -> Vec<f32> {
-            data[off..off + n * 4].chunks_exact(4).map(|c| f32::from_le_bytes(c.try_into().unwrap())).collect()
-        };
-        let use_q8 = int8_kernel();
-        let mut t: Tensors = HashMap::new();
-        let mut q8: HashMap<String, Q8> = HashMap::new();
-        let metas: HashMap<&str, &TensorMeta> = h.tensors.iter().map(|m| (m.name.as_str(), m)).collect();
-        for m in &h.tensors {
-            let n: usize = m.shape.iter().product();
-            if m.dtype.as_deref() == Some("i8") {
-                let sm = metas.get(format!("{}.scale", m.name).as_str()).ok_or_else(|| bad("missing scale"))?;
-                let scale = f32s(sm.offset, m.shape[0]);
-                let cols = n / m.shape[0];
-                let raw = &data[m.offset..m.offset + n];
-                if use_q8 && m.shape.len() == 2 && cols % 16 == 0 {
-                    q8.insert(m.name.clone(), Q8 { w: raw.iter().map(|&b| b as i8).collect(), scale });
-                    t.insert(m.name.clone(), (m.shape.clone(), Vec::new()));
-                } else {
-                    let v: Vec<f32> = raw.iter().enumerate().map(|(i, &b)| (b as i8) as f32 * scale[i / cols]).collect();
-                    t.insert(m.name.clone(), (m.shape.clone(), v));
-                }
-            } else if !m.name.ends_with(".scale") {
-                t.insert(m.name.clone(), (m.shape.clone(), f32s(m.offset, n)));
-            }
-        }
-        let mut take = |name: &str| -> io::Result<(Vec<usize>, Vec<f32>, Option<Q8>)> {
-            let (s, v) = t.remove(name).ok_or_else(|| bad(&format!("missing tensor {name}")))?;
-            Ok((s, v, q8.remove(name)))
-        };
-        type Take<'a> = &'a mut dyn FnMut(&str) -> io::Result<(Vec<usize>, Vec<f32>, Option<Q8>)>;
-        let lin = |take: Take, p: &str| -> io::Result<Lin> {
-            let (s, w, q) = take(&format!("{p}.weight"))?;
-            let (_, b, _) = take(&format!("{p}.bias"))?;
-            Ok(Lin { w, q, b, o: s[0], i: s[1] })
-        };
-        let ln = |take: Take, p: &str| -> io::Result<Ln> {
-            Ok(Ln { g: take(&format!("{p}.weight"))?.1, b: take(&format!("{p}.bias"))?.1 })
-        };
-        let cfg = h.config.clone();
+    pub(crate) fn lin(&mut self, p: &str) -> io::Result<Lin> {
+        let (s, w, q) = self.take(&format!("{p}.weight"))?;
+        let (_, b, _) = self.take(&format!("{p}.bias"))?;
+        Ok(Lin { w, q, b, o: s[0], i: s[1] })
+    }
+
+    fn ln(&mut self, p: &str) -> io::Result<Ln> {
+        Ok(Ln { g: self.take(&format!("{p}.weight"))?.1, b: self.take(&format!("{p}.bias"))?.1 })
+    }
+}
+
+/// The shared encoder body: character embedding + learned positions, pre-LayerNorm
+/// blocks, ReLU FFN, final LayerNorm. Models put their own heads on its hidden
+/// states ([`Tagger`]: three per-letter heads; `polyphone`: one masked head).
+pub(crate) struct Encoder {
+    pub(crate) cfg: Cfg,
+    vocab: HashMap<char, usize>,
+    emb: Vec<f32>,
+    pos: Vec<f32>,
+    blocks: Vec<Block>,
+    norm: Ln,
+}
+
+impl Encoder {
+    pub(crate) fn load(cfg: &Cfg, vocab: HashMap<String, usize>, w: &mut Weights) -> io::Result<Encoder> {
         let mut blocks = Vec::new();
         for l in 0..cfg.layers {
             let p = format!("enc.{l}");
             blocks.push(Block {
-                ln1: ln(&mut take, &format!("{p}.ln1"))?,
-                q: lin(&mut take, &format!("{p}.sa.q"))?,
-                k: lin(&mut take, &format!("{p}.sa.k"))?,
-                v: lin(&mut take, &format!("{p}.sa.v"))?,
-                o: lin(&mut take, &format!("{p}.sa.o"))?,
-                ln3: ln(&mut take, &format!("{p}.ln3"))?,
-                ff1: lin(&mut take, &format!("{p}.ff1"))?,
-                ff2: lin(&mut take, &format!("{p}.ff2"))?,
+                ln1: w.ln(&format!("{p}.ln1"))?,
+                q: w.lin(&format!("{p}.sa.q"))?,
+                k: w.lin(&format!("{p}.sa.k"))?,
+                v: w.lin(&format!("{p}.sa.v"))?,
+                o: w.lin(&format!("{p}.sa.o"))?,
+                ln3: w.ln(&format!("{p}.ln3"))?,
+                ff1: w.lin(&format!("{p}.ff1"))?,
+                ff2: w.lin(&format!("{p}.ff2"))?,
             });
         }
-        let vocab = h.vocab.into_iter().filter_map(|(k, v)| k.chars().next().map(|c| (c, v))).collect();
-        let letter_cons = h.letter_cons.into_iter().filter_map(|(k, v)| k.chars().next().map(|c| (c, v))).collect();
-        Ok(Tagger {
-            emb: take("emb.weight")?.1,
-            pos: take("pos.weight")?.1,
-            norm: ln(&mut take, "norm")?,
-            h_cons: lin(&mut take, "cons")?,
-            h_vow: lin(&mut take, "vow")?,
-            h_stress: lin(&mut take, "stress")?,
-            blocks,
-            cfg,
-            vocab,
-            cons_vocab: h.cons_vocab,
-            vow_vocab: h.vow_vocab,
-            letter_cons,
-        })
+        let vocab = vocab.into_iter().filter_map(|(k, v)| k.chars().next().map(|c| (c, v))).collect();
+        Ok(Encoder { cfg: cfg.clone(), vocab, emb: w.take("emb.weight")?.1, pos: w.take("pos.weight")?.1, blocks, norm: w.ln("norm")? })
     }
 
     /// Character ids for `text` (unknown characters -> 1), truncated to the window.
-    pub fn encode(&self, text: &str) -> Vec<usize> {
+    pub(crate) fn encode(&self, text: &str) -> Vec<usize> {
         text.chars().take(self.cfg.max_len).map(|c| *self.vocab.get(&c).unwrap_or(&1)).collect()
     }
 
-    /// Run the encoder over one window of character ids.
-    pub fn forward(&self, ids: &[usize]) -> Logits {
+    /// Hidden states `[len, d]` (after the final LayerNorm) for one window of character ids.
+    pub(crate) fn hidden(&self, ids: &[usize]) -> Vec<f32> {
         let d = self.cfg.d;
         let l = ids.len();
         let heads = self.cfg.heads;
@@ -571,6 +585,42 @@ impl Tagger {
             }
         }
         self.norm.apply(&x, l, d, &mut h);
+        h
+    }
+}
+
+impl Tagger {
+    pub fn open(path: &Path) -> io::Result<Tagger> {
+        Self::from_bytes(&std::fs::read(path)?)
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> io::Result<Tagger> {
+        let (hv, mut w) = read_g2pt(bytes)?;
+        let h: Header = serde_json::from_value(hv).map_err(|e| bad(&e.to_string()))?;
+        let cfg = h.config.clone();
+        let enc = Encoder::load(&cfg, h.vocab, &mut w)?;
+        let letter_cons = h.letter_cons.into_iter().filter_map(|(k, v)| k.chars().next().map(|c| (c, v))).collect();
+        Ok(Tagger {
+            h_cons: w.lin("cons")?,
+            h_vow: w.lin("vow")?,
+            h_stress: w.lin("stress")?,
+            enc,
+            cfg,
+            cons_vocab: h.cons_vocab,
+            vow_vocab: h.vow_vocab,
+            letter_cons,
+        })
+    }
+
+    /// Character ids for `text` (unknown characters -> 1), truncated to the window.
+    pub fn encode(&self, text: &str) -> Vec<usize> {
+        self.enc.encode(text)
+    }
+
+    /// Run the encoder over one window of character ids.
+    pub fn forward(&self, ids: &[usize]) -> Logits {
+        let l = ids.len();
+        let h = self.enc.hidden(ids);
         let mut cons = vec![0f32; l * self.cfg.n_cons];
         let mut vow = vec![0f32; l * self.cfg.n_vow];
         let mut stress = vec![0f32; l * 2];

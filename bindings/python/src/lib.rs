@@ -29,6 +29,17 @@ impl Engine {
         Ok(py.allow_threads(|| self.inner.phonemize(&text, l)))
     }
 
+    /// Context readings of every polyphonic character of `text` for `zh`, `yue` or `ja`:
+    /// a list of `(character index, reading)`. Empty when the model file (`zh-poly.g2p`,
+    /// `yue-poly.g2p`, `ja-poly.g2p`) is not in the data directory.
+    fn readings(&self, py: Python<'_>, text: &str, lang_code: &str) -> PyResult<Vec<(usize, String)>> {
+        if polyg2p::polyphone::PolyLang::parse(lang_code).is_none() {
+            return Err(PyValueError::new_err(format!("no polyphone model for language: {lang_code}")));
+        }
+        let text = text.to_owned();
+        Ok(py.allow_threads(|| self.inner.readings(&text, lang_code)))
+    }
+
     /// Phonemize many texts in one call (cheaper per item than repeated calls).
     fn phonemize_batch(&self, py: Python<'_>, texts: Vec<String>, lang_code: &str) -> PyResult<Vec<String>> {
         let l = lang(lang_code)?;
