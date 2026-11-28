@@ -98,6 +98,11 @@ fn disabled() -> bool {
     *D.get_or_init(|| std::env::var("POLYG2P_CTX").is_ok_and(|v| matches!(v.as_str(), "0" | "off" | "false")))
 }
 
+/// Languages whose `<lang>-ctx.g2p` is recognised at run time (those that passed the gate).
+fn model_languages(lang: Lang) -> bool {
+    matches!(lang, Lang::Pt | Lang::It)
+}
+
 fn model(g: &G2p, lang: Lang) -> Option<Arc<Tagger>> {
     // keyed by the model file's path, so engines with different data directories do not share a cache
     static M: OnceLock<Mutex<HashMap<PathBuf, Option<Arc<Tagger>>>>> = OnceLock::new();
@@ -194,6 +199,10 @@ fn window(sc: &[char], focus: usize, max: usize) -> (usize, String) {
 /// context model picks.
 pub fn apply(g: &G2p, lang: Lang, outs: &mut [Out]) {
     let capturing = CAPTURE.with(|c| c.borrow().is_some());
+    // fr was measured and dropped by the gate (docs/heteronyms.md); evaluation (capture) may still run it
+    if !capturing && !model_languages(lang) {
+        return;
+    }
     let Some(tab) = table(lang) else { return };
     if disabled() && !capturing {
         return;

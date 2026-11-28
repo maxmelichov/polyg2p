@@ -35,7 +35,7 @@ The sets are reported apart and never mixed.
 
 | lang | words (active on the model) | table words per 1,000 Tatoeba sentences | gold (n) rules -> model | silver (n) rules -> model | hand (n) rules -> model | verdict |
 |---|---|---|---|---|---|---|
-| fr | 27 + `*tions` listed (5 active: sens, vis, lis, fier, os) | 17.6 | UD dev/test (196) 97.5 -> 98.0; UD train split (1,282) 98.3 -> 98.7 | (984) 79.7 -> 96.4 | (71) 59.2 -> 91.5; the 31 cases of `tests/hetero_cases.tsv` 51.6 -> 71.0 | model kept, optional pack; below the +5 point gate on the human gold, which has almost no verb readings |
+| fr | 27 + `*tions` listed (5 had been active: sens, vis, lis, fier, os) | 17.6 | UD dev/test (196) 97.5 -> 98.0; UD train split (1,282) 98.3 -> 98.7 | (984) 79.7 -> 96.4 | (71) 59.2 -> 91.5; the 31 cases of `tests/hetero_cases.tsv` 51.6 -> 71.0 | rules kept: measured and dropped by the gate (+0.5 point on the human gold, gate +5); `fr-ctx.g2p` is not loaded |
 | pt (Brazil) | 28 pairs listed (8 active) | 18.7 | UD dev/test (260) 83.9 -> 92.7; UD train split (993) 87.4 -> 94.3 | (519) 39.9 -> 85.4 | (18, `tests/hetero_cases.tsv`) 50.0 -> 77.8 | model kept, optional pack |
 | it | 24 pairs listed (6 active) | 17.6 (74% is `ancora`, kept on the rules) | UD dev/test (116) 74.1 -> 87.9; UD train split (737) 74.0 -> 86.3 | (231) 84.4 -> 92.2 | (15, `tests/hetero_cases.tsv`) 46.7 -> 73.3 | model kept, optional pack (eval sets non-commercial: not redistributed) |
 | nl | `een`, regent, voornaam | 144.7 (`een`) | UD (1,667) 97.0 -> 89.6 | | | rules kept: the model is below the rules |
@@ -46,19 +46,21 @@ The sets are reported apart and never mixed.
 Notes on the verdicts (gate in the plan: keep a model only if it is clearly above the rules and no listed word
 with 50 or more gold decisions is below its rule accuracy):
 
-- fr, pt, it: the human gold is dominated by words the rules already read correctly (French newswire is full of
+- fr (dropped), pt, it: the human gold is dominated by words the rules already read correctly (French newswire is full of
   `président`, `fils`, `-tions` nouns), so the gain there is a few points; the gain is concentrated in the
   classes where the rules are wrong (verb readings: `je sens`, `je vis`, `eu gosto`, `ho seguito`), which the
-  silver and hand sets measure. French is below the +5 point gate on the human gold (+0.5 and +0.4 points):
-  it is kept because the gold holds only a handful of the decisions the rules get wrong, and the cue-rule and
-  hand sets show a large gain; this is a judgement the reader can overturn.
+  silver and hand sets measure. French missed the +5 point gate on the human gold (+0.5 point dev/test, +0.4
+  train split; the gold holds almost none of the decisions the rules get wrong). A model that misses a pre-set
+  gate does not ship, so French is dropped: it stays on the rules, `src/hetero.rs` does not load or recognise
+  `fr-ctx.g2p` (`model_languages`: pt and it only), and the table, labeller and trainer stay generic. The
+  silver and hand numbers above are kept as a record, not as a reason to ship.
 - Which words stay on the rules (`mode = rule`, lists in `tools/hetero_rule_<lang>.txt`): the gate (a word with
   50 or more gold decisions where the model scored below the rules: pt `governo`, `jogo`; it `subito`,
   `ancora`) and an evidence floor (a word needs 30 training decisions in each class, or 15 or more gold
   decisions with the model 10 points above the rules). The floor removed every French `-ent` word (the tagger
   labels are noisy there: a river is a `affluent`, tagged as a verb) and the `*tions` class (on running text
   the model read plural nouns such as `supplications` as the verb form).
-- int8 against f32: the same class on 99.96% (fr), 100% (pt, it) of decisions.
+- int8 against f32: the same class on 99.96% (fr, not shipped), 100% (pt, it) of decisions.
 - The Italian gold treebanks (ISDT, VIT, ParTUT) are non-commercial: they were used to measure only.
 - The Ukrainian pairs and their readings are in the table; with no permissive tagger the only labels are
   cue rules, which give 265 training decisions: not enough for a model. The rule baseline is in the table.

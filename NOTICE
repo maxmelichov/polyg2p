@@ -85,6 +85,6 @@ OPTIONAL data packs (not part of the Apache-2.0 distribution)
 <lang>-ctx.g2p (heteronym context models, optional pack, not in the wheel)
     Character-level encoders trained on sentences from Tatoeba (https://tatoeba.org, CC BY 2.0 FR),
     labelled by Stanza (Apache-2.0) models that were trained on Universal Dependencies treebanks
-    (CC BY-SA 4.0 for French GSD, Portuguese Bosque, Dutch Alpino; CC BY 4.0 for Italian MarkIT).
+    (CC BY-SA 4.0 for Portuguese Bosque; CC BY 4.0 for Italian MarkIT).
     The label chain carries CC BY-SA terms, so these files are distributed apart from the wheel,
     like the CC BY-SA lexicons. See docs/heteronyms.md.

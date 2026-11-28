@@ -2,7 +2,7 @@
 //!
 //! `tables` and `no_model_unchanged` need nothing. `cases` needs the model files and skips (does not
 //! fail) when a language's `<lang>-ctx.g2p` is not in POLYG2P_DATA, like the Hebrew tests:
-//!   POLYG2P_DATA=<dir with fr-ctx.g2p, pt-ctx.g2p, it-ctx.g2p ...> cargo test --test hetero -- --nocapture
+//!   POLYG2P_DATA=<dir with pt-ctx.g2p, it-ctx.g2p ...> cargo test --test hetero -- --nocapture
 //! `tests/hetero_cases.tsv`: hand-written sentences, the class the reading must have; a leading `!` marks a
 //! case the shipped model misses (counted and printed, not asserted).
 //! `tests/hetero_fixture.tsv`: the output of the main-branch build for the same sentences, with no model.
