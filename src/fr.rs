@@ -2027,6 +2027,32 @@ pub fn join(outs: &mut [Out]) {
         let phrase_final = k + 1 == n || outs[k].pause_after || outs[k + 1].ph.is_empty();
         let next_src = if k + 1 < n { outs[k + 1].src.clone() } else { String::new() };
         let next_ph = if k + 1 < n { outs[k + 1].ph.clone() } else { String::new() };
+        // compass points read their final consonants (fr.wiktionary nord-est /nɔʁ.ɛst/): nord-est, sud-ouest, l'est
+        let compass = match src.as_str() {
+            "nord-est" => Some("nɔʁˈɛst"),
+            "sud-est" => Some("sydˈɛst"),
+            "nord-ouest" => Some("nɔʁwˈɛst"),
+            "sud-ouest" => Some("sydwˈɛst"),
+            "l'est" | "l’est" => Some("lˈɛst"),
+            _ => None,
+        };
+        if let Some(c) = compass {
+            outs[k].ph = c.to_string();
+            continue;
+        }
+        // "nous portions": a -tions form right after nous (through ne/le/la/les/l'/lui/leur/y/en) is the verb: tj, not sj
+        // (fr.wiktionary portions: noun /pɔʁ.sjɔ̃/, verb /pɔʁ.tjɔ̃/)
+        if src.len() > 5 && src.ends_with("tions") && outs[k].ph.ends_with("sjˈɔ̃") {
+            const CL: &[&str] = &["ne", "n'", "le", "la", "les", "l'", "lui", "leur", "y", "en", "vous", "nous", "n’", "l’"];
+            let mut j = k;
+            while j > 0 && CL.contains(&outs[j - 1].src.as_str()) && outs[j - 1].src != "nous" {
+                j -= 1;
+            }
+            if j > 0 && outs[j - 1].src == "nous" {
+                let ph = outs[k].ph.clone();
+                outs[k].ph = format!("{}tjˈɔ̃", &ph[..ph.len() - "sjˈɔ̃".len()]);
+            }
+        }
         let next_vowel = !phrase_final && starts_with_vowel_phone(&next_ph) && !h_aspire(&next_src);
         let next_cons = !phrase_final && !next_ph.is_empty() && !next_vowel;
         // function words get their stress back at the end of a phrase

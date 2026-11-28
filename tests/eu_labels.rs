@@ -62,3 +62,14 @@ fn turkish_ce_stress() {
         assert_eq!(p("tr", w), ph, "{w}");
     }
 }
+
+/// French compass points and the verb ending -tions after nous (fr.wiktionary nord-est, portions).
+#[test]
+fn french_compass_and_tions() {
+    assert!(p("fr", "le nord-est").ends_with("nɔʁˈɛst"));
+    assert!(p("fr", "le sud-ouest.").contains("sydwˈɛst"));
+    assert!(p("fr", "à l'est").ends_with("lˈɛst"));
+    assert_eq!(p("fr", "nous portions des sacs"), "nu pɔʁtjˈɔ̃ de sˈak");
+    assert!(p("fr", "nous ne portions pas").contains("pɔʁtjˈɔ̃"));
+    assert!(p("fr", "les portions sont petites").contains("pɔʁsjˈɔ̃"));
+}
