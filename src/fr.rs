@@ -2021,6 +2021,19 @@ fn liaison(src: &str) -> Option<&'static str> {
 /// Sentence pass: phrase-final stress on function words, number sandhi
 /// (six/dix/huit/plus/tous), and obligatory liaison.
 pub fn join(outs: &mut [Out]) {
+    join_sense(outs, sense_default())
+}
+
+/// `POLYG2P_FR_SENSE_DEFAULT=1` (label path, off by default): the sense decisions that the keyword lists made are
+/// given up and each word takes the majority sense of the dev gold, with the deterministic next-sound sandhi kept:
+/// `l'est` is always the compass point (the preposition list is not read), `tous` before a consonant is always the
+/// determiner /tu/ (the list of 16 following words is not read). `plus` has no sense keyword (next-sound sandhi only).
+pub fn sense_default() -> bool {
+    static F: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *F.get_or_init(|| std::env::var("POLYG2P_FR_SENSE_DEFAULT").is_ok_and(|v| v == "1"))
+}
+
+fn join_sense(outs: &mut [Out], sense_default: bool) {
     let n = outs.len();
     for k in 0..n {
         let src = outs[k].src.clone();
@@ -2035,9 +2048,10 @@ pub fn join(outs: &mut [Out]) {
             "sud-ouest" => Some("sydwˈɛst"),
             // the compass point only after a preposition ("à l'est", "vers l'est"); elsewhere l'est is the verb: "elle l'est"
             "l'est" | "l’est"
-                if k > 0
-                    && matches!(outs[k - 1].src.as_str(), "à" | "de" | "du" | "vers" | "dans" | "en" | "au" | "sur")
-                    && !outs[k - 1].pause_after =>
+                if sense_default
+                    || k > 0
+                        && matches!(outs[k - 1].src.as_str(), "à" | "de" | "du" | "vers" | "dans" | "en" | "au" | "sur")
+                        && !outs[k - 1].pause_after =>
             {
                 Some("lˈɛst")
             }
@@ -2104,7 +2118,8 @@ pub fn join(outs: &mut [Out]) {
                 continue;
             }
             "tous" if src == last => {
-                if matches!(next_src.as_str(), "les" | "ces" | "mes" | "tes" | "ses" | "nos" | "vos" | "leurs" | "deux" | "trois" | "quatre" | "cinq" | "six" | "sept" | "huit" | "neuf" | "dix" | "la" | "le" | "ceux") {
+                if sense_default && next_cons
+                    || !sense_default && matches!(next_src.as_str(), "les" | "ces" | "mes" | "tes" | "ses" | "nos" | "vos" | "leurs" | "deux" | "trois" | "quatre" | "cinq" | "six" | "sept" | "huit" | "neuf" | "dix" | "la" | "le" | "ceux") {
                     outs[k].ph = re("tu", stressed);
                 } else if next_vowel {
                     outs[k].ph = re("tuz", stressed);
