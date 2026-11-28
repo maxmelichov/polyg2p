@@ -156,3 +156,24 @@ fn cs_se_not_joined() {
     assert_eq!(p("cs", "Šel se mnou domů."), "ʃˈel se mnˈoʊ dˈomuː.");
     assert_eq!(p("cs", "Smál se se sestrou."), "smˈaːl se se sˈestroʊ.");
 }
+
+/// POLYG2P_FR_SENSE_DEFAULT=1 gives up the keyword sense lists (l'est, tous); next-sound sandhi stays; unset = unchanged.
+#[test]
+fn fr_sense_switch() {
+    let run = |env: Option<&str>, t: &str| {
+        use std::io::Write;
+        let mut c = std::process::Command::new(env!("CARGO_BIN_EXE_g2p"));
+        c.args(["fr"]).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped());
+        if let Some(v) = env { c.env("POLYG2P_FR_SENSE_DEFAULT", v); } else { c.env_remove("POLYG2P_FR_SENSE_DEFAULT"); }
+        let mut ch = c.spawn().unwrap();
+        ch.stdin.take().unwrap().write_all(format!("{t}\n").as_bytes()).unwrap();
+        String::from_utf8(ch.wait_with_output().unwrap().stdout).unwrap().trim().to_string()
+    };
+    assert_eq!(run(None, "Il l'est aussi."), run(Some("0"), "Il l'est aussi."));
+    assert_eq!(run(None, "Il l'est aussi."), "il lɛt osˈi.");
+    assert_eq!(run(Some("1"), "Il l'est aussi."), "il lˈɛst osˈi.");
+    assert_eq!(run(None, "Ils sont tous partis."), "il sˈɔ̃ tus paʁtˈi.");
+    assert_eq!(run(Some("1"), "Ils sont tous partis."), "il sˈɔ̃ tu paʁtˈi.");
+    assert_eq!(run(Some("1"), "Ils sont tous ensemble."), run(None, "Ils sont tous ensemble."));
+    assert_eq!(run(Some("1"), "Tous les enfants."), run(None, "Tous les enfants."));
+}
