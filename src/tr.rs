@@ -273,6 +273,27 @@ fn prestress_cut(lw: &str) -> Option<usize> {
             }
         }
     }
+    // -ca/-ce/-ça/-çe (-ly, "in the manner of", language names) takes no stress: güzelce, İngilizce, Almanca stress the
+    // syllable before it. -ınca/-ince/-unca/-ünce (when) stresses its own first vowel: gelince, sevince.
+    // Real stems that merely end in these letters are listed (Göksel & Kerslake §4.3.2 on unstressable suffixes;
+    // en.wiktionary lists the forms -ca/-ce/-ça/-çe without a stress note, so the stress rule itself is unverified there).
+    const CE_STEMS: &[&str] = &["gece", "hoca", "bahçe", "gonca", "kanca", "pençe", "pence", "ince", "yüce", "karınca", "salıncak", "bilince", "birince"];
+    if !CE_STEMS.contains(&lw) {
+        for suf in ["ınca", "ince", "unca", "ünce"] {
+            if let Some(st) = lw.strip_suffix(suf) {
+                if st.chars().filter(|&c| is_vowel(c)).count() >= 1 && !st.ends_with(is_vowel) && !st.is_empty() {
+                    return Some(st.len() + suf.chars().next().map_or(0, char::len_utf8));
+                }
+            }
+        }
+        for suf in ["ca", "ce", "ça", "çe"] {
+            if let Some(st) = lw.strip_suffix(suf) {
+                if st.chars().filter(|&c| is_vowel(c)).count() >= 2 && !st.ends_with(is_vowel) {
+                    return Some(st.len());
+                }
+            }
+        }
+    }
     // copula -dir/-tir after a stem of two or more syllables (güzeldir, yoktur)
     for suf in ["dır", "dir", "dur", "dür", "tır", "tir", "tur", "tür"] {
         if let Some(s) = lw.strip_suffix(suf) {
