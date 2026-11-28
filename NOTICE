@@ -104,3 +104,16 @@ uk.lex (optional Ukrainian stress lexicon, data pack, not in the wheel)
     and GFDL (https://en.wiktionary.org/wiki/Wiktionary:Copyrights, checked 2026-11-28; the kaikki.org index page
     itself states no licence, only a citation request). The data is share-alike and therefore kept outside the
     Apache-licensed package. Data from dict_uk / ukrainian-word-stress (non-commercial licence) is not used.
+
+tests/data/zh_poly_fixture.g2p, tests/zh_poly_cases.tsv
+    A 64-dimensional test fixture trained on the hand-written sentences in tests/zh_poly_cases.tsv
+    (written by the polyg2p authors). No corpus data.
+
+Polyphone models (zh-poly.g2p, yue-poly.g2p, ja-poly.g2p; trained with tools/train_polyphone.py)
+    yue-poly.g2p (shipped in data/): trained on the HKCanCor corpus (CC BY 4.0, attribution: Luke & Wong, 2015),
+    on Cantonese Common Voice sentences (CC0) and on Cantonese storytelling transcripts (CC0), with readings from a
+    teacher fine-tuned from hon9kon9ize/bert-base-cantonese (Apache-2.0 per its model card).
+    zh-poly.g2p (optional pack, not in the wheel): trained on the g2pM benchmark and model (Apache-2.0, Kakao Brain;
+    sentences from Chinese Wikipedia, CC BY-SA), on Common Voice sentences (CC0), Tatoeba sentences (CC BY 2.0 FR),
+    with readings from a teacher fine-tuned from bert-base-chinese (Apache-2.0). Treated as a CC BY-SA derivative.
+    ja-poly.g2p: none.

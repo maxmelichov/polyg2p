@@ -6,8 +6,28 @@ use std::io::{self, BufRead, BufWriter, IsTerminal, Write};
 
 const CHUNK: usize = 2048;
 
+/// `g2p zh-readings [--data DIR]`: one sentence per line in, `index:reading` pairs (space separated,
+/// character indices) out; `yue-readings` and `ja-readings` likewise.
+fn readings_main(lang: &str, args: &[String]) {
+    let data = args.iter().position(|a| a == "--data").and_then(|i| args.get(i + 1)).map(std::path::PathBuf::from);
+    let g = polyg2p::G2p::new(data.as_deref());
+    let mut out = BufWriter::new(io::stdout().lock());
+    for line in io::stdin().lock().lines() {
+        let line = line.unwrap();
+        let r: Vec<String> = g.readings(&line, lang).into_iter().map(|(i, r)| format!("{i}:{r}")).collect();
+        writeln!(out, "{}", r.join(" ")).unwrap();
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if let Some(l) = args.get(1).and_then(|a| a.strip_suffix("-readings")) {
+        if polyg2p::polyphone::PolyLang::parse(l).is_none() {
+            eprintln!("usage: g2p <zh|yue|ja>-readings [--data DIR]");
+            std::process::exit(2)
+        }
+        return readings_main(l, &args);
+    }
     let lang = args.get(1).and_then(|l| polyg2p::Lang::parse(l)).unwrap_or_else(|| {
         eprintln!("usage: g2p <en|es|it|de|ru|he|...> [--data DIR] [--words]");
         std::process::exit(2)

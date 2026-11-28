@@ -170,6 +170,12 @@ class Phonemizer:
 
     __call__ = phonemize
 
+    def readings(self, text: str, lang: str) -> list[tuple[int, str]]:
+        """Context readings of the polyphonic characters of ``text`` (``zh``: pinyin with tone digit, ``yue``:
+        Jyutping, ``ja``: katakana) as ``(character index, reading)``, from ``<lang>-poly.g2p`` in the data
+        directory. Empty when that file is missing. No other language has a readings model."""
+        return self.engine.readings(text, lang)
+
     def phonemize_batch(self, texts: list[str], lang: str = "en") -> list[str]:
         lang = norm_lang(lang)
         if lang in CORE_LANGS and not any(_INLINE.search(t) for t in texts):
