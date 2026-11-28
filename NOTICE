@@ -117,3 +117,11 @@ Polyphone models (zh-poly.g2p, yue-poly.g2p, ja-poly.g2p; trained with tools/tra
     sentences from Chinese Wikipedia, CC BY-SA), on Common Voice sentences (CC0), Tatoeba sentences (CC BY 2.0 FR),
     with readings from a teacher fine-tuned from bert-base-chinese (Apache-2.0). Treated as a CC BY-SA derivative.
     ja-poly.g2p: none.
+
+am-gem.tsv - Amharic gemination (unwritten long consonants), optional data pack, not in the wheel:
+    built from the hand-marked gemination lists and the Armbruster verb tables of the GFF Data Archive
+    (Ge'ez Frontier Foundation, CC BY-SA 4.0, https://github.com/geezorg/data), romanisations from the English
+    Wiktionary (CC BY-SA 4.0 / GFDL, kaikki.org extract) and the Amharic Gemination Lexicon v3
+    (Dataset.ET, CC BY 4.0, https://huggingface.co/datasets/Chapimenge/amharic-gemination-lexicon; its labels
+    were produced by an analyzer, no analyzer code or data is included). Share-alike terms apply to the table.
+    The engine runs without it (output is then identical to before).

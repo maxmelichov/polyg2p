@@ -281,6 +281,7 @@ pub struct G2p {
     ru: OnceLock<ru::Russian>,
     he: OnceLock<he::Hebrew>,
     poly: [OnceLock<Option<polyphone::Polyphone>>; 3],
+    am: OnceLock<am::Gem>,
 }
 
 impl G2p {
@@ -288,7 +289,7 @@ impl G2p {
     /// Without it, each language falls back to its built-in resources and rules.
     pub fn new(data_dir: Option<&Path>) -> Self {
         let _ = DATA_DIR.set(data_dir.map(|p| p.to_path_buf()));
-        G2p { data_dir: data_dir.map(|p| p.to_path_buf()), en: OnceLock::new(), de: OnceLock::new(), it: OnceLock::new(), ru: OnceLock::new(), he: OnceLock::new(), poly: [OnceLock::new(), OnceLock::new(), OnceLock::new()] }
+        G2p { data_dir: data_dir.map(|p| p.to_path_buf()), en: OnceLock::new(), de: OnceLock::new(), it: OnceLock::new(), ru: OnceLock::new(), he: OnceLock::new(), poly: [OnceLock::new(), OnceLock::new(), OnceLock::new()], am: OnceLock::new() }
     }
 
     fn file(&self, name: &str) -> Option<PathBuf> {
@@ -343,6 +344,17 @@ impl G2p {
             Some(m) => m.readings(text).into_iter().map(|r| (r.index, r.reading)).collect(),
             None => Vec::new(),
         }
+    }
+
+    /// Uses `gem` as the Amharic gemination layer instead of loading one from the data directory.
+    pub fn with_amharic(mut self, gem: am::Gem) -> Self {
+        self.am = OnceLock::from(gem);
+        self
+    }
+
+    /// Optional Amharic gemination layer (empty without its table).
+    pub fn amharic(&self) -> &am::Gem {
+        self.am.get_or_init(|| am::Gem::load(self.data_dir.as_deref()))
     }
 
     pub fn hebrew(&self) -> &he::Hebrew {
@@ -467,7 +479,10 @@ impl G2p {
             Lang::Id => id::join(&mut outs),
             Lang::Ca => ca::join(&mut outs),
             Lang::Ar => ar::join(&mut outs),
-            Lang::Am => am::join(&mut outs),
+            Lang::Am => {
+                am::join(&mut outs);
+                self.amharic().apply(&mut outs);
+            }
             Lang::Bg => bg::join(&mut outs),
             Lang::Da => da::join(&mut outs),
             Lang::Et => et::join(&mut outs),

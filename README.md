@@ -128,7 +128,7 @@ Russian is an exact port of [Russian-G2P](https://github.com/maxmelichov/Russian
 with RUAccent's context models distilled into one 1.5M-parameter model.
 Hebrew is distilled from [RenikudPlus](https://github.com/maxmelichov/RenikudPlus).
 Arabic is scaffolded and waits for a context model like Hebrew's.
-Amharic gemination is not written in the script and is not predicted.
+Amharic gemination is not written in the script and is not predicted. An optional word table (below, `docs/results/am.md`) adds the unwritten long consonants for the words it lists.
 
 [docs/benchmarks.md](docs/benchmarks.md) has every table: all gold words,
 8.8 million Tatoeba sentences, unknown English words, memory, and how the
@@ -197,6 +197,7 @@ Raw text can go straight in:
 | `it.lex`, `nl.lex`, `sv.lex`, `pt.lex` | WikiPron, Wiktionary | CC BY-SA | no | rules only |
 | `uk.lex` | Wiktionary stress marks (kaikki.org extract, `tools/uk_kaikki.py`) + WikiPron | CC BY-SA 4.0 / GFDL | no | stress from endings and word starts |
 | `pt-ctx.g2p`, `it-ctx.g2p` | Tatoeba sentences labelled by Stanza models trained on CC BY-SA / CC BY treebanks ([heteronyms](docs/heteronyms.md)) | CC BY-SA chain | no | the word list in `data/hetero_<lang>.tsv` keeps the rules' reading |
+| `am-gem.tsv` | hand-marked Amharic gemination lists and Armbruster verb tables (GFF Data Archive), Wiktionary romanisations, CC BY-SA 4.0; heteronym rows from a CC BY 4.0 lexicon | CC BY-SA 4.0 | no | no length marks (`ː`) in Amharic; words not in the table are unchanged |
 
 Rebuild from the public sources in `sources/`:
 
