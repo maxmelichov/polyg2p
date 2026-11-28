@@ -149,3 +149,10 @@ fn hungarian_demonstrative_az_a() {
     assert!(p("hu", "az a ház").starts_with("ˈɑz "), "{}", p("hu", "az a ház"));
     assert_eq!(p("hu", "az ember"), "ɑz ˈɛmbɛr");
 }
+
+/// Czech `se` stays the unstressed pronoun clitic and is not joined to the next word (the cue rule lost to the plain reading on the UD test).
+#[test]
+fn cs_se_not_joined() {
+    assert_eq!(p("cs", "Šel se mnou domů."), "ʃˈel se mnˈoʊ dˈomuː.");
+    assert_eq!(p("cs", "Smál se se sestrou."), "smˈaːl se se sˈestroʊ.");
+}
