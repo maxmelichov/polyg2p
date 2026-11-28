@@ -3,8 +3,8 @@
 //! Rules (Wikipedia, "Bulgarian phonology", and the Wiktionary Bulgarian pronunciation appendix,
 //! both CC BY-SA, read 2026-11-28):
 //! * stress is free and lexical. With the optional data pack it comes from `bg.lex` (word ->
-//!   index of the stressed vowel from the start) and, for words the lexicon lacks, from the ending
-//!   statistics `bg.sfx` (longest ending -> stressed vowel from the end). Without the pack the
+//!   index of the stressed vowel from the start) and, for words the lexicon lacks, from the character-level
+//!   tagger `bg_stress.g2p`, then the ending statistics `bg.sfx` (longest ending -> stressed vowel from the end). Without the pack the
 //!   stress is on the penultimate vowel;
 //! * vowel reduction follows stress: unstressed `а ъ` are `ɐ`, unstressed `о` is `ɔ`, stressed
 //!   `ъ` is `ɤ` (the unstressed raising of `е`, `о` is not written);
@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use crate::lexicon::Lexicon;
+use crate::tagger::{load_g2pt, Encoder, Lin};
 use crate::Out;
 
 pub const IMPLEMENTED: bool = true;
@@ -28,9 +29,80 @@ const UNSTRESSED: &[&str] = &[
     "ви", "го", "ги", "му", "ми", "ти", "то", "тя", "те", "ме", "ли", "а", "о", "у", "под", "над", "към", "без",
 ];
 
+/// Character-level stress tagger (data pack file `bg_stress.g2p`, G2PT container): the encoder trunk of
+/// `tagger.rs` over the letters and one logit per letter; the stressed vowel is the vowel letter with the
+/// largest logit.
+struct StressNet {
+    vocab: HashMap<char, usize>,
+    emb: Vec<f32>,
+    enc: Encoder,
+    out: Lin,
+    d: usize,
+    max_len: usize,
+}
+
+impl StressNet {
+    fn open(path: &std::path::Path) -> Option<StressNet> {
+        let bytes = std::fs::read(path).ok()?;
+        let (hv, mut bag) = load_g2pt(&bytes).ok()?;
+        if hv.get("kind")?.as_str()? != "stress" {
+            return None;
+        }
+        let c = hv.get("config")?;
+        let g = |k: &str| c.get(k).and_then(|v| v.as_u64()).map(|v| v as usize);
+        let (d, heads, layers, ff, max_len) = (g("d")?, g("heads")?, g("layers")?, g("ff")?, g("max_len")?);
+        if d == 0 || heads == 0 || d % heads != 0 || max_len == 0 {
+            return None;
+        }
+        let vocab: HashMap<char, usize> =
+            hv.get("vocab")?.as_object()?.iter().filter_map(|(k, v)| Some((k.chars().next()?, v.as_u64()? as usize))).collect();
+        let emb = bag.tensor("emb.weight").ok()?;
+        if emb.len() % d != 0 || vocab.values().any(|&i| (i + 1) * d > emb.len()) {
+            return None;
+        }
+        let enc = Encoder::from_bag(&mut bag, d, heads, layers, ff).ok()?;
+        let out = bag.lin("out").ok()?;
+        if out.out_dim() != 1 {
+            return None;
+        }
+        Some(StressNet { vocab, emb, enc, out, d, max_len })
+    }
+
+    /// Index (among the vowel letters) of the stressed vowel.
+    fn predict(&self, w: &str) -> Option<usize> {
+        let chars: Vec<char> = w.chars().take(self.max_len).collect();
+        let l = chars.len();
+        if l == 0 {
+            return None;
+        }
+        let d = self.d;
+        let mut x = vec![0f32; l * d];
+        for (p, ch) in chars.iter().enumerate() {
+            let id = self.vocab.get(ch).copied().unwrap_or(1);
+            x[p * d..(p + 1) * d].copy_from_slice(&self.emb[id * d..(id + 1) * d]);
+        }
+        self.enc.add_pos(&mut x, l);
+        let h = self.enc.run(x, l);
+        let mut logits = vec![0f32; l];
+        self.out.apply(&h, l, &mut logits);
+        let mut best: Option<(usize, f32)> = None;
+        let mut vi = 0;
+        for (p, ch) in chars.iter().enumerate() {
+            if is_vowel(*ch) {
+                if best.is_none_or(|b| logits[p] > b.1) {
+                    best = Some((vi, logits[p]));
+                }
+                vi += 1;
+            }
+        }
+        best.map(|b| b.0)
+    }
+}
+
 struct Res {
     lex: Option<Lexicon>,
     sfx: HashMap<String, usize>,
+    tag: Option<StressNet>,
 }
 
 static RES: OnceLock<Res> = OnceLock::new();
@@ -52,7 +124,8 @@ fn res() -> &'static Res {
                 }
             }
         }
-        Res { lex, sfx }
+        let tag = crate::data_dir().map(|d| d.join("bg_stress.g2p")).filter(|p| p.exists()).and_then(|p| StressNet::open(&p));
+        Res { lex, sfx, tag }
     })
 }
 
@@ -72,6 +145,13 @@ fn stress_index(lw: &str, nv: usize) -> usize {
                 if i < nv {
                     return i;
                 }
+            }
+        }
+    }
+    if let Some(t) = &r.tag {
+        if let Some(i) = t.predict(lw) {
+            if i < nv {
+                return i;
             }
         }
     }
