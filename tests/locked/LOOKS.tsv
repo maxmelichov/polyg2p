@@ -1,1 +1,11 @@
 # date	path	sha256	commit	weights_sha256	number
+2026-11-28_15:04:09	/mnt/data30/g2p_plans_1128/ctx_work/asia/locked/zh_aishell3_fresh_test_1128.tsv	90b2f939ba3641d10985f9bb6496346a3dac38b931e9c02fcd3a25f45783e5d7	-	-	see asia README
+2026-11-28_15:04:22	/mnt/data30/g2p_plans_1128/ctx_work/asia/locked/zh_z1x_difang_test_1128.tsv	386a9c3a151a5b7caa09cf3c295c1d38dd0c6f65c8a5c4a44b29b97bff05d544	-	-	see asia README
+2026-11-28_15:05:46	/mnt/data30/g2p_plans_1128/ctx_work/asia/locked/zh_aishell3_general_test_1128.tsv	5faf0263ef1e351e0366c480e5950426abbcfd1200ec72ad631eb6fcf3bce070	-	-	see asia README
+2026-11-28_15:11:20	/mnt/data30/g2p_plans_1128/ctx_work/asia/locked/ja_jsut_odd_test_1128.tsv	33942f0edb729ee3bd3152cd23c88da916b4abb4b593dcdb5cdaa787826f6942	-	-	see asia README
+2026-11-28_15:11:28	/mnt/data30/g2p_plans_1128/ctx_work/asia/locked/ja_tok_test_1128.tsv	1f57c1d6caaed517ddd8eef6b70e8f2ae617ba8921f7d937c96d760091a5df01	-	-	see asia README
+2026-11-28	/mnt/data30/g2p_sources_1128/ud_portuguese-pud_1128/pt_pud-ud-test.conllu	876a701d49fcee4f329361a216ab0517de6dd9fd967dce497ab58c58c8c77420	-	-	n4 (rules .75 model .75)
+2026-11-28	/mnt/data30/g2p_sources_1128/ud_italian-pud_1128/it_pud-ud-test.conllu	769d9774908d9e19f4bd296a0a7e93b4153ad2b60b25112555b96246d2b38f07	-	-	n40 rules .65 model .90
+2026-11-28	/mnt/data30/g2p_sources_1128/ud_czech-cac_1128/cs_cac-ud-test.conllu	2f4c2c2cf793b2cbe6fb5710ec5072953de0ccb53a4e7fdf599caf4517d479ff	-	-	n174 rule .845 default .925
+2026-11-28	/mnt/data30/g2p_sources_1128/ud_finnish-tdt_1128/fi_tdt-ud-test.conllu	3317528f16ab74333dce44051971e1ed0d115c8ffa1359a20f3bddb8e63498ee	-	-	inf n177 rule .876 default .441; imp n79 .987 vs .797
+2026-11-28	/mnt/data30/g2p_hetero_1128/gold/ro_rrt_test.conllu	32a2f7b9fc82c1e82d9959ce8c5ec7b7840f725177aa06b497b51f6834801989	-	-	22 fired, precision .955
