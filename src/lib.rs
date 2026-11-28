@@ -38,6 +38,14 @@ pub mod id;
 pub mod ca;
 pub mod ar;
 pub mod am;
+pub mod bg;
+pub mod da;
+pub mod et;
+pub mod hr;
+pub mod lt;
+pub mod lv;
+pub mod sk;
+pub mod sl;
 
 
 use std::path::{Path, PathBuf};
@@ -73,6 +81,14 @@ pub enum Lang {
     Ar,
     /// Amharic (Ge'ez script)
     Am,
+    Bg,
+    Da,
+    Et,
+    Hr,
+    Lt,
+    Lv,
+    Sk,
+    Sl,
     /// Latin American Spanish (espeak's es-419): seseo, yeísmo
     EsLa,
     /// English accents: the American engine plus `en_accent` (Southern British,
@@ -119,6 +135,14 @@ impl Lang {
             "ca" | "cat" => Some(Lang::Ca),
             "ar" | "ara" => Some(Lang::Ar),
             "am" | "amh" | "am-et" | "am_et" => Some(Lang::Am),
+            "bg" | "bul" => Some(Lang::Bg),
+            "da" | "dan" => Some(Lang::Da),
+            "et" | "est" => Some(Lang::Et),
+            "hr" | "hrv" => Some(Lang::Hr),
+            "lt" | "lit" => Some(Lang::Lt),
+            "lv" | "lav" => Some(Lang::Lv),
+            "sk" | "slk" => Some(Lang::Sk),
+            "sl" | "slv" => Some(Lang::Sl),
             _ => None,
         }
     }
@@ -150,7 +174,7 @@ impl Lang {
         })
     }
 
-    pub const ALL: &[Lang] = &[Lang::En, Lang::EnGb, Lang::EnAu, Lang::EnNz, Lang::EnIn, Lang::EnSc, Lang::EnIe, Lang::EnCa, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar, Lang::Am];
+    pub const ALL: &[Lang] = &[Lang::En, Lang::EnGb, Lang::EnAu, Lang::EnNz, Lang::EnIn, Lang::EnSc, Lang::EnIe, Lang::EnCa, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar, Lang::Am, Lang::Bg, Lang::Da, Lang::Et, Lang::Hr, Lang::Lt, Lang::Lv, Lang::Sk, Lang::Sl];
 
     pub fn code(self) -> &'static str {
         match self {
@@ -184,6 +208,14 @@ impl Lang {
             Lang::Ca => "ca",
             Lang::Ar => "ar",
             Lang::Am => "am",
+            Lang::Bg => "bg",
+            Lang::Da => "da",
+            Lang::Et => "et",
+            Lang::Hr => "hr",
+            Lang::Lt => "lt",
+            Lang::Lv => "lv",
+            Lang::Sk => "sk",
+            Lang::Sl => "sl",
         }
     }
 
@@ -209,6 +241,14 @@ impl Lang {
             Lang::Ca => ca::IMPLEMENTED,
             Lang::Ar => ar::IMPLEMENTED,
             Lang::Am => am::IMPLEMENTED,
+            Lang::Bg => bg::IMPLEMENTED,
+            Lang::Da => da::IMPLEMENTED,
+            Lang::Et => et::IMPLEMENTED,
+            Lang::Hr => hr::IMPLEMENTED,
+            Lang::Lt => lt::IMPLEMENTED,
+            Lang::Lv => lv::IMPLEMENTED,
+            Lang::Sk => sk::IMPLEMENTED,
+            Lang::Sl => sl::IMPLEMENTED,
         }
     }
 }
@@ -412,6 +452,14 @@ impl G2p {
             Lang::Ca => ca::join(&mut outs),
             Lang::Ar => ar::join(&mut outs),
             Lang::Am => am::join(&mut outs),
+            Lang::Bg => bg::join(&mut outs),
+            Lang::Da => da::join(&mut outs),
+            Lang::Et => et::join(&mut outs),
+            Lang::Hr => hr::join(&mut outs),
+            Lang::Lt => lt::join(&mut outs),
+            Lang::Lv => lv::join(&mut outs),
+            Lang::Sk => sk::join(&mut outs),
+            Lang::Sl => sl::join(&mut outs),
         }
         outs
     }
@@ -708,6 +756,14 @@ impl G2p {
             Lang::Ca => ca::word(&lw),
             Lang::Ar => ar::word(&lw),
             Lang::Am => am::word(&lw),
+            Lang::Bg => bg::word(&lw),
+            Lang::Da => da::word(&lw),
+            Lang::Et => et::word(&lw),
+            Lang::Hr => hr::word(&lw),
+            Lang::Lt => lt::word(&lw),
+            Lang::Lv => lv::word(&lw),
+            Lang::Sk => sk::word(&lw),
+            Lang::Sl => sl::word(&lw),
         };
         outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw, cap: w.chars().next().is_some_and(char::is_uppercase) });
     }
