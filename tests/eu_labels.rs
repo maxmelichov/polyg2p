@@ -127,3 +127,25 @@ fn swedish_long_u() {
     assert_eq!(p("sv", "ful"), "fˈʉːl");
     assert!(!p("sv", "huset sjuk nu").contains("ʉ ") && !p("sv", "huset sjuk nu").replace("ʉː", "").contains('ʉ'));
 }
+
+/// Review fixes: l'est verb vs compass, Dutch place names, German Straßburg, Czech ordinal agreement, Greek clitics.
+#[test]
+fn review_fixes_1128() {
+    assert!(p("fr", "Elle l'est en particulier.").starts_with("ɛl lɛ"), "{}", p("fr", "Elle l'est en particulier."));
+    assert!(p("fr", "vers l'est").ends_with("lˈɛst"));
+    for t in ["Den Bosch", "Den Helder", "Den Haag"] {
+        assert!(p("nl", t).starts_with("dɛn "), "{t}");
+    }
+    assert!(p("de", "Straßburg").contains("ˈɑːs"), "{}", p("de", "Straßburg"));
+    assert_eq!(p("cs", "v 19. století"), p("cs", "v devatenáctém století"));
+    assert_eq!(p("cs", "5. místo"), p("cs", "páté místo"));
+    assert_eq!(p("cs", "2. světová válka"), p("cs", "druhá světová válka"));
+    assert_eq!(p("cs", "5. května"), p("cs", "pátého května"));
+    assert_eq!(p("cs", "3. patro"), p("cs", "třetí patro"));
+}
+
+#[test]
+fn hungarian_demonstrative_az_a() {
+    assert!(p("hu", "az a ház").starts_with("ˈɑz "), "{}", p("hu", "az a ház"));
+    assert_eq!(p("hu", "az ember"), "ɑz ˈɛmbɛr");
+}

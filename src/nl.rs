@@ -428,7 +428,7 @@ pub fn join(outs: &mut [Out]) {
         match outs[i].src.as_str() {
             "t" => outs[i].ph = "ət".into(),
             "s" if matches!(next.as_str(), "avonds" | "morgens" | "middags" | "nachts" | "winters" | "zomers" | "maandags" | "zondags") => outs[i].ph = "s".into(),
-            "den" if next == "haag" => outs[i].ph = "dɛn".into(),
+            "den" if matches!(next.as_str(), "haag" | "bosch" | "helder" | "burg" | "oever" | "hoorn" | "dolder" | "ham" | "briel") => outs[i].ph = "dɛn".into(),
             _ => {}
         }
     }

@@ -572,7 +572,8 @@ pub fn join(outs: &mut [Out]) {
     // (Siptár & Törkenczy, The Phonology of Hungarian: the article is a clitic; en.wiktionary az/egy list only the
     // isolated, stressed form). Standing alone (before punctuation) they keep it.
     for k in 0..outs.len().saturating_sub(1) {
-        let article = matches!(outs[k].src.as_str(), "a" | "az")
+        // "az a ház": az before the article a is the demonstrative and keeps its stress
+        let article = (matches!(outs[k].src.as_str(), "a" | "az") && !(outs[k].src == "az" && outs[k + 1].src == "a"))
             || outs[k].src == "egy" && !NUMBER_ENDS.contains(&outs[k + 1].src.as_str()) && !outs[k + 1].src.starts_with("két");
         if article && !outs[k].pause_after && !outs[k + 1].ph.is_empty() {
             outs[k].ph = outs[k].ph.replace('ˈ', "");

@@ -2033,7 +2033,14 @@ pub fn join(outs: &mut [Out]) {
             "sud-est" => Some("sydˈɛst"),
             "nord-ouest" => Some("nɔʁwˈɛst"),
             "sud-ouest" => Some("sydwˈɛst"),
-            "l'est" | "l’est" => Some("lˈɛst"),
+            // the compass point only after a preposition ("à l'est", "vers l'est"); elsewhere l'est is the verb: "elle l'est"
+            "l'est" | "l’est"
+                if k > 0
+                    && matches!(outs[k - 1].src.as_str(), "à" | "de" | "du" | "vers" | "dans" | "en" | "au" | "sur")
+                    && !outs[k - 1].pause_after =>
+            {
+                Some("lˈɛst")
+            }
             _ => None,
         };
         if let Some(c) = compass {

@@ -619,7 +619,15 @@ fn ordinal_tokens(lang: Lang, n: &str, toks: &[Tok], ti: usize, out: &mut Vec<St
             }
             let r = if lang == Lang::Cs {
                 const GEN: [&str; 12] = ["ledna", "února", "března", "dubna", "května", "června", "července", "srpna", "září", "října", "listopadu", "prosince"];
-                cs::ordinal(v, GEN.contains(&w))
+                let g = cs::noun_gender(w);
+                // locative after v / ve / na ("v 19. století"); only with a recognised feminine or neuter noun
+                let loc = g != cs::Gender::Masc
+                    && toks[..ti]
+                        .iter()
+                        .rev()
+                        .find(|t| !matches!(t, Tok::Sep))
+                        .is_some_and(|t| matches!(t, Tok::Word(p) if matches!(p.to_lowercase().as_str(), "v" | "ve" | "na")));
+                cs::ordinal_agr(v, GEN.contains(&w), g, loc)
             } else {
                 hu::ordinal(v)
             };

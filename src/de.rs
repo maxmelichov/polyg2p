@@ -1312,7 +1312,7 @@ fn is_v(c: char) -> bool {
 /// Spaß, gemäß); matched against the end of the text up to and including the ß.
 const SS_LONG: &[&str] = &[
     "spaß", "maß", "saß", "fraß", "gaß", "gemäß", "gefäß", "gesäß", "späß", "säß", "groß", "bloß", "stoß", "kloß",
-    "größ", "stöß", "klöß", "blöß", "flöß", "fuß", "gruß", "ruß", "buß", "süß", "grüß", "füß", "büß",
+    "straß", "größ", "stöß", "klöß", "blöß", "flöß", "fuß", "gruß", "ruß", "buß", "süß", "grüß", "füß", "büß",
 ];
 /// Short-vowel stems that open compounds whose second part starts with a vowel
 /// (Flußufer, Schloßallee, Mißerfolg, Meßergebnis).
