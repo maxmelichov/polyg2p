@@ -30,6 +30,7 @@ pub mod el;
 pub mod ro;
 pub mod hu;
 pub mod fi;
+mod fi_verbs;
 pub mod sv;
 pub mod id;
 pub mod ca;
@@ -340,7 +341,9 @@ impl G2p {
         } else {
             text
         };
-        let toks = text::tokenize(text);
+        // Finnish: thousands written with a space, minus signs, km/h (fi.rs)
+        let fi_text = if lang == Lang::Fi { Some(fi::prenormalize(text)) } else { None };
+        let toks = text::tokenize(fi_text.as_deref().unwrap_or(text));
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
         let mut words: Vec<String> = Vec::new();
         let mut skip = 0usize;
@@ -355,6 +358,20 @@ impl G2p {
         for (ti, t) in toks.iter().enumerate() {
             if ti < skip {
                 continue;
+            }
+            if lang == Lang::Fi {
+                // inflected numerals and abbreviations, ordinals, dates, clock times, units
+                let exp = fi::expand_token(&toks, ti, outs.last().map(|o| o.src.as_str()).unwrap_or(""));
+                if let Some((pieces, used)) = exp {
+                    for p in pieces {
+                        match p {
+                            fi::Piece::Word(w) => self.push_word(&mut outs, &w, lang),
+                            fi::Piece::Ph(ph, src) => outs.push(Out { ph, punct: String::new(), pause_after: false, src }),
+                        }
+                    }
+                    skip = ti + used;
+                    continue;
+                }
             }
             match t {
                 Tok::Word(w) if lang == Lang::En && w == "St" && toks.get(ti + 1) == Some(&Tok::Punct('.')) => {
@@ -558,6 +575,11 @@ impl G2p {
     }
 
     fn push_word(&self, outs: &mut Vec<Out>, w: &str, lang: Lang) {
+        if lang == Lang::Fi && (w.eq_ignore_ascii_case("www") || spell::is_acronym(w)) {
+            // W inside an abbreviation is read vee in Finnish (fi.rs)
+            outs.push(Out { ph: fi::spell_acronym(w), punct: String::new(), pause_after: false, src: w.to_lowercase() });
+            return;
+        }
         if w.eq_ignore_ascii_case("www") {
             let ph = if lang == Lang::En { Some("dˌʌbəljuːdˌʌbəljuːdˈʌbəljuː".to_string()) } else { spell::spell("WWW", lang) };
             if let Some(ph) = ph {
@@ -568,6 +590,10 @@ impl G2p {
         // Turkish has dotted and dotless i: I -> ı, İ -> i
         let lw = if lang == Lang::Tr {
             w.chars().map(|c| match c { 'I' => 'ı', 'İ' => 'i', c => c }).collect::<String>().to_lowercase()
+        } else if lang == Lang::Fi && !w.is_ascii() {
+            // composed form, so a + combining diaeresis is ä in the context rules too
+            use unicode_normalization::UnicodeNormalization;
+            w.to_lowercase().nfc().collect()
         } else {
             w.to_lowercase()
         };
