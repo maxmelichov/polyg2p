@@ -562,10 +562,6 @@ const LOAN: &[(&str, &str)] = &[
     ("teenager", "tinˈɛiʤer"), ("thriller", "trˈiller"), ("tunnel", "tˈunnel"), ("welfare", "wˈɛlfer"),
     ("yogurt", "jˈɔɡurt"), ("jet", "ʤɛt"), ("jolly", "ʤˈɔlli"), ("junior", "ʤˈunior"), ("gol", "ɡɔl"), ("goal", "ɡɔl"),
 ];
-const SECONDARY: &[&str] = &[
-    "della", "dello", "delle", "degli", "dalla", "dallo", "dalle", "dagli", "nella", "nello", "nelle", "negli",
-    "sulla", "sullo", "sulle", "sugli", "alla", "allo", "alle", "agli", "una", "uno",
-];
 
 /// Endings with fixed antepenultimate stress (Italian morphology; hand-written).
 const SDRUCCIOLE: &[&str] = &[
@@ -677,13 +673,9 @@ impl Italian {
                 return if UNSTRESSED.contains(&lw.as_str()) { p.replace('ˈ', "") } else { p.to_string() };
             }
         }
-        let level = if UNSTRESSED.contains(&lw.as_str()) {
-            0
-        } else if SECONDARY.contains(&lw.as_str()) {
-            1
-        } else {
-            2
-        };
+        // polysyllabic articles and articulated prepositions (della, alla, una) take the ordinary primary mark, as
+        // Wiktionary's IPA writes them (/ˈdal.la/, /ˈu.na/); only the monosyllabic clitics in UNSTRESSED are bare
+        let level = if UNSTRESSED.contains(&lw.as_str()) { 0 } else { 2 };
         // l'uomo, dell'anno: apostrophe-joined words come in as one token
         if let Some((a, b)) = w.split_once('\'') {
             if !a.is_empty() && !b.is_empty() {
