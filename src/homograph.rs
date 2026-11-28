@@ -109,6 +109,24 @@ pub fn units(outs: &[Out]) -> (Vec<Unit>, Vec<usize>) {
     (u, at)
 }
 
+/// Dot product with eight independent accumulators (lets the compiler vectorise; a plain f32 sum cannot be reordered).
+#[inline]
+fn dot(a: &[f32], b: &[f32]) -> f32 {
+    let mut acc = [0f32; 8];
+    let (ca, cb) = (a.chunks_exact(8), b.chunks_exact(8));
+    let (ra, rb) = (ca.remainder(), cb.remainder());
+    for (x, y) in ca.zip(cb) {
+        for i in 0..8 {
+            acc[i] += x[i] * y[i];
+        }
+    }
+    let mut s = acc.iter().sum::<f32>();
+    for (x, y) in ra.iter().zip(rb) {
+        s += x * y;
+    }
+    s
+}
+
 pub fn fnv1a(bytes: &[u8]) -> u64 {
     let mut h: u64 = 0xcbf29ce484222325;
     for &b in bytes {
@@ -488,17 +506,12 @@ impl BagNet {
         let _ = self.data0;
         let mut hid = vec![0f32; h];
         for (k, hk) in hid.iter_mut().enumerate() {
-            let w = &self.l1[k * d..(k + 1) * d];
-            let mut a = self.b1[k];
-            for j in 0..d {
-                a += w[j] * x[j];
-            }
-            *hk = a.max(0.0);
+            *hk = (self.b1[k] + dot(&self.l1[k * d..(k + 1) * d], &x)).max(0.0);
         }
         rows.iter()
             .map(|&r| {
                 let w = &self.out[r * h..(r + 1) * h];
-                self.bo[r] + w.iter().zip(&hid).map(|(a, b)| a * b).sum::<f32>()
+                self.bo[r] + dot(w, &hid)
             })
             .collect()
     }

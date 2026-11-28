@@ -635,7 +635,8 @@ impl English {
         let n = outs.len();
         self.expand_titles(outs);
         // the heteronym model, when there is one, reads whole sentences
-        let hg = self.hg.as_ref().and_then(|m| {
+        // (units are only built for a sentence that holds a word the model decides, so other sentences cost nothing extra)
+        let hg = self.hg.as_ref().filter(|m| outs.iter().any(|o| m.covers(&o.src) || (o.src.contains('-') && homograph::hyphen_parts(&o.src).any(|p| m.covers(p))))).and_then(|m| {
             let (u, at) = homograph::units(outs);
             (u.iter().filter(|x| x.word).count() >= HG_MIN_WORDS).then_some((m, u, at))
         });
