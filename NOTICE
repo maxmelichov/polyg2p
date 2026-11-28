@@ -81,3 +81,7 @@ OPTIONAL data packs (not part of the Apache-2.0 distribution)
     it.lex  - from WikiPron / Wiktionary, CC BY-SA 3.0/4.0
     de.lex  - from german-ipa-dict (devio-at) via ipa-dict, from Wiktionary, CC BY-SA
     These must be distributed under their own share-alike terms.
+    am-gem.tsv, am-gem.g2p, am-gem-int8.g2p - Amharic gemination (unwritten long consonants):
+        a word table from the hand-marked gemination lists of the GFF Data Archive (CC BY-SA 4.0) and a tagger
+        trained on those labels plus a rule. Share-alike terms apply to the table and, until stated otherwise,
+        to the model. Not in the wheel; the engine runs without them.
