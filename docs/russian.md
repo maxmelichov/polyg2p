@@ -54,7 +54,7 @@ the Wiktionary extraction (kaikki.org), both Zaliznyak-based, agree on a single 
 not listed. Because the table is built in, it applies with no data folder too.
 
 Without the data folder every polysyllable gets the suffix guess, so stress is wrong on about half of the 3,200
-most frequent forms of a news and fiction corpus; pass `--data` (or the Python wheel's bundled data) for
+most frequent forms; pass `--data` (or the Python wheel's bundled data) for
 real use.
 
 ## Cost and switches
