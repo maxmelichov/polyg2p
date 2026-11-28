@@ -1339,7 +1339,7 @@ fn ti_is_s(c: &[char], i: usize, m: usize) -> bool {
     if rest == "tien" && (before.ends_with('a') || before.ends_with('i') || before.ends_with('y')) {
         return true;
     }
-    if rest.starts_with("tient") && rest.len() <= 6 && is_vl(c[i - 1]) && !matches!(c[i - 1], 'e' | 'é' | 'ə') {
+    if rest.starts_with("tient") && rest.len() <= 6 && i > 0 && is_vl(c[i - 1]) && !matches!(c[i - 1], 'e' | 'é' | 'ə') {
         return true;
     }
     false
@@ -1352,7 +1352,7 @@ fn s_stays_voiceless(c: &[char], i: usize) -> bool {
             return true;
         }
     }
-    if before == "a" && (c[i + 1] == 'y' || c[i + 1..].starts_with(&['o', 'c']) || c[i + 1..].starts_with(&['e', 'p']) || c[i + 1..].starts_with(&['e', 'x'])) {
+    if before == "a" && (c.get(i + 1) == Some(&'y') || c[i + 1..].starts_with(&['o', 'c']) || c[i + 1..].starts_with(&['e', 'p']) || c[i + 1..].starts_with(&['e', 'x'])) {
         return true;
     }
     if before == "pré" && (c[i + 1..].starts_with(&['u', 'p']) || c[i + 1..].starts_with(&['é', 'a'])) {
