@@ -128,8 +128,9 @@ gold above, not taken from a published description.
 
 ## Known gaps
 
-* **Gemination is not predicted.** It is lexical and unwritten; the output
-  never contains `ː`.
+* **Gemination is lexical and unwritten.** By default the output never
+  contains `ː`; the optional layer below adds it where a model or a table
+  says so.
 * **`ɨ` is decided on the written word.** A one-letter prefix is syllabified
   with its stem (`በትምህርት` → `bətmɨhɨrt`, where careful speech keeps the
   stem's `tɨm-`), and a final pair of obstruents is always a cluster (`ነጥብ` →
@@ -189,3 +190,37 @@ among the unjudged: if its reading is `mərh`, the `-ህ` row is 92%.
   languages; a hyphen between numbers is a boundary (`1-2` → `አንድ ሁለት`).
   Symbols without a word here (`+ = @`, other currency signs) are skipped.
   Dates are not recognized: `12/03/2021` is read as three numbers.
+
+## Optional gemination layer (`am-gem.tsv`)
+
+Off unless the table is present; without it the output is byte-identical to
+the rules above. The table is an optional data pack (CC BY-SA 4.0, see
+`NOTICE`), outside the wheel. It is looked up in the data directory;
+`POLYG2P_AM_GEM=0` switches the layer off.
+
+* `am-gem.tsv`: `word<TAB>word with U+135F after each long letter`. A word found
+  in the table (after the one-to-one homophone fold ሠ → ሰ, ጸ → ፀ, ዐ ዓ ኣ → አ,
+  the h rows → ሀ) gets its marks; every other word keeps the plain reading.
+  Nothing is predicted: there is no model.
+
+Guards, applied everywhere: a letter is never long word-initially, on a vowel
+carrier (`አ ዐ`), on `h`, or as a word-final bare letter.
+
+Syllabification with a long consonant (`am::word_gem`): **R1** a bare
+consonant directly before a long one takes `ɨ` (`ሀብታምነት` → `habtamɨnːət`);
+**R2** a long bare consonant that is not word-final takes `ɨ` (`ምሽት` →
+`mɨʃːɨt`, `አምስት` → `amːɨst`), except before a glide (`ኢትዮጵያ` →
+`itjopʼːja`, where the gold has no `ɨ`). `ː` follows the whole consonant
+(`tʃʼː`, `lʷːa`). The stem table is skipped when a flag falls on a stem letter
+or the letter after it. With the gold's own length marks as flags the phone
+error without gemination is 6.84 %, the same as with no marks.
+
+### What was checked
+
+The marks the table puts on the words of a pool of Amharic sentences (449
+distinct words) were compared with an independent reference built from other
+sources: every one of the 449 words agrees (100 %, 99.2 % lower Wilson bound
+per word). The table was built from part of the same sources, so for the words
+it was built from this is a consistency check, not an unseen-word test. Words
+outside the table are not marked at all; the layer adds no guess for them.
+
