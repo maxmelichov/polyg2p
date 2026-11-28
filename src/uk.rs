@@ -862,6 +862,14 @@ mod tests {
     }
 
     #[test]
+    fn wiktionary_stress_exceptions() {
+        // forms the ending statistics put on the penult; en.wiktionary stresses the last vowel (село́, душа́, кажу́, хіба́)
+        for (w, p) in [("село", "sɛlˈo"), ("душа", "duʃˈa"), ("кажу", "kaʒˈu"), ("хіба", "xiːbˈa"), ("нього", "ɲˈoho")] {
+            assert_eq!(word(w), p, "{w}");
+        }
+    }
+
+    #[test]
     fn stress_and_numbers() {
         for (w, p) in [
             ("в", "β"),
