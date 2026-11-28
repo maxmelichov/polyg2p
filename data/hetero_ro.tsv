@@ -1,0 +1,4 @@
+# Romanian heteronyms: stress pairs decided by part of speech or lemma. Readings are explicit phonemes in the engine's notation.
+# word	k	reading	tag	note	mode
+copii	0	rule	lemma=copil	children (copiii), stress on the last syllable
+copii	1	ph:ˈkopiɪ	lemma=copie	copies (cópii), stress on the first syllable

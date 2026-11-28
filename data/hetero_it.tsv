@@ -1,0 +1,50 @@
+# Italian stress pairs, decided by part of speech or lemma. Readings: the engine's own output for the accented spelling.
+# word	k	reading	tag	note	mode
+ancora	0	rule	ADV	rule	rule
+ancora	1	ph:ˈaŋkora	NOUN	ph:ˈaŋkora	rule
+principi	0	respell:princìpi	lemma=principio	princìpi	rule
+principi	1	respell:prìncipi	lemma=principe	prìncipi	rule
+subito	0	respell:sùbito	ADV	sùbito	rule
+subito	1	respell:subìto	VERB	subìto	rule
+capitano	0	respell:capitàno	NOUN	capitàno	
+capitano	1	respell:càpitano	VERB	càpitano	
+tendine	0	respell:tendìne	lemma=tendina	tendìne	rule
+tendine	1	respell:tèndine	lemma=tendine	tèndine	rule
+ambito	0	respell:àmbito	NOUN	àmbito	
+ambito	1	respell:ambìto	VERB/ADJ	ambìto	
+compito	0	respell:còmpito	NOUN	còmpito	
+compito	1	respell:compìto	VERB/ADJ	compìto	
+desideri	0	respell:desidèri	NOUN	desidèri	
+desideri	1	respell:desìderi	VERB	desìderi	
+benefici	0	respell:benèfici	ADJ	benèfici	rule
+benefici	1	respell:benefìci	NOUN	benefìci	rule
+leggere	0	respell:lèggere	VERB	lèggere	rule
+leggere	1	respell:leggère	ADJ	leggère	rule
+perdono	0	respell:pèrdono	VERB	pèrdono	
+perdono	1	respell:perdóno	NOUN	perdóno	
+seguito	0	respell:sèguito	NOUN	sèguito	
+seguito	1	respell:seguìto	VERB	seguìto	
+viola	0	ph:vˈiola	VERB	ph:vˈiola	rule
+viola	1	ph:vjˈɔla	NOUN/ADJ	ph:vjˈɔla	rule
+circuito	0	respell:circùito	NOUN	circùito	rule
+circuito	1	respell:circuìto	VERB	circuìto	rule
+intuito	0	respell:intùito	NOUN	intùito	rule
+intuito	1	respell:intuìto	VERB	intuìto	rule
+capito	0	respell:càpito	lemma=capitare	càpito	rule
+capito	1	respell:capìto	lemma=capire	capìto	rule
+arbitri	0	respell:àrbitri	lemma=arbitro	àrbitri	rule
+arbitri	1	respell:arbìtri	lemma=arbitrio	arbìtri	rule
+condomini	0	respell:condòmini	lemma=condomino	condòmini	rule
+condomini	1	respell:condomìni	lemma=condominio	condomìni	rule
+pagano	0	respell:pàgano	VERB	pàgano	rule
+pagano	1	respell:pagàno	NOUN/ADJ	pagàno	rule
+impari	0	respell:ìmpari	ADJ	ìmpari	rule
+impari	1	respell:impàri	VERB	impàri	rule
+martiri	0	respell:màrtiri	lemma=martire	màrtiri	rule
+martiri	1	respell:martìri	lemma=martirio	martìri	rule
+nettare	0	respell:nèttare	NOUN	nèttare	rule
+nettare	1	respell:nettàre	VERB	nettàre	rule
+presidi	0	respell:prèsidi	lemma=preside	prèsidi	rule
+presidi	1	respell:presìdi	lemma=presidio	presìdi	rule
+decade	0	respell:dècade	NOUN	dècade	rule
+decade	1	respell:decàde	VERB	decàde	rule

@@ -191,6 +191,7 @@ Raw text can go straight in:
 | `he-int8.g2p` | distilled from RenikudPlus | Apache-2.0 | yes | Hebrew needs it or renikud-onnx |
 | `de.lex` | ipa-dict, Wiktionary | CC BY-SA | no | German uses rules |
 | `it.lex`, `uk.lex`, `nl.lex`, `sv.lex`, `pt.lex` | WikiPron, Wiktionary | CC BY-SA | no | rules only |
+| `fr-ctx.g2p`, `pt-ctx.g2p`, `it-ctx.g2p` | Tatoeba sentences labelled by Stanza models trained on CC BY-SA / CC BY treebanks ([heteronyms](docs/heteronyms.md)) | CC BY-SA chain | no | the word list in `data/hetero_<lang>.tsv` keeps the rules' reading |
 
 Rebuild from the public sources in `sources/`:
 

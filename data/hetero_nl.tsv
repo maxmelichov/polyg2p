@@ -1,0 +1,8 @@
+# Dutch heteronyms decided by part of speech. een: article /ən/ (rules) vs numeral /eːn/ (written één).
+# word	k	reading	tag	note	mode
+een	0	rule	DET	indefinite article /ən/
+een	1	respell:één	NUM	numeral one /eːn/
+regent	0	ph:rəɣˈɛnt	NOUN	regent (ruler) /rəˈɣɛnt/
+regent	1	rule	VERB	it rains /ˈreːɣənt/
+voornaam	0	rule	NOUN	first name, prefix stress
+voornaam	1	sub:vˈoːrnˌaːm>voːrnˈaːm	ADJ	distinguished, stem stress
