@@ -34,6 +34,31 @@ to the penult).
 
 Speed: 20k words in 0.06 s user time (the CLI, release build).
 
+## Stress against an independent dictionary (2026-11-28)
+
+The two tables above are scored on WikiPron, which gives stress only through vowel reduction. A stress-only dictionary
+(lang-uk, 2.78 M word forms; evaluation only, nothing from it is in the repo) scores the stress position of 5,000 sampled
+forms (frequent head, mid, rare tail; dev and test halves cut by md5 parity, test scored once). Before this change the
+rules-only engine put the stress right on 84.2 % of the test half (espeak-ng 59.3 %) and the engine with the Wiktionary pack on
+93.0 %. Three changes, all from Wiktionary's accented paradigms (en.wiktionary via kaikki.org, 357k forms):
+
+- `data/uk_stem.tsv`, `data/uk_suffix.tsv` are rebuilt from every accented inflected form instead of WikiPron's 53k headwords
+  (`python tools/uk_stress.py --kaikki kaikki_lex.tsv`; still aggregate counts only): rules-only dev 84.0 -> 90.8 %.
+- `data/uk_stress_exceptions.tsv` (`tools/uk_exceptions.py`): the frequent forms of a Ukrainian text pool (top 5,000) for which
+  Wiktionary gives exactly one stressed vowel and the statistics another (394 rows: ії, хіба, село, душа, кажу, коня ...).
+  Forms with two Wiktionary readings are not listed.
+- 11 rows of the hand-written table contradicted Wiktionary (нього, одного, інші, відповіді, завдяки ...) and were corrected.
+
+| stress position, test half (n = 2,457) | before | after | paired 95 % CI of the gain |
+|---|---|---|---|
+| rules only | 84.2 % (CI 82.7-85.6) | **91.9 %** (90.8-92.9) | +6.3 .. +9.0 |
+| with `uk.lex` | 93.0 % (92.0-94.0) | **94.6 %** (93.7-95.5) | +0.8 .. +2.4 |
+
+Segments are unchanged: on 7,543 words the old and new output differ only in the position of the stress mark.
+`його` is still stressed on the last vowel: Wiktionary lists його́ first and йо́го second, the stress dictionary has only
+йо́го; that is a convention between sources, not an error we can settle from either. Two-reading forms need a context model
+(the `uk-ctx.g2p` encoder), not a table.
+
 ## What is implemented (`src/uk.rs`)
 
 Segments
@@ -63,8 +88,9 @@ Segments
   млн, млрд, тис, вул, обл are expanded.
 
 Stress (vowel index from the end), first hit wins:
+0. `data/uk_homograph_fix.tsv`, then `data/uk_stress_exceptions.tsv` (sourced, see above);
 1. built-in table of ~900 function words, pronoun paradigms, numerals and
-   frequent words with irregular/mobile stress (hand-written);
+   frequent words with irregular/mobile stress (hand-written; checked against Wiktionary);
 2. `uk.lex` if present (word → stress index, built from WikiPron);
 3. `data/uk_stem.tsv`: longest word start (4–8 letters) all of whose gold words
    stress the same syllable counted from the start (fixed stem stress);
