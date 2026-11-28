@@ -215,6 +215,28 @@ consonant directly before a long one takes `ɨ` (`ሀብታምነት` → `habta
 or the letter after it. With the gold's own length marks as flags the phone
 error without gemination is 6.84 %, the same as with no marks.
 
+### Verb rules (`am-verbs.tsv`)
+
+A second optional pack, looked up in the same data directory and switched off by the same
+`POLYG2P_AM_GEM=0`. Words the word table lists keep the table's marks (even none); the rules only see the
+others. Without the file nothing changes (byte-identical to the table-only reading).
+
+* The pack holds a root list (the consonants shared by the cells of each Armbruster verb, 375 roots of 3 or 4
+  radicals) and templates: a cell of the verb table (perfect, imperfect, jussive, imperative, ...) with the
+  radicals as variables, and the letters that were long in at least 90% of the verbs sharing it (at least 8
+  verbs, Wilson lower bound 0.80). Where the verb classes differ the template marks nothing: type A and type B
+  verbs differ in the imperfect (`ይሰብራል` unmarked), the perfect `ሰበረ` and the passive perfect `ተሰበረ` agree.
+* A word is read after stripping `የ በ ለ ከ ስለ እንደ እስከ ወደ እንዲ` + `አል እየ` (or the person-replacing `ሲ ሚ አይ እንዲ
+  እንዳይ`, which stand in for the `ይ` of the imperfect) in front and an object / clitic chain behind; the person
+  endings of the last radical come from a closed table. The root must be in the list. When two readings
+  disagree nothing is marked.
+* Held-out roots (root folds the templates never saw; 117 roots, 624 marked types): per-type precision 92.5% on 429
+  types with a reference (H, F, K, ARM, plus an analyzer-labelled lexicon, evaluation only), 90.8% against the hand
+  lists and Wiktionary alone (119 types, lower bound 84%); recall 27% of the long positions on the types a held-out
+  root reaches. Fewer than a third of the long letters of the verb forms are found; the rest stay plain.
+* `src/bin/am_verbs_check.rs` prints the marks of a word list for the parity test against the Python reference
+  that built the pack: 100,761 words, 2,975 marked, 0 differences.
+
 ### What was checked
 
 The marks the table puts on the words of a pool of Amharic sentences (449

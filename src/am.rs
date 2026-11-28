@@ -35,7 +35,8 @@
 //!   the script does not write, keep their shape before a suffix (`አምስት` →
 //!   `amɨst`, so `አምስተኛ` → `amɨstəɲa`).
 //!
-//! Not predicted: gemination. Fidel does not write it, and it is lexical.
+//! Gemination: fidel does not write it. It is lexical for nouns and is added only by the optional packs
+//! (word table `am-gem.tsv`, verb rules `am-verbs.tsv`, see [`Gem`]); without them none is predicted.
 //! The `ɨ` rule works on the written word, so a one-letter prefix is syllabified
 //! together with its stem.
 //!
@@ -464,19 +465,26 @@ pub fn fold(c: char) -> char {
 /// Without the table nothing changes: [`Gem::apply`] returns at once.
 pub struct Gem {
     table: Option<std::collections::HashMap<String, Vec<bool>>>,
+    verbs: Option<Verbs>,
 }
 
 impl Gem {
     pub fn load(data_dir: Option<&std::path::Path>) -> Self {
         if std::env::var_os("POLYG2P_AM_GEM").is_some_and(|v| v == "0") {
-            return Gem { table: None };
+            return Gem { table: None, verbs: None };
         }
         let table = data_dir.and_then(|d| std::fs::read_to_string(d.join("am-gem.tsv")).ok()).map(|t| Self::parse_table(&t));
-        Gem { table }
+        let verbs = data_dir.and_then(|d| std::fs::read_to_string(d.join("am-verbs.tsv")).ok()).map(|t| Verbs::parse(&t));
+        Gem { table, verbs }
     }
 
     pub fn from_table(table: Option<&str>) -> Self {
-        Gem { table: table.map(Self::parse_table) }
+        Gem { table: table.map(Self::parse_table), verbs: None }
+    }
+
+    /// The word table and the verb rules ([`Verbs`], `am-verbs.tsv`) given as text.
+    pub fn from_packs(table: Option<&str>, verbs: Option<&str>) -> Self {
+        Gem { table: table.map(Self::parse_table), verbs: verbs.map(Verbs::parse) }
     }
 
     fn parse_table(t: &str) -> std::collections::HashMap<String, Vec<bool>> {
@@ -500,20 +508,21 @@ impl Gem {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.table.is_none()
+        self.table.is_none() && self.verbs.is_none()
     }
 
     /// Flags (one per fidel letter) for every word; a word the table does not know has none.
     pub fn flags(&self, words: &[&str]) -> Vec<Vec<bool>> {
-        let Some(t) = &self.table else {
-            return words.iter().map(|w| vec![false; w.chars().filter(|&c| fidel(c).is_some()).count()]).collect();
-        };
         words
             .iter()
             .map(|w| {
                 let l: Vec<char> = w.chars().filter(|&c| fidel(c).is_some()).collect();
                 let key: String = l.iter().map(|&c| fold(c)).collect();
-                let mut f = t.get(&key).cloned().unwrap_or_else(|| vec![false; l.len()]);
+                // a word the table lists keeps the table's marks (even none); the verb rules only see the others
+                let mut f = match self.table.as_ref().and_then(|t| t.get(&key)) {
+                    Some(f) => f.clone(),
+                    None => self.verbs.as_ref().map(|v| v.flags(&key)).unwrap_or_else(|| vec![false; l.len()]),
+                };
                 let ok = guards(&l);
                 for (i, x) in f.iter_mut().enumerate() {
                     *x = *x && ok[i];
@@ -535,6 +544,209 @@ impl Gem {
                 o.ph = word_gem(&o.src, &f);
             }
         }
+    }
+}
+
+/// One slot of a verb template: a literal letter of the affix, or the `k`-th radical of the root
+/// with the vowel order (empty = sixth) and labialization it is written with.
+#[derive(Clone, PartialEq)]
+enum Slot {
+    X(char),
+    R(usize, String, bool),
+}
+
+struct Key {
+    cell: u32,
+    slots: Vec<Slot>,
+    long: Vec<usize>,
+}
+
+/// Verb rules (optional pack `am-verbs.tsv`, derived from the Armbruster verb tables): unwritten long
+/// consonants of the forms of a verb whose root is in the pack's root list, for roots the word table
+/// does not know. A template is a cell of the verb table (perfect, imperfect, jussive, ...) with the root
+/// radicals as variables; it marks a letter only where at least 90% of the verbs that share the template
+/// agree (type A and type B verbs differ in the imperfect, so there nothing is marked). A word is read
+/// after stripping a prefix chain (`የ በ ለ ከ ስለ እንደ እስከ ወደ እንዲ` + `አል እየ`, or the person-replacing
+/// `ሲ ሚ አይ እንዲ እንዳይ`) and a suffix chain (object and clitic); the person endings of the last radical
+/// come from [`ENDINGS`]. When two readings disagree nothing is marked.
+pub struct Verbs {
+    roots: std::collections::HashSet<Vec<String>>,
+    keys: Vec<Key>,
+    pre: Vec<(Vec<char>, bool)>,
+    suf: std::collections::HashSet<String>,
+}
+
+const PREP: [&str; 11] = ["", "የ", "በ", "ለ", "ከ", "ስለ", "እንደ", "እስከ", "ወደ", "እንዲ", "ስለሚ"];
+const AUXP: [&str; 3] = ["", "አል", "እየ"];
+const PREP_R0: [&str; 9] = ["", "የ", "በ", "ለ", "ከ", "ስለ", "እንደ", "እስከ", "ወደ"];
+const AUXR: [&str; 5] = ["ሲ", "ሚ", "አይ", "እንዲ", "እንዳይ"];
+const OBJ: [&str; 19] = ["", "ው", "ዋ", "ሽ", "ህ", "ኝ", "ት", "ን", "ሁ", "ቸው", "ችሁ", "ችን", "ሽው", "ዎ", "ት", "ልኝ", "ላት", "ለት", "ልን"];
+const CLI: [&str; 5] = ["", "ም", "ና", "ስ", "ን"];
+/// (vowel of the last radical, letters after it) in a template -> the endings the running text may carry instead.
+const ENDINGS: [(&str, &str, &[(&str, &str)]); 3] = [
+    ("ə", "", &[("ə", ""), ("ə", "ች"), ("", "ኩ"), ("", "ክ"), ("", "ህ"), ("", "ሽ"), ("", "ን"), ("", "ኩት"), ("", "ኩህ"), ("u", ""), ("", "ኩሽ")]),
+    ("a", "ል", &[("a", "ል"), ("a", "ለች"), ("a", "ለሁ"), ("a", "ለን"), ("a", "ሉ"), ("a", "ሎች")]),
+    ("", "", &[("", ""), ("u", ""), ("i", ""), ("", "ኡ")]),
+];
+
+fn person(c: char) -> &'static str {
+    match c {
+        'ይ' => "ይትእን",
+        'ያ' => "ያታአና",
+        _ => "",
+    }
+}
+
+impl Verbs {
+    pub fn parse(t: &str) -> Self {
+        let (mut roots, mut keys) = (std::collections::HashSet::new(), Vec::new());
+        for l in t.lines() {
+            if l.starts_with('#') || l.trim().is_empty() {
+                continue;
+            }
+            let a: Vec<&str> = l.split('\t').collect();
+            match a[0] {
+                "R" if a.len() >= 2 => {
+                    roots.insert(a[1].split(' ').map(str::to_string).collect::<Vec<_>>());
+                }
+                "K" if a.len() >= 4 => {
+                    let slots: Vec<Slot> = a[2]
+                        .split(' ')
+                        .filter_map(|t| {
+                            let mut ch = t.chars();
+                            match ch.next()? {
+                                'X' => Some(Slot::X(ch.next()?)),
+                                'R' => {
+                                    let f: Vec<&str> = ch.as_str().split(':').collect();
+                                    Some(Slot::R(f.first()?.parse().ok()?, f.get(1)?.to_string(), *f.get(2)? == "1"))
+                                }
+                                _ => None,
+                            }
+                        })
+                        .collect();
+                    let long = a[3].split(',').filter_map(|x| x.parse().ok()).collect();
+                    keys.push(Key { cell: a[1].parse().unwrap_or(0), slots, long });
+                }
+                _ => {}
+            }
+        }
+        let mut pre = std::collections::BTreeSet::new();
+        for p in PREP {
+            for q in AUXP {
+                pre.insert((format!("{p}{q}"), false));
+            }
+        }
+        for p in PREP_R0 {
+            for q in AUXR {
+                pre.insert((format!("{p}{q}"), true));
+            }
+        }
+        let pre = pre.into_iter().map(|(s, r)| (s.chars().collect(), r)).collect();
+        let mut suf = std::collections::HashSet::new();
+        for o in OBJ {
+            for c in CLI {
+                suf.insert(format!("{o}{c}"));
+            }
+        }
+        Verbs { roots, keys, pre, suf }
+    }
+
+    /// Long letters (one flag per fidel letter) of a folded word, none when no verb reading or when the readings disagree.
+    pub fn flags(&self, key: &str) -> Vec<bool> {
+        let l: Vec<char> = key.chars().collect();
+        let mut flags = vec![false; l.len()];
+        let marks = self.marks(&l);
+        if let Some(m) = marks {
+            for i in m {
+                if i < flags.len() {
+                    flags[i] = true;
+                }
+            }
+        }
+        flags
+    }
+
+    fn marks(&self, l: &[char]) -> Option<std::collections::BTreeSet<usize>> {
+        let seg: Vec<(&str, bool, &str)> = l.iter().filter_map(|&c| fidel(c)).collect();
+        if seg.len() != l.len() {
+            return None;
+        }
+        // (base consonant, labialized, vowel) as the templates were learnt
+        let lt: Vec<(&str, bool, &str)> = seg.iter().map(|&(c, lab, v)| (c.trim_end_matches('ʷ'), lab || c.ends_with('ʷ'), v)).collect();
+        let mut readings: Vec<std::collections::BTreeSet<usize>> = Vec::new();
+        for (p, repl) in &self.pre {
+            if l.len() < p.len() || l[..p.len()] != p[..] {
+                continue;
+            }
+            let o = p.len();
+            for k in &self.keys {
+                let mut slots: &[Slot] = &k.slots;
+                if *repl {
+                    if !matches!(k.cell, 2..=4) || slots.first() != Some(&Slot::X('ይ')) {
+                        continue;
+                    }
+                    slots = &slots[1..];
+                }
+                let Some(lr) = slots.iter().rposition(|s| matches!(s, Slot::R(..))) else { continue };
+                let head = &slots[..lr];
+                if l.len() - o < head.len() + 1 {
+                    continue;
+                }
+                let mut got: Vec<Option<&str>> = vec![None; slots.len()];
+                let mut ok = true;
+                for (i, s) in head.iter().enumerate() {
+                    let (ch, c) = (l[o + i], lt[o + i]);
+                    match s {
+                        Slot::X(x) => {
+                            if !(ch == *x || (i == 0 && person(*x).contains(ch))) {
+                                ok = false;
+                                break;
+                            }
+                        }
+                        Slot::R(r, v, lab) => {
+                            if c.2 != v || c.1 != *lab {
+                                ok = false;
+                                break;
+                            }
+                            got[*r] = Some(c.0);
+                        }
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                let Slot::R(fr, fv, flab) = &slots[lr] else { continue };
+                let c = lt[o + head.len()];
+                got[*fr] = Some(c.0);
+                if c.1 != *flab {
+                    continue;
+                }
+                let tail: Option<String> = slots[lr + 1..].iter().map(|s| if let Slot::X(x) = s { Some(*x) } else { None }).collect();
+                let Some(tail) = tail else { continue };
+                let rs: String = l[o + head.len() + 1..].iter().collect();
+                let own = [(fv.as_str(), tail.as_str())];
+                let ends: &[(&str, &str)] = ENDINGS.iter().find(|e| e.0 == fv && e.1 == tail).map(|e| e.2).unwrap_or(&own);
+                let good = ends.iter().any(|&(v, t)| {
+                    c.2 == v && (rs == t || (rs.starts_with(t) && self.suf.contains(&rs[t.len()..])))
+                });
+                if !good {
+                    continue;
+                }
+                let nr = slots.iter().filter(|s| matches!(s, Slot::R(..))).count();
+                let root: Option<Vec<String>> = (0..nr).map(|i| got[i].map(str::to_string)).collect();
+                let Some(root) = root else { continue };
+                if !self.roots.contains(&root) {
+                    continue;
+                }
+                let sh = usize::from(*repl);
+                readings.push(k.long.iter().filter(|&&i| o + i >= sh).map(|&i| o + i - sh).collect());
+            }
+        }
+        let first = readings.first()?;
+        if readings.iter().any(|r| r != first) {
+            return Some(Default::default());
+        }
+        Some(first.clone())
     }
 }
 

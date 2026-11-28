@@ -198,6 +198,7 @@ Raw text can go straight in:
 | `uk.lex` | Wiktionary stress marks (kaikki.org extract, `tools/uk_kaikki.py`) + WikiPron | CC BY-SA 4.0 / GFDL | no | stress from endings and word starts |
 | `pt-ctx.g2p`, `it-ctx.g2p` | Tatoeba sentences labelled by Stanza models trained on CC BY-SA / CC BY treebanks ([heteronyms](docs/heteronyms.md)) | CC BY-SA chain | no | the word list in `data/hetero_<lang>.tsv` keeps the rules' reading |
 | `am-gem.tsv` | hand-marked Amharic gemination lists and Armbruster verb tables (GFF Data Archive), Wiktionary romanisations, CC BY-SA 4.0; heteronym rows from a CC BY 4.0 lexicon | CC BY-SA 4.0 | no | no length marks (`ː`) in Amharic; words not in the table are unchanged |
+| `am-verbs.tsv` | verb rules (root list and templates) learnt from the Armbruster verb tables (GFF Data Archive), CC BY-SA 4.0 | CC BY-SA 4.0 | no | unwritten long consonants in the forms of listed verb roots, for words `am-gem.tsv` does not list; none without the file |
 
 Rebuild from the public sources in `sources/`:
 
