@@ -105,6 +105,14 @@ uk.lex (optional Ukrainian stress lexicon, data pack, not in the wheel)
     itself states no licence, only a citation request). The data is share-alike and therefore kept outside the
     Apache-licensed package. Data from dict_uk / ukrainian-word-stress (non-commercial licence) is not used.
 
+data/uk_stem.tsv, data/uk_suffix.tsv, data/uk_stress_exceptions.tsv (Ukrainian stress statistics and exception rows)
+    Aggregate counts, and 394 word -> stressed-vowel rows, computed from the stress-marked headwords and inflected forms
+    in the kaikki.org extract of en.wiktionary (CC BY-SA 4.0 / GFDL; tools/uk_stress.py --kaikki, tools/uk_exceptions.py).
+    Individual stress positions are facts about words; the files hold no Wiktionary text. Same treatment as data/it_suffix.tsv.
+
+it.lex also from tools/it_kaikki.py: stress-marked IPA of single-word headwords in the kaikki.org extract of en.wiktionary
+    (CC BY-SA 4.0 / GFDL), merged over the WikiPron entries; optional pack, not in the wheel.
+
 tests/data/zh_poly_fixture.g2p, tests/zh_poly_cases.tsv
     A 64-dimensional test fixture trained on the hand-written sentences in tests/zh_poly_cases.tsv
     (written by the polyg2p authors). No corpus data.

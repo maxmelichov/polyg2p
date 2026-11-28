@@ -87,11 +87,18 @@ def main():
     ap.add_argument("--min", type=int, default=3)
     ap.add_argument("--purity", type=float, default=0.75)
     ap.add_argument("--maxlen", type=int, default=9)
+    ap.add_argument("--kaikki", default=None, help="kaikki_lex.tsv from tools/uk_kaikki.py: derive the statistics from "
+                    "Wiktionary's accented paradigms (every inflected form) instead of WikiPron")
     ap.add_argument("--stem-min", type=int, default=2)
     ap.add_argument("--stem-purity", type=float, default=1.0)
     a = ap.parse_args()
-    rows = load(os.path.join(SRC, "ukr_cyrl_narrow.tsv"))
+    rows = {} if a.kaikki else load(os.path.join(SRC, "ukr_cyrl_narrow.tsv"))
     lex = {}
+    if a.kaikki:
+        for line in open(a.kaikki, encoding="utf8"):
+            w, v = line.rstrip("\n").split("\t")[:2]
+            if re.fullmatch(r"[а-яіїєґ']+", w):
+                lex[w] = sorted({int(x) for x in v.split(",")})
     for w, ps in rows.items():
         votes = set()
         for p in ps:
@@ -104,7 +111,7 @@ def main():
         for w, st in sorted(lex.items()):
             f.write(f"{w}\t{','.join(map(str, st))}\n")
     known = {w: st[0] for w, st in lex.items() if len(st) == 1 and len(vowel_letters(w)) >= 2}
-    print("words", len(rows), "with stress", len(lex), "unambiguous polysyllables", len(known), file=sys.stderr)
+    print("words", len(rows) or len(lex), "with stress", len(lex), "unambiguous polysyllables", len(known), file=sys.stderr)
     held = set()
     if a.eval:
         held = {l.strip() for l in open(a.eval, encoding="utf8")}
