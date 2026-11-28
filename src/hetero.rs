@@ -9,6 +9,11 @@
 //! each table word. No model file: nothing changes, output is byte-identical to
 //! the rules. `POLYG2P_CTX=0` disables every model of this module.
 //!
+//! No confidence threshold: `Decision::model_conf` (softmax over the word's own classes) is recorded for
+//! evaluation, but keeping the rules below a threshold was measured and rejected (docs/heteronyms.md).
+//! Cost bound: one encoder pass per window shared by all hits in it, at most `MAX_PASSES` per call;
+//! hits beyond the cap keep the rules.
+//!
 //! Table columns: `word <TAB> k <TAB> reading <TAB> tag <TAB> note [<TAB> mode]`
 //!   k        class index 0..3 (the `vow` head of the encoder predicts it)
 //!   reading  `rule` (keep what the rules produced), `respell:<spelling>` (run the
@@ -125,6 +130,18 @@ pub struct Decision {
     pub phs: Vec<(u8, String)>,
     /// the table keeps the rules for this word (`mode` = rule): `model_k` is then only the model's opinion
     pub mode_rule: bool,
+    /// the model's probability of `model_k` (softmax over the word's own classes); None without a model
+    pub model_conf: Option<f32>,
+}
+
+impl Decision {
+    /// The class that ships: the model's, unless the word is `mode = rule`.
+    pub fn shipped_k(&self) -> Option<u8> {
+        match self.model_k {
+            Some(_) if self.mode_rule => self.rule_k,
+            k => k,
+        }
+    }
 }
 
 /// What `apply` saw, for the training-data dump.
@@ -134,6 +151,8 @@ pub struct Capture {
     /// (char offset of the word in `text`, word, has punctuation after it)
     pub words: Vec<(usize, String, String)>,
     pub decisions: Vec<Decision>,
+    /// encoder forward passes this call ran
+    pub passes: usize,
 }
 
 thread_local! {
@@ -141,15 +160,34 @@ thread_local! {
     static NO_REPLACE: RefCell<bool> = const { RefCell::new(false) };
 }
 
-/// Start/stop capturing what `apply` sees on this thread; `replace` = false leaves
-/// the output untouched (evaluation of the model without changing the output).
-pub fn capture_start(replace: bool) {
+/// Capture of what `apply` sees on this thread, scoped to the guard: dropping it (also on a panic
+/// or an early return) clears the capture and the no-replace flag, so evaluation-only behaviour
+/// (languages whose model is not shipped, output left untouched) can never leak into a later
+/// ordinary `phonemize`. `replace` = false leaves the output untouched.
+pub struct CaptureGuard(());
+
+pub fn capture(replace: bool) -> CaptureGuard {
     CAPTURE.with(|c| *c.borrow_mut() = Some(Capture::default()));
     NO_REPLACE.with(|c| *c.borrow_mut() = !replace);
+    CaptureGuard(())
 }
-pub fn capture_take() -> Capture {
-    CAPTURE.with(|c| c.borrow_mut().take()).unwrap_or_default()
+
+impl CaptureGuard {
+    /// What the last `phonemize` under this guard saw (the capture is then empty until the next one).
+    pub fn take(&self) -> Capture {
+        CAPTURE.with(|c| c.borrow_mut().replace(Capture::default())).unwrap_or_default()
+    }
 }
+
+impl Drop for CaptureGuard {
+    fn drop(&mut self) {
+        CAPTURE.with(|c| *c.borrow_mut() = None);
+        NO_REPLACE.with(|c| *c.borrow_mut() = false);
+    }
+}
+
+/// Hard cap on encoder passes per `phonemize` call; hits beyond it keep the rules.
+pub const MAX_PASSES: usize = 32;
 
 fn word_ph(g: &G2p, lang: Lang, w: &str) -> String {
     match lang {
@@ -182,16 +220,56 @@ fn reading_ph(g: &G2p, lang: Lang, row: &Row, rule_ph: &str) -> String {
     }
 }
 
-/// Window of at most `max_len` characters around `focus`, snapped to a word start.
-fn window(sc: &[char], focus: usize, max: usize) -> (usize, String) {
+/// Start of a window of at most `max` characters with `focus` at most `lead` characters from its
+/// left edge, snapped back to a word start.
+fn window_start(sc: &[char], focus: usize, max: usize, lead: usize) -> usize {
     if sc.len() <= max {
-        return (0, sc.iter().collect());
+        return 0;
     }
-    let mut start = focus.saturating_sub(max / 2).min(sc.len() - max);
-    while start > 0 && sc[start - 1] != ' ' && focus - start < max - 1 {
-        start -= 1;
+    let last = sc.len() - max;
+    let mut start = focus.saturating_sub(lead).min(last);
+    if start == last {
+        // the window ends the text: snap forward so it still does (the end is what the next hits rely on)
+        while start > 0 && start < focus && sc[start - 1] != ' ' {
+            start += 1;
+        }
+    } else {
+        while start > 0 && sc[start - 1] != ' ' && focus - start < max - 1 {
+            start -= 1;
+        }
     }
-    (start, sc[start..start + max].iter().collect())
+    start
+}
+
+/// Windows that cover every hit once. A hit is covered by a window when it lies at least `max / 4`
+/// characters before its right edge (or the window ends the text). The first window is centred on the
+/// first hit; each later one starts a quarter-window before the first uncovered hit, so a pass
+/// advances about `max / 2` characters. Returns the window starts (at most `cap`) and, per hit,
+/// the window that covers it (None = beyond the cap: the rules stay).
+/// `hits` = (char offset, char length) in the text of `n` characters.
+fn plan_windows(sc: &[char], hits: &[(usize, usize)], max: usize, cap: usize) -> (Vec<usize>, Vec<Option<usize>>) {
+    let n = sc.len();
+    let margin = max / 4;
+    let mut starts: Vec<usize> = Vec::new();
+    let mut of_hit = Vec::with_capacity(hits.len());
+    for &(off, len) in hits {
+        let covered = |start: usize| {
+            let end = (start + max).min(n);
+            off >= start && off + len <= end && (end == n || off + len + margin <= end)
+        };
+        if starts.last().is_some_and(|&s| covered(s)) {
+            of_hit.push(Some(starts.len() - 1));
+            continue;
+        }
+        if starts.len() >= cap {
+            of_hit.push(None);
+            continue;
+        }
+        let lead = if starts.is_empty() { max / 2 } else { margin };
+        starts.push(window_start(sc, off, max, lead));
+        of_hit.push(Some(starts.len() - 1));
+    }
+    (starts, of_hit)
 }
 
 /// Called from the sentence pass, after the per-word loop and before the
@@ -232,10 +310,22 @@ pub fn apply(g: &G2p, lang: Lang, outs: &mut [Out]) {
     let hits: Vec<usize> = (0..idx.len()).filter(|&j| tab.get(&outs[idx[j]].src).is_some()).collect();
     let net = if disabled() { None } else { model(g, lang) };
     let sc: Vec<char> = text.chars().collect();
-    let mut cache: Option<(usize, Logits)> = None;
+    // one forward pass per window, shared by every hit it covers (not one pass per hit)
+    let mut logits: Vec<Logits> = Vec::new();
+    let mut starts: Vec<usize> = Vec::new();
+    let mut of_hit: Vec<Option<usize>> = vec![None; hits.len()];
+    if let Some(net) = &net {
+        let spans: Vec<(usize, usize)> =
+            hits.iter().map(|&j| (offs[j], outs[idx[j]].src.chars().count() + outs[idx[j]].punct.chars().count())).collect();
+        (starts, of_hit) = plan_windows(&sc, &spans, net.cfg.max_len, MAX_PASSES);
+        for &s in &starts {
+            let win: String = sc[s..(s + net.cfg.max_len).min(sc.len())].iter().collect();
+            logits.push(net.forward(&net.encode(&win)));
+        }
+    }
     let mut decisions = Vec::new();
     let mut changes: Vec<(usize, String)> = Vec::new();
-    for &j in &hits {
+    for (h, &j) in hits.iter().enumerate() {
         let i = idx[j];
         let rows = tab.get(&outs[i].src).unwrap();
         let rule_ph = outs[i].ph.clone();
@@ -247,23 +337,23 @@ pub fn apply(g: &G2p, lang: Lang, outs: &mut [Out]) {
             .or_else(|| ph_of.iter().zip(rows).find(|((_, p), _)| *p == rule_ph))
             .map(|((k, _), _)| *k);
         let mut model_k = None;
-        if let Some(net) = &net {
-            let (start, win) = window(&sc, offs[j], net.cfg.max_len);
-            if cache.as_ref().is_none_or(|(s, _)| *s != start) {
-                let ids = net.encode(&win);
-                cache = Some((start, net.forward(&ids)));
-            }
-            let lg = &cache.as_ref().unwrap().1;
-            let p = offs[j] - start;
+        let mut model_conf = None;
+        if let (Some(net), Some(w)) = (&net, of_hit[h]) {
+            let lg = &logits[w];
+            let p = offs[j] - starts[w];
             if p < lg.len {
                 let nv = net.cfg.n_vow;
                 let mut best = (f32::MIN, 0u8);
+                let mut zs = Vec::with_capacity(rows.len());
                 for r in rows {
                     let v = lg.vow[p * nv + r.k as usize];
+                    zs.push(v);
                     if v > best.0 {
                         best = (v, r.k);
                     }
                 }
+                let z: f32 = zs.iter().map(|v| (v - best.0).exp()).sum();
+                model_conf = Some(1.0 / z);
                 model_k = Some(best.1);
             }
         }
@@ -276,11 +366,11 @@ pub fn apply(g: &G2p, lang: Lang, outs: &mut [Out]) {
                 }
             }
         }
-        decisions.push(Decision { word_index: j, word: outs[i].src.clone(), rule_k, model_k, phs: ph_of.clone(), mode_rule: rows.iter().any(|r| r.mode_rule) });
+        decisions.push(Decision { word_index: j, word: outs[i].src.clone(), rule_k, model_k, phs: ph_of.clone(), mode_rule: rows.iter().any(|r| r.mode_rule), model_conf });
     }
     if capturing {
         let words = idx.iter().enumerate().map(|(j, &i)| (offs[j], outs[i].src.clone(), outs[i].punct.clone())).collect();
-        CAPTURE.with(|c| *c.borrow_mut() = Some(Capture { text: text.clone(), words, decisions }));
+        CAPTURE.with(|c| *c.borrow_mut() = Some(Capture { text: text.clone(), words, decisions, passes: starts.len() }));
         if NO_REPLACE.with(|c| *c.borrow()) {
             return;
         }
@@ -294,8 +384,80 @@ impl G2p {
     /// Table words of `text` with the class the rules produced and the class the
     /// context model picks (for evaluation).
     pub fn hetero_decisions(&self, text: &str, lang: Lang) -> Vec<Decision> {
-        capture_start(false);
+        let cap = capture(false);
         let _ = self.phonemize(text, lang);
-        capture_take().decisions
+        cap.take().decisions
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn hits_of(text: &str, w: &str) -> (Vec<char>, Vec<(usize, usize)>) {
+        let mut offs = Vec::new();
+        let mut n = 0;
+        for word in text.split(' ') {
+            if word == w {
+                offs.push((n, word.chars().count()));
+            }
+            n += word.chars().count() + 1;
+        }
+        (text.chars().collect(), offs)
+    }
+
+    /// Pass counts, not wall time: 3000 hits in one line must cost a bounded number of passes.
+    #[test]
+    fn windows_are_shared_and_capped() {
+        let text = "gosto ".repeat(3000);
+        let text = text.trim_end();
+        let (sc, hits) = hits_of(text, "gosto");
+        assert_eq!(hits.len(), 3000);
+        let (starts, of_hit) = plan_windows(&sc, &hits, 320, MAX_PASSES);
+        assert!(starts.len() <= MAX_PASSES, "{} passes", starts.len());
+        assert_eq!(starts.len(), MAX_PASSES, "the cap is what bounds this text");
+        // every hit covered by a window lies inside it, with context on both sides
+        for (&(off, len), w) in hits.iter().zip(&of_hit) {
+            if let Some(w) = w {
+                assert!(off >= starts[*w] && off + len <= starts[*w] + 320);
+            }
+        }
+        // hits beyond the cap are left to the rules, the ones before it are covered
+        assert!(of_hit[0].is_some() && of_hit[2999].is_none());
+        // with room to spare, windows are reused: ~every 160 characters is one pass
+        let text = "gosto ".repeat(300);
+        let (sc, hits) = hits_of(text.trim_end(), "gosto");
+        let (starts, of_hit) = plan_windows(&sc, &hits, 320, MAX_PASSES);
+        assert!(of_hit.iter().all(|w| w.is_some()));
+        assert!(starts.len() <= 1800 / 160 + 2, "{} passes for 300 hits", starts.len());
+    }
+
+    #[test]
+    fn short_text_is_one_window() {
+        let (sc, hits) = hits_of("eu gosto de ti e tu gosto", "gosto");
+        let (starts, of_hit) = plan_windows(&sc, &hits, 320, MAX_PASSES);
+        assert_eq!(starts, vec![0]);
+        assert_eq!(of_hit, vec![Some(0), Some(0)]);
+    }
+
+    #[test]
+    fn capture_is_scoped_to_the_guard() {
+        {
+            let c = capture(false);
+            assert!(CAPTURE.with(|c| c.borrow().is_some()));
+            assert!(NO_REPLACE.with(|c| *c.borrow()));
+            let _ = c.take();
+            assert!(CAPTURE.with(|c| c.borrow().is_some()), "still capturing after take");
+        }
+        assert!(CAPTURE.with(|c| c.borrow().is_none()));
+        assert!(!NO_REPLACE.with(|c| *c.borrow()));
+        // a panic inside the scope also resets it
+        let r = std::panic::catch_unwind(|| {
+            let _c = capture(false);
+            panic!("boom");
+        });
+        assert!(r.is_err());
+        assert!(CAPTURE.with(|c| c.borrow().is_none()));
+        assert!(!NO_REPLACE.with(|c| *c.borrow()));
     }
 }

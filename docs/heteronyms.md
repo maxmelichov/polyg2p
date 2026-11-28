@@ -72,6 +72,34 @@ with 50 or more gold decisions is below its rule accuracy):
 - Spanish, Polish, Czech, Hungarian, Finnish: no context-dependent class found (written accents, fixed stress
   or word-level lexicon matters), so there is no table.
 
+## Cost bound and confidence
+
+- One encoder pass per window, shared by every listed word inside it (the model's window is `max_len` = 320
+  characters; a hit needs a quarter window of context after it, so a pass advances about 160 characters), and
+  at most `MAX_PASSES` = 32 passes per `phonemize` call; hits beyond the cap keep the rules. Before this, every
+  listed word of a text longer than one window paid its own pass (`"gosto " * 3000` took over 40 s). A sentence
+  that fits one window still costs one pass. The tests assert pass counts, not wall time.
+- A truncated or corrupt `<lang>-ctx.g2p` is an error at load (every read of the file is bounds-checked and the
+  tensor sizes are checked against the config), and the engine keeps the rules.
+- Confidence threshold (keep the rules when the model's probability of its pick is below t): measured and
+  not kept. t was chosen on the UD train split only (the model never saw UD), then read on the held-out sets.
+  Accuracy of the shipped class, rules -> t = 0 (no threshold) / 0.7 / 0.8 / 0.9:
+
+  | lang | set | n | rules | 0 | 0.7 | 0.8 | 0.9 |
+  |---|---|---|---|---|---|---|---|
+  | pt | UD train split (choice) | 993 | 87.4 | 94.3 | 94.3 | 94.3 | 94.3 |
+  | pt | UD dev/test (held out) | 260 | 83.8 | 92.7 | 92.7 | 91.9 | 91.5 |
+  | pt | silver | 519 | 39.9 | 85.4 | 85.4 | 85.4 | 85.2 |
+  | it | UD train split (choice) | 737 | 73.9 | 86.3 | 85.2 | 84.7 | 83.4 |
+  | it | UD dev/test (held out) | 116 | 74.1 | 88.8 | 87.9 | 87.1 | 87.1 |
+  | it | silver | 231 | 84.4 | 92.2 | 91.3 | 91.3 | 90.0 |
+
+  The choice set never improves with a threshold, held-out accuracy falls, so none is applied
+  (`Decision::model_conf` is still recorded). Of the six reported wrong readings, `questão de gosto` (0.73),
+  `tinha gosto de madeira` (0.54) and `Se solo avessi seguito il tuo consiglio` (0.57) would be fixed at
+  t >= 0.8; `Puoi scrivere in qualsiasi lingua desideri` is wrong at 0.9999 and no threshold helps; `Olho por olho`
+  and `pintadas com gosto` are read correctly by the current pt model.
+
 ## Russian (measured, no change)
 
 `ru-ctx.g2p` was only ever scored as agreement with its teacher. Against sentences with the reading chosen by a

@@ -27,9 +27,10 @@ fn main() {
     for line in io::stdin().lock().lines() {
         let line = line.unwrap();
         if dump {
-            polyg2p::hetero::capture_start(false);
+            let cap = polyg2p::hetero::capture(false);
             let _ = g.phonemize(&line, lang);
-            let c = polyg2p::hetero::capture_take();
+            let c = cap.take();
+            drop(cap);
             let words: Vec<String> = c.words.iter().map(|(o, w, p)| format!("[{o},{},{}]", esc(w), esc(p))).collect();
             let occ: Vec<String> = c
                 .decisions
@@ -53,8 +54,9 @@ fn main() {
                 let mut phs = d.phs.clone();
                 phs.sort();
                 let phs: Vec<String> = phs.iter().map(|(k, p)| format!("{k}={p}")).collect();
-                let shipped = if d.mode_rule && !raw && d.model_k.is_some() { d.rule_k } else { d.model_k };
-                writeln!(out, "{}\t{}\t{}", fmt(d.rule_k), fmt(shipped), phs.join("|")).unwrap()
+                let shipped = if raw { d.model_k } else { d.shipped_k() };
+                let conf = d.model_conf.map(|c| format!("{c:.4}")).unwrap_or("-".into());
+                writeln!(out, "{}\t{}\t{}\t{}", fmt(d.rule_k), fmt(shipped), phs.join("|"), conf).unwrap()
             }
             None => writeln!(out, "-\t-\t").unwrap(),
         }
