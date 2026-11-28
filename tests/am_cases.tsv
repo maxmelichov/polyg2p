@@ -1,0 +1,231 @@
+# rule	input	expected output of phonemize(input, am)
+order-1	ለ	lə
+order-2	ሉ	lu
+order-3	ሊ	li
+order-4	ላ	la
+order-5	ሌ	le
+order-7	ሎ	lo
+order-8-labialized	ሏ	lʷa
+guttural-first-order-a	ሀ	ha
+guttural-first-order-a	ሐ	ha
+guttural-first-order-a	ኀ	ha
+guttural-first-order-a	አ	a
+guttural-first-order-a	ዐ	a
+h-row-kaf	ኸ	hə
+glottal-a-form	ኧረ	ərə
+ejective	ጠጅ	tʼəʤ
+ejective	ቀን	kʼən
+ejective	ጳጳስ	pʼapʼas
+ejective	ጸሎት	sʼəlot
+ejective	ፀሐይ	sʼəhaj
+ejective-affricate	ጨው	ʧʼəw
+affricate	ቸር	ʧər
+affricate	ጀመረ	ʤəmərə
+palatal	ሻይ	ʃaj
+palatal	ዠ	ʒə
+palatal-nasal	ኛ	ɲa
+labialized-series	ቋንቋ	kʼʷankʼʷa
+labialized-series	ጐረቤት	ɡʷərəbet
+labialized-series	ኳስ	kʷas
+labialized-series	ኋላ	hʷala
+labialized-series	ቍጥር	kʼʷɨtʼɨr
+carrier-initial	አንድ	and
+carrier-initial	ኢትዮጵያ	itjopʼja
+carrier-initial	ኡጋንዳ	uɡanda
+carrier-initial	ኤሊ	eli
+carrier-initial	ኦሮሞ	oromo
+carrier-sixth-order	እግር	ɨɡɨr
+carrier-sixth-order	እናት	ɨnat
+carrier-sixth-order	ዕድል	ɨdɨl
+carrier-hiatus	ሰዓት	səʔat
+carrier-hiatus	ትንሳኤ	tɨnsaʔe
+carrier-hiatus	ምዕራብ	mɨʔɨrab
+carrier-final	ረቡዕ	rəbuʔ
+epenthesis-initial	ስም	sɨm
+epenthesis-initial	ብር	bɨr
+epenthesis-initial	ውሃ	wɨha
+epenthesis-initial	ይህ	jɨh
+epenthesis-initial	ትራምፕ	tɨramp
+epenthesis-coda	ቤት	bet
+epenthesis-coda	ነው	nəw
+epenthesis-coda	መጽሐፍ	məsʼhaf
+epenthesis-coda	ሆስፒታል	hospital
+epenthesis-final-cluster	ልብስ	lɨbs
+epenthesis-final-cluster	ስልክ	sɨlk
+epenthesis-final-cluster	ሀይቅ	hajkʼ
+epenthesis-final-cluster	ግብፅ	ɡɨbsʼ
+epenthesis-final-cluster	ህልም	hɨlm
+epenthesis-rising-cluster	ክፍል	kɨfɨl
+epenthesis-rising-cluster	ክብር	kɨbɨr
+epenthesis-rising-cluster	ጥቅም	tʼɨkʼɨm
+epenthesis-rising-cluster	ደብል	dəbɨl
+epenthesis-medial	ድንግል	dɨnɡɨl
+epenthesis-medial	ትምህርት	tɨmhɨrt
+epenthesis-medial	መንግሥት	mənɡɨst
+epenthesis-medial	አንድነት	andɨnət
+epenthesis-medial	ምክንያት	mɨknɨjat
+epenthesis-medial	እንግሊዝ	ɨnɡɨliz
+epenthesis-medial	ፍርፍር	fɨrfɨr
+epenthesis-final-cc-first	ስምንት	sɨmɨnt
+epenthesis-final-cc-first	አምስት	amɨst
+epenthesis-final-cc-first	ስድስት	sɨdɨst
+epenthesis-final-cc-first	ንግሥት	nɨɡɨst
+epenthesis-before-long-nj	ማንኛው	manɨɲaw
+epenthesis-before-long-nj	አማርኛ	amarɨɲa
+one-bare-letter	ች	ʧ
+ligature-fold	ልጅ	lɨʤ
+ligature-fold	ቤቶች	betoʧ
+punct-full-stop	ቡና እፈልጋለሁ።	buna ɨfəlɡaləhu.
+punct-comma	ሰላም፣ እንዴት ነህ?	səlam, ɨndet nəh?
+punct-semicolon	መጣ፤ ሄደ።	mətʼa, hedə.
+punct-preface-colon	ለምሳሌ፦ፖሊስ፣ሚሊሻ	ləmsale: polis, miliʃa
+punct-question	ማን ነህ፧	man nəh?
+punct-wordspace	ሰላም፡ዓለም	səlam aləm
+punct-doubled	እንዴት ነህ?.	ɨndet nəh?
+punct-quotes	«ሰላም» አለ።	səlam alə.
+punct-exclamation	ዋው! ሲያምር!	waw! sijamɨr!
+spacing	  አዲስ   አበባ  	adis abəba
+number	3 ሰዎች	sost səwoʧ
+number	11	asra and
+number	21 ቀን	haja and kʼən
+number	1,000 ብር	and ʃih bɨr
+number	2015	hulət ʃih asra amɨst
+number-decimal	2.5	hulət nətʼb amɨst
+number-leading-zero	09	zero zətʼəɲ
+percent	50%	hamsa bəməto
+sentence	አዲስ አበባ የኢትዮጵያ ዋና ከተማ ናት።	adis abəba jəʔitjopʼja wana kətəma nat.
+sentence	እንኳን ደህና መጡ።	ɨnkʷan dəhna mətʼu.
+sentence	አመሰግናለሁ፣ ደህና ሁን።	aməsəɡnaləhu, dəhna hun.
+sentence	ስሜ አበበ ነው።	sɨme abəbə nəw.
+sentence	ዛሬ የአየር ሁኔታው ጥሩ ነው።	zare jəʔajər hunetaw tʼɨru nəw.
+no-false-affricate	ቤትሽ	betɨʃ
+no-false-affricate	ኮትሽ	kotɨʃ
+no-false-affricate	ቤትሽን	betɨʃɨn
+no-false-affricate	ቤትስ	betɨs
+no-false-affricate	ቤትሻ	betɨʃa
+no-false-affricate	ውድዥ	wɨdɨʒ
+no-false-affricate	ውድዝ	wɨdɨz
+true-affricate-kept	ቤች	beʧ
+true-affricate-kept	ቤትሽ እና ቤች	betɨʃ ɨna beʧ
+h-closes-no-cluster	እኅት	ɨhɨt
+h-closes-no-cluster	ይህች	jɨhɨʧ
+full-stop-typed	ሀገር፡፡	haɡər.
+full-stop-typed	ሰላም፡፡ ዓለም	səlam. aləm
+full-stop-typed	ሰላም::	səlam.
+full-stop-typed	ነው ::	nəw.
+full-stop-typed	ነው ::.	nəw.
+full-stop-typed	ነው ፡፡ ሰላም	nəw. səlam
+preface-colon-typed	ለምሳሌ፡- ቡና	ləmsale: buna
+preface-colon-typed	ለምሳሌ:- ቡና	ləmsale: buna
+colon-kept	ሰላም: ዓለም	səlam: aləm
+combining-mark	ሰ፟ላም	səlam
+combining-mark	ሰ፝ላ፞ም	səlam
+combining-mark	ሰ́ላም	səlam
+number-ordinal	5ኛ	amɨstəɲa
+number-ordinal	አምስተኛ	amɨstəɲa
+number-ordinal	1ኛ ክፍል	andəɲa kɨfɨl
+number-ordinal	20ኛው	hajaɲaw
+number-suffix	2ቱ	hulətu
+number-suffix	ሁለቱ	hulətu
+number-suffix	10ሩ ሰዎች	asru səwoʧ
+number-suffix	2ም	hulətɨm
+number-prefix	በ5 ሰዓት	bəʔamɨst səʔat
+number-prefix	በአምስት ሰዓት	bəʔamɨst səʔat
+number-prefix	ከ1,000 በላይ	kəʔand ʃih bəlaj
+number-spaced	5 ኛ	amɨst ɲa
+minus-sign-not-read	-5	amɨst
+minus-sign-not-read	−5	amɨst
+currency	$5	amɨst dolar
+currency	5$	amɨst dolar
+currency	€20	haja juro
+currency-no-word	₪5	amɨst
+clock	3:30	sost səlasa
+number-range	1-2	and hulət
+number-list	3፣4	sost, arat
+number-decimal	3.14	sost nətʼb and arat
+number-date-slashes	12/03/2021	asra hulət zero sost hulət ʃih haja and
+symbol	30° ነው	səlasa diɡri nəw
+symbol-skipped	2+2=4	hulət hulət arat
+latin-skipped	ሰላም hello ዓለም	səlam aləm
+latin-skipped	COVID-19 ነው	asra zətʼəɲ nəw
+apostrophe-deleted	የ'ሰላም' ጽሑፍ	jəsəlam sʼɨhuf
+hyphen-word-boundary	ሥነ-ሥርዓት	sɨnə sɨrat
+hyphen-word-boundary	ሰላም - ዓለም	səlam aləm
+dash-comma	ሰላም — ዓለም	səlam, aləm
+no-bare-mark	። ሰላም	səlam
+no-bare-mark	- ' ። ?	
+no-bare-mark	hello. ሰላም	səlam
+no-bare-mark	ሰላም hello። ዓለም	səlam. aləm
+no-bare-mark	(ሰላም)	səlam,
+abbreviation-as-written	ዓ.ም.	a. m.
+abbreviation-as-written	ዶ/ር	do r
+letter-not-read	ሰላም ⶀ። ዓለም	səlam. aləm
+letter-not-read	ሰⶀላም	səlam
+ethiopic-numeral-skipped	፲፪ ቀን	kʼən
+suffix-takes-vowel	ይስጥልኝ	jɨstʼɨlɨɲ
+suffix-takes-vowel	ያለውን	jaləwɨn
+suffix-takes-vowel	እግዚአብሔርን	ɨɡziʔabherɨn
+suffix-takes-vowel	ወይም	wəjɨm
+suffix-takes-vowel	አይችልም	ajʧɨlɨm
+suffix-takes-vowel	ቤትህ	betɨh
+suffix-takes-vowel	ልጅህ	lɨʤɨh
+suffix-takes-vowel	ስምሽ	sɨmɨʃ
+suffix-takes-vowel	ልጅሽ	lɨʤɨʃ
+suffix-takes-vowel	ትንሽ	tɨnɨʃ
+suffix-takes-vowel	ጤና ይስጥልኝ።	tʼena jɨstʼɨlɨɲ.
+suffix-after-vowel	ቤቱን	betun
+lexical-cluster	ዓይን	ajn
+lexical-cluster	የዓይን	jəʔajn
+lexical-cluster	ወይን	wəjn
+lexical-cluster	ሕልም	hɨlm
+lexical-cluster	ፊልም	film
+lexical-cluster	ዲዛይን	dizajn
+lexical-cluster	ታይም	tajm
+lexical-cluster	የሚገርም	jəmiɡərm
+lexical-cluster-only-that-word	ያህልም	jahlɨm
+lexical-cluster	እውን	ɨwn
+lexical-cluster	ማርሽ	marʃ
+lexical-cluster	ኦንላይን ታውን	onlajn tawn
+lexical-cluster	ቢትኮይን	bitkojn
+lexical-cluster	ወደሚገርም	wədəmiɡərm
+suffix-not-listed	ላይን	lajɨn
+suffix-not-listed	ሰማይን	səmajɨn
+perfective-ending	ነበርን	nəbərn
+perfective-ending	ስለነበርን	sɨlənəbərn
+perfective-ending	እያስተማርን	ɨjastəmarn
+perfective-ending	ካልን	kaln
+perfective-ending	ስላልቻልን	sɨlalʧaln
+perfective-ending	ነበርሽ	nəbərʃ
+perfective-ending	አደረግሽ	adərəɡʃ
+perfective-ending	ነበርህ	nəbərh
+perfective-ending	እዚያ ነበርን።	ɨzija nəbərn.
+perfective-not-a-verb	ነገርን	nəɡərɨn
+perfective-not-a-verb	ሀገርን	haɡərɨn
+perfective-not-a-verb	መኖርን	mənorɨn
+perfective-not-a-verb	ይስጥልን	jɨstʼɨlɨn
+perfective-obstruent-n	አደረግን	adərəɡɨn
+stem-numeral	6ኛ	sɨdɨstəɲa
+stem-numeral	8ኛው	sɨmɨntəɲaw
+stem-numeral	5ቱ	amɨstu
+stem-numeral	6ቱ	sɨdɨstu
+stem-numeral	8ቱ	sɨmɨntu
+stem-numeral	ስድስተኛ	sɨdɨstəɲa
+stem-numeral	ስምንተኛ	sɨmɨntəɲa
+stem-numeral	ከስድስት	kəsɨdɨst
+stem	ትልቅ	tɨlɨkʼ
+stem	ትልቁ	tɨlɨkʼu
+stem	ክርስቶስ	kɨrɨstos
+stem	ክርስቲያን	kɨrɨstijan
+stem	ቤተክርስቲያን	betəkrɨstijan
+number-suffix	5ቱን	amɨstun
+number-suffix	3ኛውን	sostəɲawɨn
+number-suffix	9ኙ	zətʼəɲu
+number-suffix	1990ዎቹ	and ʃih zətʼəɲ məto zətʼənawoʧu
+number-prefix	እስከ5	ɨskəʔamɨst
+number-prefix	የ5ቱ	jəʔamɨstu
+number-word-not-glued	2015ዓ.ም	hulət ʃih asra amɨst a. m
+number-word-not-glued	10ሺህ ብር	asɨr ʃih bɨr
+number-word-not-glued	3ሚሊዮን	sost milijon
+number-word-not-glued	5ሰዎች	amɨst səwoʧ
+number-word-not-glued	ብር5	bɨr amɨst
+number-word-not-glued	ሰዓት5ኛ	səʔat amɨstəɲa

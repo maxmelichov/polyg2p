@@ -34,6 +34,7 @@ pub mod sv;
 pub mod id;
 pub mod ca;
 pub mod ar;
+pub mod am;
 
 
 use std::path::{Path, PathBuf};
@@ -67,6 +68,8 @@ pub enum Lang {
     Id,
     Ca,
     Ar,
+    /// Amharic (Ge'ez script)
+    Am,
     /// Latin American Spanish (espeak's es-419): seseo, yeísmo
     EsLa,
     /// English accents: the American engine plus `en_accent` (Southern British,
@@ -112,6 +115,7 @@ impl Lang {
             "id" | "ind" => Some(Lang::Id),
             "ca" | "cat" => Some(Lang::Ca),
             "ar" | "ara" => Some(Lang::Ar),
+            "am" | "amh" | "am-et" | "am_et" => Some(Lang::Am),
             _ => None,
         }
     }
@@ -143,7 +147,7 @@ impl Lang {
         })
     }
 
-    pub const ALL: &[Lang] = &[Lang::En, Lang::EnGb, Lang::EnAu, Lang::EnNz, Lang::EnIn, Lang::EnSc, Lang::EnIe, Lang::EnCa, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar];
+    pub const ALL: &[Lang] = &[Lang::En, Lang::EnGb, Lang::EnAu, Lang::EnNz, Lang::EnIn, Lang::EnSc, Lang::EnIe, Lang::EnCa, Lang::Es, Lang::EsLa, Lang::It, Lang::De, Lang::Ru, Lang::He, Lang::Fr, Lang::Pt, Lang::Pl, Lang::Uk, Lang::Tr, Lang::Nl, Lang::Cs, Lang::El, Lang::Ro, Lang::Hu, Lang::Fi, Lang::Sv, Lang::Id, Lang::Ca, Lang::Ar, Lang::Am];
 
     pub fn code(self) -> &'static str {
         match self {
@@ -176,6 +180,7 @@ impl Lang {
             Lang::Id => "id",
             Lang::Ca => "ca",
             Lang::Ar => "ar",
+            Lang::Am => "am",
         }
     }
 
@@ -200,6 +205,7 @@ impl Lang {
             Lang::Id => id::IMPLEMENTED,
             Lang::Ca => ca::IMPLEMENTED,
             Lang::Ar => ar::IMPLEMENTED,
+            Lang::Am => am::IMPLEMENTED,
         }
     }
 }
@@ -303,8 +309,10 @@ impl G2p {
             }
             rest = &rest[a + len + 1..];
             // punctuation glued to the tag stays with it: "[laughter]."
-            let punct: String = rest.chars().take_while(|c| text::KEPT_PUNCT.contains(c)).collect();
-            rest = &rest[punct.len()..];
+            // (Ethiopic marks included: "[laughs]።")
+            let glued: String = rest.chars().take_while(|&c| text::KEPT_PUNCT.contains(&c) || lang == Lang::Am && am::is_mark(c)).collect();
+            rest = &rest[glued.len()..];
+            let punct = if lang == Lang::Am { am::tag_marks(&glued) } else { glued };
             parts.push(format!("{tag}{punct}"));
         }
         if !found {
@@ -324,6 +332,14 @@ impl G2p {
         if lang == Lang::He {
             return self.hebrew().phonemize(text);
         }
+        // Ethiopic punctuation is mapped to the kept marks before tokenizing (am.rs)
+        let mapped;
+        let text = if lang == Lang::Am {
+            mapped = am::marks(text);
+            mapped.as_str()
+        } else {
+            text
+        };
         let toks = text::tokenize(text);
         let mut outs: Vec<Out> = Vec::with_capacity(toks.len());
         let mut words: Vec<String> = Vec::new();
@@ -411,6 +427,22 @@ impl G2p {
                     } else {
                         num::expand(n, lang, &prev, next.unwrap_or(""), &mut words);
                     }
+                    if lang == Lang::Am && !words.is_empty() {
+                        // a prefix or a suffix written against the digits is one word with
+                        // them: በ5 → በአምስት, 5ኛ → አምስተኛ. Any other word stays apart: 5ሰዎች
+                        let before = match ti.checked_sub(1).map(|k| &toks[k]) {
+                            Some(Tok::Word(w)) if am::num_prefix(w) && outs.last().is_some_and(|o| o.src == *w) => outs.pop().map(|o| o.src),
+                            _ => None,
+                        };
+                        let after = match toks.get(ti + 1) {
+                            Some(Tok::Word(w)) if words.last().is_some_and(|l| am::num_suffix(l, w)) => {
+                                skip = ti + 2;
+                                Some(w.as_str())
+                            }
+                            _ => None,
+                        };
+                        am::glue(before.as_deref(), &mut words, after);
+                    }
                     if lang == Lang::De && words.iter().any(|w| w == "Uhr") {
                         // 14:30 Uhr: the expansion already says Uhr
                         if let Some(k) = toks[ti + 1..].iter().position(|t| !matches!(t, Tok::Sep)) {
@@ -486,6 +518,7 @@ impl G2p {
             Lang::Id => id::join(&mut outs),
             Lang::Ca => ca::join(&mut outs),
             Lang::Ar => ar::join(&mut outs),
+            Lang::Am => am::join(&mut outs),
         }
         let mut s = String::with_capacity(text.len() * 2);
         for o in &outs {
@@ -572,6 +605,7 @@ impl G2p {
             Lang::Id => id::word(&lw),
             Lang::Ca => ca::word(&lw),
             Lang::Ar => ar::word(&lw),
+            Lang::Am => am::word(&lw),
         };
         outs.push(Out { ph, punct: String::new(), pause_after: false, src: lw });
     }

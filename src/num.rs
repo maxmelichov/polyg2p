@@ -4,14 +4,14 @@
 //! (`ein+und+zwanzig`) so the German module can stress them as one compound.
 
 use crate::Lang;
-use crate::{fr, pt, pl, uk, tr, nl, cs, el, ro, hu, fi, sv, id, ca, ar};
+use crate::{fr, pt, pl, uk, tr, nl, cs, el, ro, hu, fi, sv, id, ca, ar, am};
 
 /// Parse a digit string with separators into (integer part, fractional digits).
 /// en uses `,` for thousands and `.` for decimals; es/it/de the reverse. A single
 /// separator followed by exactly three digits is read as a thousands separator.
 fn parse(s: &str, lang: Lang) -> Option<(u128, Option<String>)> {
     let (thou, dec) = match lang {
-        Lang::En | Lang::He | Lang::Ar => (',', '.'),
+        Lang::En | Lang::He | Lang::Ar | Lang::Am => (',', '.'),
         _ => ('.', ','),
     };
     let mut int_part = String::new();
@@ -223,9 +223,11 @@ fn expand_plain(tok: &str, lang: Lang, prev: &str, next: &str, out: &mut Vec<Str
             Lang::Id => id::DECIMAL,
             Lang::Ca => ca::DECIMAL,
             Lang::Ar => ar::DECIMAL,
+            Lang::Am => am::DECIMAL,
         }
         .to_string());
-        if f.len() <= 2 && !f.starts_with('0') && lang != Lang::En {
+        // English and Amharic read the fraction digit by digit
+        if f.len() <= 2 && !f.starts_with('0') && !matches!(lang, Lang::En | Lang::Am) {
             out.extend(cardinal(f.parse().unwrap_or(0), lang));
         } else {
             for d in f.chars() {
@@ -290,6 +292,7 @@ pub fn symbol(c: char, lang: Lang) -> Option<&'static str> {
         (Lang::Id, _) => return id::symbol(c),
         (Lang::Ca, _) => return ca::symbol(c),
         (Lang::Ar, _) => return ar::symbol(c),
+        (Lang::Am, _) => return am::symbol(c),
         _ => return None,
     })
 }
@@ -352,6 +355,7 @@ pub fn cardinal(n: u128, lang: Lang) -> Vec<String> {
         Lang::Id => id::cardinal(n),
         Lang::Ca => ca::cardinal(n),
         Lang::Ar => ar::cardinal(n),
+        Lang::Am => am::cardinal(n),
     }
 }
 
