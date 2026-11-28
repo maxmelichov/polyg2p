@@ -76,3 +76,16 @@ python tools/ru_build_lex.py /path/to/Russian-G2P/ru_lexicon data-out
 
 Without them, stress falls back to suffix rules and is often wrong. The
 Python wheel bundles them.
+
+## Prepositions are proclitics
+
+`на столе`, `под окном`, `в парк`, `с другом`: a preposition directly before a word loses its stress, its vowel reduces
+like a pretonic vowel and its last consonant takes the voicing of the next sound (`nə stɐlʲˈe`, `pəd ɐknˈom`, `f park`,
+`z drˈuɡəm`); `то` after a hyphen (`кто-то`) is unstressed. A conjunction or particle after the preposition (`за и против`)
+is not a stress host, so the preposition keeps its full form; stranded prepositions (before punctuation) are unchanged.
+`через` and `перед` keep their weak stress and only assimilate. Fixed stressed-preposition phrases (`на́ уши`, `за́ город`)
+are not listed: they vary in modern speech.
+
+Consequence for `tools/ru_parity.py`: the sentence-level comparison with the Python original now differs on exactly these
+words (checked on the first 12 mismatches and 2,500 sentences: every difference is a preposition or `-то`); the
+word-level parity is unchanged (845/845 gold words, 555,229/555,229 Wiktionary words exact).
