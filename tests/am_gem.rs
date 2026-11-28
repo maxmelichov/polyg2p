@@ -73,11 +73,15 @@ fn model_marks_every_allowed_letter_and_windows_cover_long_input() {
     // margin -5: nothing is long
     let g0 = G2p::new(None).with_amharic(am::Gem::from_parts(Some(tiny(-5.0, 512)), None));
     assert_eq!(g0.phonemize("ምሽት", Lang::Am), G2p::new(None).phonemize("ምሽት", Lang::Am));
-    // a window of 8 characters: the sentence is cut at spaces, every word is still flagged
+    // a window of 8 characters: the tagger reads one word at a time, every word is still flagged
     let gw = G2p::new(None).with_amharic(am::Gem::from_parts(Some(tiny(5.0, 8)), None));
     let s = "ምሽት ምሽት ምሽት ምሽት ምሽት ምሽት";
     let out = gw.phonemize(s, Lang::Am);
     assert_eq!(out.matches('ː').count(), 6, "{out}");
+    // a word longer than the window is read in pieces and every allowed letter is still flagged
+    let g4 = G2p::new(None).with_amharic(am::Gem::from_parts(Some(tiny(5.0, 4)), None));
+    let w = g4.phonemize("ምሽትምሽትምሽት", Lang::Am);
+    assert_eq!(w.matches('ː').count(), 7, "{w}"); // 9 letters: the first and the final bare one are guarded
 }
 
 #[test]

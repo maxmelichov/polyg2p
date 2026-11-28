@@ -6,7 +6,7 @@ Fidel does not write long consonants. flags = set of letter indices (into the le
   R2: a long bare consonant that is not word-final takes ɨ (ምሽት -> mɨʃːɨt, አምስት -> amːɨst).
   The stem table is skipped when a flag falls on a stem letter or on the letter right after the stem.
   ː is written after the whole consonant (tʃʼː, lʷːa).
-Tagger input (2.3): one string per sentence, words folded by the one-to-one homophone fold FOLD, marks kept."""
+Tagger input (round 2): one folded word per call (no sentence context), words folded by the one-to-one homophone fold FOLD."""
 import os, sys, re, importlib.util
 _D = os.environ.get("AM_G2P_DIR")
 if not _D: raise SystemExit("set AM_G2P_DIR to the folder that holds the reference am_g2p.py (the Python twin of src/am.rs)")
@@ -144,20 +144,23 @@ class Gem:
             out.append((s, e)); s = e + 1 if e < len(t) and t[e] == " " else e
         return out
     def flags(self, toks):
-        """toks = [(word, marks)] -> per word (set of long letter idx, margins list). margin = logit[1] - logit[0] (None without a model)"""
-        ls = [letters(w) for w, _ in toks]; res = [set() for _ in toks]; mar = [[None] * len(l) for l in ls]
-        if self.t:
-            parts = []; start = []; k = 0
-            for l, (w, mk) in zip(ls, toks): start.append(k); parts.append(fold(l) + mk); k += len(parts[-1]) + 1
-            text = " ".join(parts)
-            for s, e in self.windows(text, self.cfg["max_len"]):
-                lg = self.logits(text[s:e])
-                for j, l in enumerate(ls):
-                    for i in range(len(l)):
-                        p = start[j] + i
-                        if s <= p < e: m = float(lg[p - s, 1] - lg[p - s, 0]); mar[j][i] = m; (m > 0) and res[j].add(i)
+        """toks = [(word, marks)] -> per word (set of long letter idx, margins list). margin = logit[1] - logit[0] (None without a model).
+        Round 2: the tagger reads ONE word at a time (the folded word alone, marks do not reach it), once per distinct word; a word the table
+        knows is not sent to it. Table rows without a mark are an explicit 'never long' (heteronym types)."""
+        ls = [letters(w) for w, _ in toks]; res = [set() for _ in toks]; mar = [[None] * len(l) for l in ls]; seen = {}
         for j, l in enumerate(ls):
-            if self.table is not None and fold(l) in self.table: res[j] = {i for i, x in enumerate(self.table[fold(l)]) if x}
+            key = fold(l)
+            if self.t and not (self.table is not None and key in self.table):
+                if key not in seen:
+                    r = set(); m = [None] * len(l)
+                    for s, e in self.windows(key, self.cfg["max_len"]):
+                        lg = self.logits(key[s:e])
+                        for q in range(e - s):
+                            m[s + q] = float(lg[q, 1] - lg[q, 0])
+                            if m[s + q] > 0: r.add(s + q)
+                    seen[key] = (r, m)
+                res[j] = set(seen[key][0]); mar[j] = list(seen[key][1])
+            if self.table is not None and key in self.table: res[j] = {i for i, x in enumerate(self.table[key]) if x}
             ok = guards(l); res[j] = {i for i in res[j] if ok[i]}
         return res, mar
 def g2p_gem(text, gem):

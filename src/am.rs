@@ -543,36 +543,36 @@ impl Gem {
     }
 
     /// Flags (one per fidel letter) for every word of a sentence: `words[k]` is
-    /// (the word, the marks that follow it).
+    /// (the word, the marks that follow it; the marks no longer reach the tagger).
     pub fn flags(&self, words: &[(&str, &str)]) -> Vec<Vec<bool>> {
         let letters: Vec<Vec<char>> = words.iter().map(|(w, _)| w.chars().filter(|&c| fidel(c).is_some()).collect()).collect();
         let mut out: Vec<Vec<bool>> = letters.iter().map(|l| vec![false; l.len()]).collect();
         let Some(m) = &self.model else {
             return self.table_pass(letters, out);
         };
-        // the tagger input of the delivery: folded words + marks, one space between words
-        let mut text: Vec<char> = Vec::new();
-        let mut start = Vec::with_capacity(words.len());
-        for (k, (_, marks)) in words.iter().enumerate() {
-            if k > 0 {
-                text.push(' ');
+        // round 2: gemination is a property of the word, so the tagger reads ONE word at a time (the word alone is its whole input),
+        // once per distinct word of the call; a word the table knows is not sent to the tagger at all
+        let mut seen: std::collections::HashMap<String, Vec<bool>> = std::collections::HashMap::new();
+        for (k, l) in letters.iter().enumerate() {
+            let key: String = l.iter().map(|&c| fold(c)).collect();
+            if let Some(f) = seen.get(&key) {
+                out[k] = f.clone();
+                continue;
             }
-            start.push(text.len());
-            text.extend(letters[k].iter().map(|&c| fold(c)));
-            text.extend(marks.chars());
-        }
-        for (s, e) in cut_windows(&text, m.cfg.max_len) {
-            let win: String = text[s..e].iter().collect();
-            let lg = m.forward(&m.encode(&win));
-            for (k, l) in letters.iter().enumerate() {
-                for i in 0..l.len() {
-                    let p = start[k] + i;
-                    if p >= s && p < e {
-                        let q = p - s;
-                        out[k][i] = lg.stress[2 * q + 1] > lg.stress[2 * q];
-                    }
+            if self.table.as_ref().is_some_and(|t| t.contains_key(&key)) {
+                continue;
+            }
+            let text: Vec<char> = key.chars().collect();
+            let mut fl = vec![false; l.len()];
+            for (s, e) in cut_windows(&text, m.cfg.max_len) {
+                let win: String = text[s..e].iter().collect();
+                let lg = m.forward(&m.encode(&win));
+                for q in 0..(e - s) {
+                    fl[s + q] = lg.stress[2 * q + 1] > lg.stress[2 * q];
                 }
             }
+            seen.insert(key, fl.clone());
+            out[k] = fl;
         }
         self.table_pass(letters, out)
     }
