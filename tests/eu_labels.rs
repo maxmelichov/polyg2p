@@ -109,3 +109,13 @@ fn greek_final_secondary() {
     assert_eq!(p("el", "αυτοκίνητο"), "ˌaftocˈinito");
     assert!(p("el", "άνθρωπος μου").contains("ˈanθropˌos") || p("el", "άνθρωπος μου").contains("ˈanθropˌoz"));
 }
+
+/// Hungarian articles a/az and indefinite egy carry no stress before their noun phrase.
+#[test]
+fn hungarian_articles() {
+    assert_eq!(p("hu", "az ember"), "ɑz ˈɛmbɛr");
+    assert_eq!(p("hu", "a ház"), "ɑ hˈaːz");
+    assert_eq!(p("hu", "egy ház"), "ɛɟː hˈaːz");
+    assert_eq!(p("hu", "Ez az."), "ˈɛz ˈɑz.");
+    assert_eq!(p("hu", "egy kettő"), "ˈɛɟː kˈɛtːøː");
+}

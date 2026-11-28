@@ -568,6 +568,16 @@ pub fn join(outs: &mut [Out]) {
         "egy", "kettő", "három", "négy", "öt", "hat", "hét", "nyolc", "kilenc", "tíz", "húsz", "harminc", "negyven",
         "ötven", "hatvan", "hetven", "nyolcvan", "kilencven", "száz", "ezer", "millió", "milliárd", "nulla",
     ];
+    // the articles a/az and the indefinite egy are proclitic: no stress of their own before their noun phrase
+    // (Siptár & Törkenczy, The Phonology of Hungarian: the article is a clitic; en.wiktionary az/egy list only the
+    // isolated, stressed form). Standing alone (before punctuation) they keep it.
+    for k in 0..outs.len().saturating_sub(1) {
+        let article = matches!(outs[k].src.as_str(), "a" | "az")
+            || outs[k].src == "egy" && !NUMBER_ENDS.contains(&outs[k + 1].src.as_str()) && !outs[k + 1].src.starts_with("két");
+        if article && !outs[k].pause_after && !outs[k + 1].ph.is_empty() {
+            outs[k].ph = outs[k].ph.replace('ˈ', "");
+        }
+    }
     for k in 1..outs.len() {
         let (a, b) = outs.split_at_mut(k);
         let prev = &mut a[k - 1];
