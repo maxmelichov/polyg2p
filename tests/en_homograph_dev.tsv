@@ -1,0 +1,222 @@
+# author-written selection set ('dev_hard'), written before any round-2 model. sentence <TAB> word <TAB> reading. Used for selection and tuning only; never reported as a result.
+Record the lecture so we can replay it later.	record	verb
+Refund the customer before she calls again.	refund	verb
+Permit no visitors after nine.	permit	verb
+Produce your tickets at the gate.	produce	verb
+Project the slides onto the white wall.	project	verb
+Protest all you like, the rule stays.	protest	verb
+Reject the first draft and start again.	reject	verb
+Object if you disagree, but do it politely.	object	verb
+Insert the card and wait for the beep.	insert	verb
+Convict nobody without proof.	convict	verb
+Transform the list into a table.	transform	verb
+Export the data and send me the file.	export	verb
+Import the images before you start editing.	import	verb
+Contract the muscles slowly, then relax.	contract	verb
+Present your passport at the desk.	present	verb
+Increase the heat and stir for a minute.	increase	verb
+Decrease the volume, please.	decrease	verb
+Discount nothing until you have checked the figures.	discount	verb
+Refuse the offer if it feels wrong.	refuse	verb
+Subject the sample to a second test.	subject	verb
+Console your friend if she cries.	console	verb
+Conduct the experiment twice.	conduct	verb
+Desert the ship and you lose your pay.	desert	verb
+Live well and sleep deeply.	live	verb
+Lead the children across the road.	lead	verb
+Read the contract carefully before you sign it.	read	present
+Wind the bandage tightly around the wrist.	wind	turn
+Tear the ticket along the dotted line.	tear	rip
+Use the stairs if the lift is broken.	use	verb
+Separate the paper from the plastic.	separate	verb
+Sow the field before the rain comes.	sow	plant
+Polish your shoes before the interview.	polish	wax
+Bow your head and listen.	bow	bend
+Perfect the first move before you try the second.	perfect	verb
+Estimate how long the trip will take.	estimate	verb
+Suspect everything and trust nobody.	suspect	verb
+Compound the interest every month.	compound	verb
+Lead is heavier than iron.	lead	metal
+Use of the old road is forbidden after dark.	use	noun
+Conduct in the hall is closely watched.	conduct	noun
+Content on the site changes every week.	content	noun
+Present company excepted, they were all fools.	present	adjnoun
+Record sales hit a high in May.	record	noun
+Object permanence develops early in infants.	object	noun
+Project managers work long hours.	project	noun
+Desert nights can be freezing.	desert	noun
+Contract workers are paid by the day.	contract	noun
+Export figures rose again last quarter.	export	noun
+Increase in demand was the main cause.	increase	noun
+Protest marches were held in ten cities.	protest	noun
+Permit holders may park here.	permit	noun
+Refuse bins are emptied on Tuesdays.	refuse	noun
+Wind from the north brought the first snow.	wind	air
+Tear gas drifted across the square.	tear	cry
+Bass lines drive the whole song.	bass	music
+Bow ties were out of fashion that year.	bow	knot
+Row after row of tents filled the field.	row	line
+Minute hands were invented later than hour hands.	minute	time
+Polish workers built most of the road.	polish	nationality
+Close friends came from three countries.	close	adj
+Live shows pay the bills for most bands.	live	adj
+Lives were lost in the storm.	lives	noun
+House prices fell again in spring.	house	noun
+Subject matter varied from week to week.	subject	adjnoun
+Separate beds were the custom then.	separate	adj
+Perfect weather made the trip a joy.	perfect	adj
+Invalid entries are skipped by the program.	invalid	adj
+Mobile phones are banned in class.	mobile	adj
+Wound care takes patience.	wound	injury
+Dove feathers are soft and grey.	dove	bird
+Job losses mounted through the winter.	job	work
+Aged cheese keeps for months.	aged	past
+Learned men argued about the stars.	learned	adj
+Moped riders must wear helmets.	moped	noun
+Reading glasses sat on the table.	reading	gerund
+Reading was founded long before the railway.	reading	town
+Rebel forces took the northern bridge.	rebel	noun
+Suspect profiles are kept on file.	suspect	adjnoun
+Graduate students must teach one class.	graduate	adjnoun
+Alternate Fridays are free.	alternate	adjnoun
+Moderate rain is expected on Friday.	moderate	adjnoun
+Compact cars are cheaper to run.	compact	adjnoun
+Frequent flyers get free upgrades.	frequent	adj
+Appropriate dress is required.	appropriate	adj
+Abstract art divides critics.	abstract	adjnoun
+Deliberate delays cost the firm dearly.	deliberate	adj
+Intimate settings suit small bands.	intimate	adj
+Elaborate costumes filled the hall.	elaborate	adj
+Articulate speakers hold an audience.	articulate	adj
+Job brought his sorrow before God.	job	bible
+Jesus Hernandez coaches the junior team.	jesus	spanish
+Mobile has a busy port.	mobile	city
+Reading has a big music festival.	reading	town
+Celtic won the cup again.	celtic	sport
+Polish is a Slavic language.	polish	nationality
+Nestle has plants in many countries.	nestle	name
+Bologna lies north of Florence.	bologna	city
+Did you read the whole report last night?	read	present
+Why would anyone tear down such a beautiful house?	tear	rip
+Where did the dove go after the storm?	dove	bird
+Who will lead the committee after the vote?	lead	verb
+Is the water too close to the road?	close	adj
+What is the minimum wage for a part time job?	job	work
+Can you present the findings without notes?	present	verb
+How many lives does a cat have?	lives	noun
+How much wind do we expect tonight?	wind	air
+Will they permit us to film inside?	permit	verb
+Why do they refuse to talk?	refuse	verb
+Did he object loudly when the vote was called?	object	verb
+What record did she break last year?	record	noun
+Is that a real bow or a painted one?	bow	knot
+Does the new subject bother you?	subject	adjnoun
+Who wrote the abstract of this talk?	abstract	adjnoun
+Could you sow the beans while I water the pots?	sow	plant
+Long before the news broke and everyone began talking, she had already read it.	read	past
+The students who finished early and handed in their papers read quietly.	read	past
+Long after the lights went out, the children lay awake and read by torchlight.	read	past
+If you want to understand why the bridge failed, you should read the engineer's report.	read	present
+She said she would read it tomorrow.	read	present
+Having read the whole thing twice, he still disagreed.	read	past
+I wish I could read as fast as you.	read	present
+They read the letter, folded it, and left without a word.	read	past
+He sat down and read until sunrise.	read	past
+They live in a house that was built a hundred years ago.	live	verb
+The band will play live on the radio tonight.	live	adj
+Where I live there is no snow.	live	verb
+We want to live near the coast and keep chickens.	live	verb
+How long do tortoises live?	live	verb
+The fish was still live when it reached the market.	live	adj
+The wind howled and the shutters rattled.	wind	air
+The river will wind its way down to the sea.	wind	turn
+A cold wind and heavy rain arrived together.	wind	air
+She felt the wind in her hair.	wind	air
+Do not forget to wind your watch.	wind	turn
+The path begins to wind uphill after the bridge.	wind	turn
+She wiped away a tear and smiled.	tear	cry
+Do not tear the paper or it will be useless.	tear	rip
+A single tear fell onto the letter.	tear	cry
+The cat will tear the sofa to pieces.	tear	rip
+There was a tear in his coat.	tear	rip
+A tear of joy ran down his face.	tear	cry
+She stood close to him and whispered.	close	adj
+It was a close match and everyone cheered.	close	adj
+Please close the lid when you are done.	close	verb
+We were close to the border when the car stopped.	close	adj
+They close the bridge when the wind is strong.	close	verb
+He kept a close eye on the oven.	close	adj
+The lead in this old pipe is dangerous.	lead	metal
+She will lead the walk through the forest.	lead	verb
+The detectives followed every lead until dawn.	lead	verb
+The lead role went to a newcomer.	lead	verb
+Children should not chew paint that contains lead.	lead	metal
+A dog on a lead is welcome here.	lead	verb
+I want you to lead and the others to follow.	lead	verb
+Their lead shrank to two points.	lead	verb
+Lead and tin were mixed to make solder.	lead	metal
+He is the one who will lead us home.	lead	verb
+They plan to export steel and import coffee.	export	verb
+We need to reject the proposal and start over.	reject	verb
+The reject was thrown in the bin.	reject	noun
+The convict escaped at dawn.	convict	noun
+They failed to convict him.	convict	verb
+The truck collected the refuse on Monday.	refuse	noun
+We made good progress today.	progress	noun
+They progress slowly through the book.	progress	verb
+Rebels plan to overthrow the king.	overthrow	verb
+The overthrow of the king shocked Europe.	overthrow	noun
+The company will record the call and keep a copy of the record for a year.	record	verb
+She holds the record for the longest swim.	record	noun
+He tried to console her but she would not listen.	console	verb
+The console on the left has a broken button.	console	noun
+The team will contest the ruling and file an appeal.	contest	verb
+It was a fierce contest between old friends.	contest	noun
+The farmers produce more than they can sell.	produce	verb
+The market sells fresh produce from the valley.	produce	noun
+What they present and what they promise are different things.	present	verb
+The present situation is not sustainable.	present	adjnoun
+The guests brought a present for the host.	present	adjnoun
+Nobody could permit such a thing to happen.	permit	verb
+Engineers insert a small wire into the valve.	insert	verb
+The insert fell out of the magazine.	insert	noun
+Heavy snow may increase the risk of a crash.	increase	verb
+The increase in rent forced them out.	increase	noun
+The singer will perform and then conduct the choir.	conduct	verb
+The conduct of the soldiers was praised.	conduct	noun
+Why do you object to the plan?	object	verb
+She kept a small object in her pocket.	object	noun
+The cost of a house keeps rising.	house	noun
+The town will house two hundred workers.	house	verb
+Fine dust may affect the engine.	affect	verb
+A wide variety of birds frequent the lake.	frequent	verb
+They had frequent arguments about money.	frequent	adj
+The boat began to row against the current.	row	line
+The row between the two brothers lasted all night.	row	quarrel
+You should not row with your neighbours.	row	quarrel
+The old man bent in a deep bow.	bow	bend
+A red bow was pinned to her hair.	bow	knot
+The singer plays bass and her brother plays drums.	bass	music
+A minute crack ran along the glass.	minute	tiny
+The sow and her piglets rested in the mud.	sow	pig
+Farmers sow wheat in the autumn.	sow	plant
+He will polish the floor and then wax the table.	polish	wax
+The wound was cleaned and wrapped by the nurse.	wound	injury
+He wound the rope around the post and tied it.	wound	turned
+The lives of the miners were hard.	lives	noun
+She lives for the weekend.	lives	verb
+A perfect circle is hard to draw by hand.	perfect	adj
+They perfect the recipe over the course of a year.	perfect	verb
+Many students will graduate this year.	graduate	verb
+He had to resume work after the break.	resume	verb
+The law will separate church from state.	separate	verb
+We kept them in a separate room.	separate	adj
+They agreed to alternate between the two plans.	alternate	verb
+The alternate was called in at halftime.	alternate	adjnoun
+A moderate climate suits the vines.	moderate	adjnoun
+The soldiers will desert if they are not paid.	desert	verb
+Rain is rare in the desert.	desert	noun
+They will subject him to a long interview.	subject	verb
+We suspect the lock was forced.	suspect	verb
+The main suspect is still at large.	suspect	adjnoun
+I live and work in a small town.	live	verb

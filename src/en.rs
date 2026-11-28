@@ -285,6 +285,11 @@ impl English {
         self.hg.as_ref()?.scores(units, target)
     }
 
+    /// Does the loaded heteronym model decide this (lower-case) word? (tools)
+    pub fn heteronym_covers(&self, w: &str) -> bool {
+        self.hg.as_ref().is_some_and(|m| m.covers(w))
+    }
+
     /// Load the heteronym model (`en_homograph.g2p`); a file that does not open or does not fit the table is ignored.
     pub fn load_homograph(&mut self, path: &Path) {
         self.hg = homograph::Model::open(path, &homograph::Table::parse(HOMOGRAPH_TSV)).ok();

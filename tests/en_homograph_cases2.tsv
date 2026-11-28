@@ -1,0 +1,223 @@
+# author-written adversarial sentences, second file (written before any round-2 model). sentence <TAB> word <TAB> reading. Frozen: run once on the frozen candidate; never used for selection.
+Abstract the main ideas before you write the summary.	abstract	verb
+The abstract of the paper was only six lines long.	abstract	adjnoun
+Her paintings are mostly abstract these days.	abstract	adjnoun
+Never abuse a power you were given in trust.	abuse	verb
+The abuse went on for years before anyone spoke up.	abuse	noun
+The old addict finally asked for help.	addict	noun
+They did not want to addict a child to sugar.	addict	verb
+Few people advocate a return to the old rules.	advocate	verb
+She was a loud advocate for public libraries.	advocate	noun
+Does the medicine affect your sleep?	affect	verb
+The patient showed a flat affect during the interview.	affect	noun
+Alternate the red tiles with the blue ones.	alternate	verb
+We take an alternate route on Fridays.	alternate	adjnoun
+Both analyses disagree with the first estimate.	analyses	noun
+She analyses the data every Monday morning.	analyses	verb
+That joke was not appropriate for a funeral.	appropriate	adj
+Some firms appropriate land that belongs to the village.	appropriate	verb
+August is the hottest month in the south.	august	month
+The august members of the court rose together.	august	adj
+Blessed are the peacemakers.	blessed	adj
+She was blessed with a good memory.	blessed	past
+Combine the flour and the eggs in a large bowl.	combine	verb
+The farmer drove the combine across the field.	combine	noun
+Fold the napkin into a compact square.	compact	adjnoun
+Compact the soil before you plant the seeds.	compact	verb
+That would only compound the problem.	compound	verb
+The compound was surrounded by a high wall.	compound	noun
+The two sides conflict on almost every point.	conflict	verb
+The conflict lasted three winters.	conflict	noun
+They construct a new bridge every decade.	construct	verb
+The sentence is a strange construct of old and new words.	construct	noun
+Few workers will contest the decision.	contest	verb
+The contest ends at noon.	contest	noun
+Contrast the two reports and list the differences.	contrast	verb
+The contrast between day and night was sharp.	contrast	noun
+Prices decrease when supply goes up.	decrease	verb
+A decrease in rainfall hurt the harvest.	decrease	noun
+The cracked wheel is a defect from the factory.	defect	noun
+Some engineers defect to rival firms every year.	defect	verb
+It was a deliberate attempt to mislead us.	deliberate	adj
+The jury will deliberate until they agree.	deliberate	verb
+Each delegate carried a small flag.	delegate	noun
+You may delegate the boring work to an assistant.	delegate	verb
+The discharge from the factory turned the stream brown.	discharge	noun
+They will discharge the patient on Sunday.	discharge	verb
+Please document every step you take.	document	verb
+The document is on the second shelf.	document	noun
+The entrance is round the back.	entrance	noun
+The magician will entrance the whole audience.	entrance	verb
+Two guards escort the prisoner to the court.	escort	verb
+His escort waited by the car.	escort	noun
+Do not make an excuse for being late.	excuse	noun
+Please excuse the mess in here.	excuse	verb
+The villain will exploit every weakness.	exploit	verb
+Her greatest exploit was crossing the ice alone.	exploit	noun
+Extract the juice from the lemons.	extract	verb
+The recipe calls for vanilla extract.	extract	noun
+Frequent breaks help you stay awake.	frequent	adj
+Birds frequent the pond in spring.	frequent	verb
+The impact of the storm was felt for weeks.	impact	noun
+Heavy rain can impact the schedule.	impact	verb
+The surgeon will implant the device tomorrow.	implant	verb
+The dental implant cost a lot.	implant	noun
+Italy will import more oil next year.	import	verb
+Coffee is a major import for the island.	import	noun
+The smoke may incense the neighbours.	incense	verb
+The monks burned incense every morning.	incense	noun
+A steep incline made the climb hard.	incline	noun
+I incline to agree with you.	incline	verb
+We invite everyone from the street to the party.	invite	verb
+A written invite arrived on Monday.	invite	noun
+My mate from school lives in Perth.	mate	friend
+She drinks mate with her breakfast every day.	mate	drink
+Do not misuse the equipment.	misuse	verb
+Misuse of funds led to his firing.	misuse	noun
+The weather was moderate all week.	moderate	adjnoun
+A panel will moderate the debate.	moderate	verb
+He wiped his mouth with a napkin.	mouth	noun
+Do not mouth the words, say them out loud.	mouth	verb
+A golden ornament hung from the roof.	ornament	noun
+Bring the permit to the front desk.	permit	noun
+The city will not permit parking here.	permit	verb
+Fresh produce is sold by the roadside.	produce	noun
+These farms produce wheat and barley.	produce	verb
+The progress of the work was slow.	progress	noun
+We progress to the next level when you are ready.	progress	verb
+The rebel leader fled into the hills.	rebel	noun
+Some students rebel against every rule.	rebel	verb
+Ask for a refund if the shoes do not fit.	refund	noun
+We will refund your money in full.	refund	verb
+They reject every offer we make.	reject	verb
+The reject pile was taller than the good pile.	reject	noun
+For the sake of peace, we said nothing.	sake	benefit
+They served warm sake with the fish.	sake	drink
+We will supplement your pay with a bonus.	supplement	verb
+Take a vitamin supplement every day.	supplement	noun
+A ship will transport the goods to Spain.	transport	verb
+Public transport is cheap here.	transport	noun
+The upset was the biggest of the whole season.	upset	noun
+Do not upset your sister before the exam.	upset	verb
+These uses of the tool are not safe.	uses	noun
+She uses a cane when it rains.	uses	verb
+We were reading a book about the old town.	reading	gerund
+Reading is the oldest town in the county.	reading	town
+Nestle the eggs in the straw.	nestle	verb
+Nestle makes chocolate in a dozen countries.	nestle	name
+The bologna sandwich was on white bread.	bologna	sausage
+Bologna is famous for its old university.	bologna	city
+The Celtic fans sang all through the match.	celtic	sport
+The Celtic languages are spoken in Wales.	celtic	culture
+The rodeo ends with a bull ride.	rodeo	event
+The shop is on Rodeo Drive.	rodeo	street
+Jesus said nothing to the crowd.	jesus	name
+My neighbour Jesus fixed the fence.	jesus	spanish
+Do not let the knitted scarf ravel.	ravel	noun
+Ravel wrote the music for the ballet.	ravel	name
+Lead us out of here before dark.	lead	verb
+A lead pipe ran under the sink.	lead	metal
+Her lead over the others grew every hour.	lead	verb
+The lead singer lost her voice.	lead	verb
+Read the notes aloud before the test.	read	present
+I read the paper on the train this morning.	read	past
+When she was a child she read every night.	read	past
+Yesterday we read two chapters.	read	past
+Do you read much poetry?	read	present
+Can you read my handwriting?	read	present
+Live music is played on Saturdays.	live	adj
+Live like nobody is watching.	live	verb
+Where do your parents live now?	live	verb
+The match was shown live on television.	live	adj
+A strong wind knocked down the fence.	wind	air
+Wind the string around the spool.	wind	turn
+The road will wind through the hills.	wind	turn
+Wind the clock before you go to bed.	wind	turn
+A tear rolled down her cheek.	tear	cry
+Tear the page out carefully.	tear	rip
+Be careful not to tear your sleeve.	tear	rip
+Close the door behind you.	close	verb
+We live close to the sea.	close	adj
+They are close friends.	close	adj
+Row the boat toward the island.	row	line
+The neighbours had a row about the fence.	row	quarrel
+We had seats in the third row.	row	line
+They always row about money.	row	quarrel
+She took a bow after the song.	bow	bend
+He tied a bow in the ribbon.	bow	knot
+The archer drew back the bow.	bow	knot
+The bass in this song is too loud.	bass	music
+We caught a large bass at the lake.	bass	fish
+Wait a minute while I find my coat.	minute	time
+The minute differences were hard to see.	minute	tiny
+I will present the results on Monday.	present	verb
+She gave him a present for his birthday.	present	adjnoun
+Record the temperature every hour.	record	verb
+He broke the world record in the final.	record	noun
+Use the front door, please.	use	verb
+The use of force was not needed.	use	noun
+I object to that question.	object	verb
+The object was shiny and round.	object	noun
+She was content to wait.	content	adj
+The content of the box was a surprise.	content	noun
+Much of the desert is covered in sand.	desert	noun
+Soldiers who desert their posts are punished.	desert	verb
+The house is quiet now.	house	noun
+They will house the refugees in the school.	house	verb
+Polish the silver before the guests arrive.	polish	wax
+The Polish team arrived this morning.	polish	nationality
+The project is due in March.	project	noun
+Lights project the image onto the wall.	project	verb
+She wound the scarf around her neck.	wound	turned
+The wound healed slowly.	wound	injury
+Cats are said to have nine lives.	lives	noun
+He lives in a small flat near the park.	lives	verb
+Send your resume to the office.	resume	noun
+Let us resume the meeting after lunch.	resume	verb
+Separate the whites from the yolks.	separate	verb
+They sleep in separate rooms.	separate	adj
+Sow the seeds in early spring.	sow	plant
+The sow had nine piglets.	sow	pig
+The subject of the book is grief.	subject	adjnoun
+They will subject the metal to heat.	subject	verb
+Convert the files to a smaller format.	convert	verb
+The new convert spoke with passion.	convert	noun
+The ticket was invalid after midnight.	invalid	adj
+The invalid rested in a chair by the window.	invalid	noun
+Her mobile rang during dinner.	mobile	adj
+We drove to Mobile in the rain.	mobile	city
+A colourful mobile hung above the baby's cot.	mobile	art
+Practice will perfect your swing.	perfect	verb
+The weather was perfect.	perfect	adj
+He rode a moped to work.	moped	noun
+She moped around the house all day.	moped	past
+The dove landed on the sill.	dove	bird
+He dove into the cold lake.	dove	dived
+Job lost his flocks and his house in one day.	job	bible
+The job pays well.	job	work
+She wore a heavy perfume.	perfume	noun
+Flowers perfume the air.	perfume	verb
+Estimate the cost first.	estimate	verb
+A rough estimate is fine.	estimate	noun
+Metal will contract in the cold.	contract	verb
+Both sides signed the contract.	contract	noun
+A ten percent discount applies.	discount	noun
+Do not discount his advice.	discount	verb
+They protest every Friday.	protest	verb
+The protest ended peacefully.	protest	noun
+Police suspect arson.	suspect	adjnoun
+The suspect ran down the lane.	suspect	adjnoun
+Refuse to sign anything.	refuse	verb
+Refuse piled up in the alley.	refuse	noun
+Do not insult the cook.	insult	verb
+That was an insult.	insult	noun
+Most students graduate in June.	graduate	verb
+She is a graduate of the college.	graduate	adjnoun
+She will conduct the choir.	conduct	verb
+His conduct was shameful.	conduct	noun
+Brazil will export sugar.	export	verb
+Sugar is a major export.	export	noun
+Try to console him.	console	verb
+A game console costs a lot.	console	noun
+Costs increase each year.	increase	verb
+A sharp increase in taxes followed.	increase	noun
