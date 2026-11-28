@@ -65,10 +65,26 @@ which the spelling does not show.
    `ቤትህ` → `betɨh`, `ስምሽ` → `sɨmɨʃ`, `ይስጥልኝ` → `jɨstʼɨlɨɲ`. Words whose stem
    ends in such a cluster are listed in the source (`CLUSTER`), each with
    where its reading comes from: `ዓይን` → `ajn`, `ሕልም` → `hɨlm`, `ፊልም` →
-   `film`, `ወይን` → `wəjn`, a few English loans (`ዲዛይን`, `ታይም`), and
-   `የሚገርም`. A listed word may follow a one-letter proclitic `የ በ ለ ከ`
-   (`የዓይን` → `jəʔajn`); a longer word that only ends the same way is read by
-   the rule (`ያህልም` → `jahlɨm`).
+   `film`, `ወይን` → `wəjn`, `እውን` → `ɨwn`, loans and names that end in a
+   cluster in their own language (`ዲዛይን`, `ኦንላይን`, `ታውን`, `ታይም`, `ቢትኮይን`),
+   and forms of type A verbs whose last radical is `m` (`የሚገርም`). A listed
+   word may follow a one-letter proclitic `የ በ ለ ከ` (`የዓይን` → `jəʔajn`); a
+   longer word that only ends the same way is read by the rule (`ያህልም` →
+   `jahlɨm`).
+
+   **Perfective endings.** The subject endings of the perfective are bare
+   consonants, not these suffixes: 1pl `-n`, 2fsg `-ʃ`, 2msg `-h` (`ሰበርን`
+   *säbbärn*, `ሰበርሽ` *säbbärš*), while the accusative is `-(ə)n`, the
+   possessives are `-(ə)h` `-(ə)š` and the object suffixes `-(ə)ñ`
+   `-(ə)llən`. The script does not tell a perfective stem from a noun
+   (`ነገርን` is "the thing" and "we told"), so 33 verb stems are listed in the
+   source (`PERF`). A listed stem, alone or after a verbal prefix (`የ ከ እየ
+   ስለ እንደ እስከ`, the negative `አል`), followed by `ን ሽ ህ`, is read by sonority
+   alone: `ነበርን` → `nəbərn`, `ስለነበርን` → `sɨlənəbərn`, `ካልን` → `kaln`,
+   `ነበርሽ` → `nəbərʃ`, `አደረግሽ` → `adərəɡʃ`; `-h` joins only `l` and `r`
+   (`ነበርህ` → `nəbərh`). A noun keeps the suffix reading (`ሀገርን` →
+   `haɡərɨn`, `መኖርን` → `mənorɨn`), and so does the benefactive (`ይስጥልን` →
+   `jɨstʼɨlɨn`).
 5. **Stems.** Where `ɨ` stands next to a long consonant, the script does not
    show it and the syllabifier misplaces it once a suffix follows. Three
    stems are listed in the source (`STEMS`) and keep their shape: the
@@ -118,18 +134,49 @@ gold above, not taken from a published description.
   with its stem (`በትምህርት` → `bətmɨhɨrt`, where careful speech keeps the
   stem's `tɨm-`), and a final pair of obstruents is always a cluster (`ነጥብ` →
   `nətʼb`).
-* **A final `n m ɲ h ʃ` after a consonant is read as a suffix.** The
-  perfective subject endings are clusters in speech and are not told apart
-  (`ነበርን` → `nəbərɨn`, `ነበርሽ` → `nəbərɨʃ`), and a loanword or name outside
-  the `CLUSTER` list gets an `ɨ` it does not have (`ላይን` → `lajɨn`). `ትንሽ`
-  comes out `tɨnɨʃ` by this rule; Wiktionary's entry romanizes it `tənš`.
+* **A final `n m ɲ h ʃ` after a consonant is read as a suffix** unless the
+  word is listed. A perfective form of a verb outside `PERF` gets an `ɨ` it
+  does not have (`ዘመርን` → `zəmərɨn`, "we sang"), and so does a loanword or
+  name outside `CLUSTER` (`ኤርላይን` → `erlajɨn`). A word with two readings takes
+  the commoner one: `ነገርን` and `ላይን` are read as noun + accusative, not as
+  "we told" and *line*. `መርህ` comes out `mərɨh`; no pronunciation was found
+  for it.
+* **`ትንሽ` is `tɨnɨʃ`**, with the `n` long in speech (*tənnəš*), which needs
+  the vowel before `ʃ`. Wiktionary's entry romanizes it `tənš` and has a
+  sound file but no transcription. The reading was not re-checked against a
+  printed dictionary.
 * **Other words with `ɨ` next to a long consonant** are not in `STEMS` and
   keep the syllabifier's reading: `እጅግ` → `ɨʤɡ`, `ድርጅት` → `dɨrɨʤt`, `ምግብ` →
   `mɨɡb`, `ይችላል` → `jɨʧlal`. `ማግኘት` → `maɡɨɲət` keeps the `ɨ` of the long
   `ɲ` rule. No citable pronunciation was found for these, so none was added.
-* **The ordinals.** `አምስተኛ` follows the cardinal (`amɨstəɲa`); Wiktionary's
-  pronunciation of that one word is `amstəɲːa`, its entry for `ስድስተኛ` is
-  `səddəstäñña`.
+* **The ordinals.** `አምስተኛ` follows the cardinal (`amɨstəɲa`). Wiktionary's
+  pronunciation of that one word is `amstəɲːa`, but the same entry derives it
+  from `አምስት` *ʾamməst* + *-äñña*, its pronunciation of the cardinal is
+  `amːɨst`, and its entry for `ስድስተኛ` is `səddəstäñña`: the long consonant
+  cannot stand before another consonant without the vowel.
+
+## Check of the suffix rule on running text
+
+Every word that rule 4 reads differently from plain sonority was judged by
+hand in a 240 000-word sample of running text (7 100 such words, 2 400
+distinct). Share of words read correctly, with the words that could not be
+judged (garbled or of unknown pronunciation, 75 in all) left out:
+
+| ending | words | suffix rule alone | with `CLUSTER` and `PERF` |
+|---|---|---|---|
+| `-ን` | 3 625 | 96.7% | 99.8% |
+| `-ም` | 2 264 | 99.2% | 100% |
+| `-ህ` | 248 | 99.5% | 100% |
+| `-ሽ` | 284 | 93.4% | 100% |
+| `-ኝ` | 87 | 100% | 100% |
+
+The last column is measured on the words the two lists were built from, so it
+says that these words are now read correctly, not how well the lists cover
+other text. Without the lists, the misses of the suffix rule were perfective
+forms (`ነበርን`, `ካልን`, `ነበርሽ`) and loans (`ታውን`, `ዲፋይን`); after `ይ` the rule
+alone was right for only 48% of the `-ን` words, because most words in `-ይን`
+in that sample are loans (*line*, *coin*, *-tine*). `መርህ` (17 words) is
+among the unjudged: if its reading is `mərh`, the `-ህ` row is 92%.
 * **Abbreviations are read letter by letter as written.** The period and the
   slash are not expanded: `ዓ.ም.` → `a. m.`, `ዶ/ር` → `do r`. Write the words
   out (`ዓመተ ምሕረት`, `ዶክተር`).

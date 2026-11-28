@@ -21,8 +21,12 @@
 //! * `n m ɲ h ʃ` never close a cluster: at the end of a word they are nearly
 //!   always the suffixes `-ን -ም -ኝ -ህ -ሽ`, which take `ɨ` after a consonant
 //!   (`ያለውን` → `jaləwɨn`, `ወይም` → `wəjɨm`, `ቤትህ` → `betɨh`, `ይስጥልኝ` →
-//!   `jɨstʼɨlɨɲ`). The few words whose stem ends in such a cluster are listed
-//!   in `CLUSTER` (`ዓይን` → `ajn`, `ፊልም` → `film`).
+//!   `jɨstʼɨlɨɲ`). The words whose stem ends in such a cluster are listed in
+//!   `CLUSTER` (`ዓይን` → `ajn`, `ፊልም` → `film`, loans such as `ኦንላይን`).
+//! * The subject endings of the perfective are not those suffixes: 1pl `-n`,
+//!   2fsg `-ʃ` and 2msg `-h` are bare consonants (`ሰበርን` *säbbärn*, `ሰበርሽ`
+//!   *säbbärš*). A verbal prefix + a stem of `PERF` + `ን ሽ ህ` is read by
+//!   sonority alone: `ነበርን` → `nəbərn`, `ካልን` → `kaln`, `ነበርሽ` → `nəbərʃ`.
 //! * A bare `t` before `ʃ`, a bare `d` before `ʒ` or `z`, and a bare `t` before
 //!   a word-final `s` takes `ɨ` (`ቤትሽ` → `betɨʃ`). Written next to each other
 //!   the two would be folded into the affricate (`fold.rs`), and `ቤትሽ` would
@@ -158,17 +162,23 @@ fn no_coda(c: &str) -> bool {
     matches!(c, "n" | "m" | "ɲ" | "h" | "ʃ")
 }
 
-/// May the word end in the cluster `c1 c2` without `ɨ`? Sonority must not rise,
-/// and two sonorants need a fall. `h` does not open a cluster, `n m ɲ h ʃ` do
-/// not close one ([`CLUSTER`] lists the words that do end in one), and neither
-/// does a pair the affricate fold would merge (`ts` is folded at the end of a
-/// word).
-fn coda_ok(c1: &str, c2: &str) -> bool {
-    if c1 == c2 || c1 == "h" || no_coda(c2) || folds(c1, c2) || (c1, c2) == ("t", "s") {
+/// May the word end in the cluster `c1 c2` by sonority alone? It must not rise,
+/// and two sonorants need a fall. `h` does not open a cluster, and neither
+/// consonant may be part of a pair the affricate fold would merge (`ts` is
+/// folded at the end of a word).
+fn son_ok(c1: &str, c2: &str) -> bool {
+    if c1 == c2 || c1 == "h" || folds(c1, c2) || (c1, c2) == ("t", "s") {
         return false;
     }
     let (s1, s2) = (sonority(c1), sonority(c2));
     if s2 > 1 { s1 > s2 } else { s1 >= s2 }
+}
+
+/// May the word end in the cluster `c1 c2` without `ɨ`? [`son_ok`], and
+/// `n m ɲ h ʃ` do not close one: [`CLUSTER`] lists the words that do end in
+/// one, [`perfective`] finds the verb forms that do.
+fn coda_ok(c1: &str, c2: &str) -> bool {
+    !no_coda(c2) && son_ok(c1, c2)
 }
 
 /// One-letter proclitics. A [`CLUSTER`] word or a [`STEMS`] entry may follow one.
@@ -180,9 +190,54 @@ const PROCLITICS: [(char, &str); 4] = [('የ', "jə"), ('በ', "bə"), ('ለ', "
 /// Wiktionary's entry; `ዲዛይን`, `ኦንላይን`, `ዳውን`, `ታይም`, `ፎርም`, `ሪፎርም`,
 /// `ፕላትፎርም` are the English *design*, *online*, *down*, *time*, *form*,
 /// *reform*, *platform*; `የሚገርም` is the type A imperfect of `ገረመ` (`yɨgərm`).
-const CLUSTER: [&str; 17] = [
+///
+/// Second group: more forms of type A verbs whose last radical is `m` (the
+/// imperfect and jussive stem ends in the last two radicals, as in `ይሰብር`
+/// *yəsäbr*): `ገረመ`, `አረመ`, `ፈረመ`. `እውን` is the stem of `እውነት` (`ɨwnət`);
+/// `ማርሽ` is the Italian *marcia*.
+///
+/// Third group: loans and names seen in running text, all with a final
+/// cluster in the source language: *design*, *online* (three spellings),
+/// *headline*, *decline*, *Caroline*, *Valentine*, *Byzantine* (two
+/// spellings), *-stein*, *define*, *join*, *cocaine*, *bitcoin*, *examine*,
+/// *explain*, *Ukraine*, *pain*, *wine*, *mine*, *Rhine*, *town*, *horn*,
+/// *learn*, *pattern*, *Melbourne*, *concern*, *sovereign*, *this time*,
+/// *last time*, *crime*, *I'm*, *Stockholm* (two spellings), *confirm*,
+/// *inform*, *term*, *brush*.
+const CLUSTER: &[&str] = &[
     "ዓይን", "አይን", "ዐይን", "ሕልም", "ህልም", "ፊልም", "ወይን", "ዲዛይን", "ኦንላይን", "ዳውን", "ታይም", "ፎርም", "ሪፎርም", "ፕላትፎርም", "የሚገርም", "በሚገርም", "ሲገርም",
+    "ይገርም", "አይገርም", "ወደሚገርም", "እንደሚገርም", "እናርም", "እንዳትፈርም", "እውን", "ዕውን", "ማርሽ",
+    "ድዛይን", "አንላይን", "ኦላይን", "ሄድላይን", "ዲክላይን", "ካሮላይን", "ቫላንታይን", "ባይዛንታይን", "ባዛንታይን", "ሽታይን", "ዲፋይን", "ጆይን", "ኮካይን", "ቢትኮይን",
+    "ኤግዛማይን", "ኤክስፕሌይን", "ዩክሬይን", "ፔይን", "ዋይን", "ማይን", "ራይን", "ታውን", "ሆርን", "ለርን", "ፓተርን", "ሜልበርን", "ኮንሰርን", "ሶቬርን",
+    "ዚስታይም", "ላስታይም", "ክራይም", "አይም", "ስቶክሆልም", "ስቶኮልም", "ኮንፈርም", "ኢንፎርም", "ተርም", "ቡርሽ",
 ];
+
+/// Perfective stems. The subject endings of the perfective are consonants:
+/// 1pl `-n`, 2fsg `-ʃ`, 2msg `-h` (`ሰበርን` *säbbärn*, `ሰበርሽ` *säbbärš*), unlike
+/// the accusative `-(ə)n`, the possessives `-(ə)h` `-(ə)š` and the object
+/// suffixes, which take the vowel after a consonant. The script does not tell
+/// a perfective stem from a noun (`ነገርን` is "the thing" and "we told"), so the
+/// stems are listed: verbs met with these endings in running text, none of
+/// them also a noun. A verb that is not listed is read by the suffix rule.
+///
+/// * in `r`: *was*, *begin*, *live*, *try*, *change*, *add*, *speak*, *talk
+///   together*, *learn*, *learn from each other*, *teach*, *cross*, *carry
+///   out*, *celebrate*, *combine*, *be created*;
+/// * in `l`: *say*, *can*, *be called*, *pay*, *share*, *continue*, *follow*,
+///   *receive*, *ring*, *notice*, *ripen*;
+/// * others, for `-ʃ`: *do*, *know*, *think*, *present*, *like*, *explain*.
+const PERF: [&str; 33] = [
+    "ነበር", "ጀመር", "ኖር", "ሞከር", "ቀየር", "ጨመር", "ተናገር", "ተነጋገር", "ተማር", "ተማማር", "አስተማር", "ተሻገር", "ተገበር", "አከበር", "አጣመር", "ተፈጠር",
+    "አል", "ቻል", "ተባል", "ከፈል", "ተካፈል", "ቀጠል", "ተከተል", "ተቀበል", "ደወል", "አስተዋል", "በሰል", "አደረግ", "አወቅ", "አሰብ", "አቀረብ", "ወደድ", "ገለጽ",
+];
+
+/// What may stand before a [`PERF`] stem: nothing, the relative `የ`, the
+/// conjunctions `ከ እየ ስለ እንደ እስከ`, and the negative `አል` alone or after one
+/// of them.
+const HEADS: [&str; 13] = ["", "የ", "ከ", "እየ", "ስለ", "እንደ", "እስከ", "አል", "ያል", "ካል", "ባል", "ስላል", "እንዳል"];
+/// The same before a stem that starts with `አ`, which merges with them
+/// (`እየ` + `አስተማር` → `እያስተማር`).
+const HEADS_A: [&str; 12] = ["አ", "ያ", "ካ", "እያ", "ስላ", "እንዳ", "እስካ", "አላ", "ያላ", "ካላ", "ስላላ", "እንዳላ"];
 
 const T_ROW: &str = "ትተቱቲታቴቶቷ";
 
@@ -224,6 +279,22 @@ fn starts(w: &[char], p: &str) -> bool {
 fn cluster_word(w: &[char]) -> bool {
     let listed = |w: &[char]| CLUSTER.iter().any(|x| x.chars().count() == w.len() && starts(w, x));
     listed(w) || (w.first().is_some_and(|c| PROCLITICS.iter().any(|(p, _)| p == c)) && listed(&w[1..]))
+}
+
+/// Is `w` a verbal prefix ([`HEADS`]) + a [`PERF`] stem + one of the subject
+/// endings `ን ሽ ህ`?
+fn perfective(w: &[char]) -> bool {
+    let Some((end, body)) = w.split_last() else { return false };
+    if !matches!(end, 'ን' | 'ሽ' | 'ህ') {
+        return false;
+    }
+    PERF.iter().any(|s| {
+        let merged = s.starts_with('አ');
+        let tail: Vec<char> = s.chars().skip(usize::from(merged)).collect();
+        let Some(k) = body.len().checked_sub(tail.len()) else { return false };
+        let heads: &[&str] = if merged { &HEADS_A } else { &HEADS };
+        body[k..] == tail[..] && heads.iter().any(|h| h.chars().count() == k && starts(body, h))
+    })
 }
 
 /// The [`STEMS`] entry the word starts with, with or without a proclitic:
@@ -269,7 +340,12 @@ fn run(w: &str, out: &mut String) {
     // consonants since the last vowel
     let mut coda = u8::from(ph.last().is_some_and(|p| !is_vowel(p)));
     // may the last two consonants end the word as a cluster?
-    let fin = n >= 2 && bare(n - 2) && bare(n - 1) && (coda_ok(seg[n - 2].0, seg[n - 1].0) || cluster_word(&letters));
+    let fin = n >= 2 && bare(n - 2) && bare(n - 1) && {
+        let (c1, c2) = (seg[n - 2].0, seg[n - 1].0);
+        // a perfective form ends in a cluster wherever sonority allows one
+        // (ነበርን → nəbərn); with -h only after l and r (ነበርህ → nəbərh)
+        coda_ok(c1, c2) || cluster_word(&letters) || (perfective(&letters) && son_ok(c1, c2) && (c2 != "h" || sonority(c1) == 3))
+    };
     for i in k0..n {
         let (c, lab, v) = seg[i];
         let last = i + 1 == n;
@@ -691,6 +767,20 @@ mod tests {
             ("ዳውን", "dawn"),
             ("ፕላትፎርም", "pɨlatform"),
             ("የሚገርም", "jəmiɡərm"),
+            ("ወደሚገርም", "wədəmiɡərm"),
+            ("እናርም", "ɨnarm"),
+            ("እውን", "ɨwn"),
+            ("ማርሽ", "marʃ"),
+            ("ታውን", "tawn"),
+            ("ከራይን", "kərajn"),
+            ("ቢትኮይን", "bitkojn"),
+            ("ኮንፈርም", "konfərm"),
+            ("ስቶክሆልም", "sɨtokholm"),
+            // not listed: the suffix reading
+            ("ላይን", "lajɨn"),
+            ("ሰማይን", "səmajɨn"),
+            ("ደስታውን", "dəstawɨn"),
+            ("አይታይም", "ajtajɨm"),
             // only the listed word: a longer word that ends the same way takes the suffix reading
             ("ያህልም", "jahlɨm"),
             ("ሀገርም", "haɡərɨm"),
@@ -700,6 +790,54 @@ mod tests {
         ] {
             assert_eq!(word(w), p, "{w}");
         }
+    }
+
+    #[test]
+    fn perfective_endings() {
+        for (w, p) in [
+            // 1pl -n after a stem in r or l
+            ("ነበርን", "nəbərn"),
+            ("ጀመርን", "dʒəmərn"),
+            ("ተነጋገርን", "tənəɡaɡərn"),
+            ("ስለነበርን", "sɨlənəbərn"),
+            ("እየኖርን", "ɨjənorn"),
+            ("ካልጀመርን", "kaldʒəmərn"),
+            ("እያስተማርን", "ɨjastəmarn"),
+            ("እንዳከበርን", "ɨndakəbərn"),
+            ("ካልን", "kaln"),
+            ("እያልን", "ɨjaln"),
+            ("አላልን", "alaln"),
+            ("ከቻልን", "kətʃaln"),
+            ("ስላልቻልን", "sɨlaltʃaln"),
+            // 2fsg -ʃ, 2msg -h
+            ("ነበርሽ", "nəbərʃ"),
+            ("ያልሽ", "jalʃ"),
+            ("ካልከፈልሽ", "kalkəfəlʃ"),
+            ("አደረግሽ", "adərəɡʃ"),
+            ("ወደድሽ", "wədədʃ"),
+            ("ነበርህ", "nəbərh"),
+            ("አደረግህ", "adərəɡɨh"),
+            // sonority still decides: an obstruent before -n takes the vowel
+            ("አደረግን", "adərəɡɨn"),
+            // not a perfective form: nouns, the infinitive, a noun that looks like a stem
+            ("ነገርን", "nəɡərɨn"),
+            ("ሀገርን", "haɡərɨn"),
+            ("መኖርን", "mənorɨn"),
+            ("መማርን", "məmarɨn"),
+            ("ባልን", "balɨn"),
+            ("ሀሳብሽ", "hasabɨʃ"),
+            // the benefactive -ll- + 1pl object keeps the vowel
+            ("ይስጥልን", "jɨstʼɨlɨn"),
+            ("እያሰፋልን", "ɨjasəfalɨn"),
+            ("የላከልን", "jəlakəlɨn"),
+            // the negative with -m is syllabified as before
+            ("አልነበርንም", "alnəbərnɨm"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
+        let chars = |w: &str| w.chars().collect::<Vec<char>>();
+        assert!(perfective(&chars("ነበርን")) && perfective(&chars("ያስተማርሽ")) && perfective(&chars("አልህ")));
+        assert!(!perfective(&chars("ነበር")) && !perfective(&chars("ን")) && !perfective(&chars("")) && !perfective(&chars("መኖርን")) && !perfective(&chars("ነበርም")));
     }
 
     #[test]
