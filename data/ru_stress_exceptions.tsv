@@ -1,0 +1,20 @@
+# Russian stress exceptions: context-free forms the lexicon tiers or the context student get wrong.
+# word <TAB> stressed vowel (0-based, counting vowels in the word) <TAB> source
+# A form is listed only when OpenRussian (CC BY-SA) and the Wiktionary extraction (kaikki.org, CC BY-SA)
+# both give exactly one stress for it (both follow Zaliznyak's dictionary). True homographs
+# (замок, все/всё, краю, плоти, живы, ...) are NOT listed: the sentence decides those.
+# быть, past tense
+была	1	OpenRussian+Wiktionary: была́
+было	0	OpenRussian+Wiktionary: бы́ло
+были	0	OpenRussian+Wiktionary: бы́ли
+# понять, поднять, принять: perfective past (feminine ends in the stressed -а; the lexicon lists a first-syllable variant too)
+понял	0	OpenRussian+Wiktionary: по́нял
+поняла	2	OpenRussian+Wiktionary: поняла́
+поняло	0	OpenRussian+Wiktionary: по́няло
+поняли	0	OpenRussian+Wiktionary: по́няли
+подняла	2	OpenRussian+Wiktionary: подняла́
+приняла	2	OpenRussian+Wiktionary: приняла́
+принял	0	OpenRussian+Wiktionary: при́нял
+приняло	0	OpenRussian+Wiktionary: при́няло
+приняли	0	OpenRussian+Wiktionary: при́няли
+принялась	2	OpenRussian+Wiktionary: принялась́
