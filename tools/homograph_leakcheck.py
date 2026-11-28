@@ -26,7 +26,7 @@ def held_out(corpus):
     for f in glob.glob(os.path.join(corpus, "eval", "*.tsv")):
         for r in list(csv.reader(open(f, encoding="utf8", newline=""), delimiter="\t", quotechar='"'))[1:]:
             sents.append(r[2])
-    for p in ("en_homograph_cases.tsv", "en_homograph_cases2.tsv", "en_homograph_dev.tsv"):
+    for p in ("en_homograph_cases.tsv", "en_homograph_cases2.tsv", "en_homograph_dev.tsv", "en_homograph_dev2.tsv"):
         for l in open(os.path.join(HERE, "..", "tests", p), encoding="utf8"):
             if not l.startswith("#") and l.strip():
                 sents.append(l.split("\t")[0])

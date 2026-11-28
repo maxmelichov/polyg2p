@@ -1,0 +1,343 @@
+# author-written second selection set ('dev_hard2', G4b), written in round 3 before any round-3 model. sentence <TAB> word <TAB> reading. Scored once on the frozen candidate; never used for tuning.
+Record sales rose sharply in the spring.	record	noun
+Lead poisoning was common in old plumbing.	lead	metal
+Wind turbines line the ridge above the village.	wind	air
+Bass fishing season opens on Saturday.	bass	fish
+Polish sausage is sold at the corner stall.	polish	nationality
+Reading is my favourite way to spend a rainy day.	reading	gerund
+Reading lies about forty miles west of London.	reading	town
+August is usually the hottest month here.	august	month
+Job satisfaction fell for the third year running.	job	work
+Mobile phones were banned in the exam hall.	mobile	adj
+Nestle shares fell after the announcement.	nestle	name
+Ravel wrote the piece for a pianist who lost an arm.	ravel	name
+Rodeo Drive is crowded with tourists all summer.	rodeo	street
+Bologna is the capital of the Emilia-Romagna region.	bologna	city
+Sake is brewed from fermented rice.	sake	drink
+Mate is a bitter tea popular in South America.	mate	drink
+Minute details can change the whole picture.	minute	tiny
+Content is what brings readers back to a site.	content	noun
+Produce is delivered fresh every morning.	produce	noun
+Contract negotiations dragged on for months.	contract	noun
+Permit applications must be filed in person.	permit	noun
+Object lessons work better than lectures.	object	noun
+Desert storms can bury a road in an hour.	desert	noun
+Refuse collection starts at six on Mondays.	refuse	noun
+Conduct unbecoming an officer was the charge.	conduct	noun
+Conflict between the two clans lasted decades.	conflict	noun
+Contest rules are posted on the board.	contest	noun
+Contrast is the difference between light and dark areas.	contrast	noun
+Convert numbers rose after the revival meeting.	convert	noun
+Convict labour built most of the early roads.	convict	noun
+Delegate lists were sent out a week before the meeting.	delegate	noun
+Discount stores opened all along the highway.	discount	noun
+Document control is handled by a single clerk.	document	noun
+Entrance fees go toward the upkeep of the park.	entrance	noun
+Escort services were offered at the airport.	escort	noun
+Estimate figures vary widely between agencies.	estimate	noun
+Excuse notes had to be signed by a parent.	excuse	noun
+Export duties were raised in the autumn.	export	noun
+Impact craters cover the surface of the moon.	impact	noun
+Import taxes on steel doubled overnight.	import	noun
+Increase in demand pushed the price up.	increase	noun
+Insult is added to injury when the bill arrives.	insult	noun
+Invalid passwords are rejected without a message.	invalid	adj
+Invalid care allowance is paid every four weeks.	invalid	noun
+Perfume sales peak before the holidays.	perfume	noun
+Project managers met on the second floor.	project	noun
+Protest marches filled the square all weekend.	protest	noun
+Rebel forces took the northern towns.	rebel	noun
+Refund requests must reach us within thirty days.	refund	noun
+Resume writing is a skill in itself.	resume	noun
+Row houses line both sides of the street.	row	line
+Sow bugs live under damp stones.	sow	pig
+Subject matter experts reviewed the draft.	subject	adjnoun
+Suspect descriptions were given to the press.	suspect	adjnoun
+Tear gas drifted over the crowd.	tear	cry
+Transport costs make up half the price.	transport	noun
+Use of the pool is limited to guests.	use	noun
+Bow ties are back in fashion this year.	bow	knot
+Compound interest works in your favour over time.	compound	noun
+Compact cars are cheaper to park.	compact	adjnoun
+Combine harvesters crossed the fields at dusk.	combine	noun
+Console games sold better than computer ones.	console	noun
+Celtic fans filled the stadium to the rafters.	celtic	sport
+Celtic knots decorate the old stone crosses.	celtic	culture
+Axes were stacked beside the woodshed.	axes	ax
+Axes of rotation differ for each of the planets.	axes	axis
+Dove nests were found under the eaves of the barn.	dove	bird
+Lives were lost when the bridge gave way.	lives	noun
+Winds of forty miles an hour are expected tonight.	winds	air
+Uses of the new alloy are still being explored.	uses	noun
+Abuse of power brought the minister down.	abuse	noun
+Attribute lists are stored in a separate table.	attribute	noun
+Advocate groups lobbied the council for months.	advocate	noun
+Addict recovery programmes need long-term funding.	addict	noun
+Construct validity was the main worry of the reviewers.	construct	noun
+Defect rates fell once the line was automated.	defect	noun
+Instrument panels glowed faintly in the dark cabin.	instrument	noun
+Implement design has changed little in a century.	implement	noun
+Record the lecture so we can replay it later.	record	verb
+Wind the clock before you go to bed.	wind	turn
+Lead the horses to the stream and let them drink.	lead	verb
+Tear the page along the dotted line.	tear	rip
+Close the window before the rain comes in.	close	verb
+Read the label before you take the medicine.	read	present
+Live within your means and the rest will follow.	live	verb
+Row the boat toward the island.	row	line
+Bow your head and say nothing.	bow	bend
+Polish the brass until it shines.	polish	wax
+Separate the whites from the yolks.	separate	verb
+Produce a receipt if you want your money back.	produce	verb
+Use plenty of sunscreen on the beach.	use	verb
+Present your ticket at the front desk.	present	verb
+Permit entry only to those on the list.	permit	verb
+Object to the motion if you must.	object	verb
+Refuse every offer until you see the contract.	refuse	verb
+Reject any claim that lacks a receipt.	reject	verb
+Convert the file to a PDF before sending it.	convert	verb
+Combine the flour and sugar in a large bowl.	combine	verb
+Compress the folder and attach it to the email.	compress	verb
+Conduct the experiment twice and compare the results.	conduct	verb
+Contract the rope slowly with both hands.	contract	verb
+Contrast the first poem with the second.	contrast	verb
+Convict nobody without a fair trial.	convict	verb
+Decrease the oven temperature after ten minutes.	decrease	verb
+Discard the outer leaves and rinse the rest.	discard	verb
+Discount the first figure, it was a typo.	discount	verb
+Document every step so others can repeat it.	document	verb
+Duplicate the key before you lose it.	duplicate	verb
+Escort the guests to their seats.	escort	verb
+Estimate the cost before you order the timber.	estimate	verb
+Excuse yourself politely and leave the room.	excuse	verb
+Export the report as a spreadsheet.	export	verb
+Expose the film for two seconds.	expose	verb
+Extract the juice and strain it twice.	extract	verb
+Graduate the scale in steps of five.	graduate	verb
+House the animals in a dry shed.	house	verb
+Implant the seedlings deep in the soil.	implant	verb
+Import the pictures from the memory card.	import	verb
+Increase the volume a little.	increase	verb
+Initiate the transfer when the light turns green.	initiate	verb
+Insert the coin and press the red button.	insert	verb
+Insult nobody, whatever the provocation.	insult	verb
+Invite the neighbours over on Friday.	invite	verb
+Isolate the sick birds at once.	isolate	verb
+Laminate the card to keep it clean.	laminate	verb
+Misuse the tool and it will break.	misuse	verb
+Moderate your tone when you speak to her.	moderate	verb
+Perfume the soap with a few drops of oil.	perfume	verb
+Progress to the next level only after passing this one.	progress	verb
+Project the image onto the far wall.	project	verb
+Protest peacefully and keep to the pavement.	protest	verb
+Rebel against the rules if you dare.	rebel	verb
+Recount the votes from the northern district.	recount	verb
+Refund the deposit within a week.	refund	verb
+Resume the recording when the light comes on.	resume	verb
+Sow the seeds thinly and cover them lightly.	sow	plant
+Subject the sample to heat for ten minutes.	subject	verb
+Suspect nothing until the report is in.	suspect	verb
+Transform the data before you plot it.	transform	verb
+Transplant the young shoots in early spring.	transplant	verb
+Transport the crates by night.	transport	verb
+Upset the cart and the apples roll everywhere.	upset	verb
+Wound the thread around the spool and tied it off.	wound	turned
+Affect change where you can.	affect	verb
+Associate each word with a picture.	associate	verb
+Attribute the quote to its author.	attribute	verb
+Advocate for the quiet ones in the room.	advocate	verb
+Coordinate the schedule with the other team.	coordinate	verb
+Alternate the two colours along the border.	alternate	verb
+Moderate heat is best for this dish.	moderate	adjnoun
+Frequent visits keep the engine in good shape.	frequent	adj
+Frequent the market early if you want the best fish.	frequent	verb
+Deliberate the matter overnight and give your answer in the morning.	deliberate	verb
+Elaborate on that last point, please.	elaborate	verb
+Articulate each syllable as clearly as you can.	articulate	verb
+Console the child, then call her mother.	console	verb
+Contest the result if you think it was unfair.	contest	verb
+Approximate the area with a rectangle.	approximate	verb
+Appropriate the funds only with the board's consent.	appropriate	verb
+Diffuse the argument before it grows.	diffuse	verb
+Mouth the words silently while she sings.	mouth	verb
+Impact the schedule as little as possible.	impact	verb
+Compact the soil firmly around the roots.	compact	verb
+Compound the problem and you will pay for it.	compound	verb
+Is the record still on the shelf?	record	noun
+Did you record the whole match?	record	verb
+Who will lead the discussion tomorrow?	lead	verb
+Is lead still used in car batteries?	lead	metal
+Where did you read that?	read	past
+Will you read it aloud tonight?	read	present
+Have you seen the desert at night?	desert	noun
+Why did he desert his post?	desert	verb
+Can you present the findings on Monday?	present	verb
+Is the present you bought still in the box?	present	adjnoun
+Do the winds ever stop on this coast?	winds	air
+How do you wind a watch like this?	wind	turn
+Which minute did the goal count?	minute	time
+Is a minute amount of salt enough?	minute	tiny
+Who caught the biggest bass today?	bass	fish
+Who plays bass in the band?	bass	music
+Why was the entrance closed?	entrance	noun
+Does the sight of her still entrance you?	entrance	verb
+What did the tear on her cheek mean?	tear	cry
+Will the cloth tear if I pull harder?	tear	rip
+Is the permit valid for two years?	permit	noun
+Will they permit us to park here?	permit	verb
+How many live shows did they play?	live	adj
+Where do your cousins live?	live	verb
+Is the lake close to the house?	close	adj
+What time do you close on Sundays?	close	verb
+Did the sow farrow overnight?	sow	pig
+When do farmers sow wheat in this region?	sow	plant
+Are you content with the offer?	content	adj
+Is the content of the box listed anywhere?	content	noun
+Why was the invalid carried upstairs?	invalid	noun
+Is this ticket still valid or is it invalid?	invalid	adj
+What does the subject of the sentence do?	subject	adjnoun
+How do you subject a metal to such stress?	subject	verb
+Do you object to the plan?	object	verb
+What is that strange object in the sky?	object	noun
+Did the moped break down again?	moped	noun
+Why had she moped around the house all day?	moped	past
+Did the dove land on the sill?	dove	bird
+Why did the swimmer dove so suddenly?	dove	dived
+Is Reading a good place to live?	reading	town
+Is reading aloud good for children?	reading	gerund
+Eggs, milk, produce, bread, and a bag of rice.	produce	noun
+Headlines: Record heat grips the capital.	record	noun
+Record number of voters turn out in the capital.	record	noun
+Lead found in the water of three towns.	lead	metal
+Wind farm approved despite local protests.	wind	air
+Minister to resume talks after the break.	resume	verb
+Rebel leader to export grain through the northern port.	export	verb
+Council to permit late-night opening.	permit	verb
+Police suspect arson in the warehouse fire.	suspect	verb
+Prices to increase again in the spring.	increase	verb
+Union to protest over unpaid overtime.	protest	verb
+Mayor to present the new budget on Tuesday.	present	verb
+Mobile app downloads reach a record high.	mobile	adj
+Shoppers tear through the sale on the first day.	tear	rip
+Tear gas fired at the demonstrators.	tear	cry
+Polish workers help to fill the summer harvest.	polish	nationality
+Stock to close higher after the news.	close	verb
+Study finds close ties between sleep and memory.	close	adj
+She wiped away a tear and smiled at him.	tear	cry
+A tear in the sail slowed the boat down.	tear	rip
+The wind in the pines grew louder after dark.	wind	air
+The path will wind through the hills for six miles.	wind	turn
+He took a deep bow and left the stage.	bow	bend
+She tied the ribbon into a neat bow.	bow	knot
+He was a well-known rebel in the hill country.	rebel	noun
+The soldiers will rebel if the pay is cut again.	rebel	verb
+She keeps a hand-written record of every game.	record	noun
+They decided to record a live-action reading of the book.	record	verb
+The anti-war protest ended without any trouble.	protest	noun
+Locals plan to protest the new road.	protest	verb
+It was a short-term contract with no pension.	contract	noun
+Muscles contract when a nerve fires.	contract	verb
+A first-rate produce market opened beside the river.	produce	noun
+The farm will produce more corn this year.	produce	verb
+The old-fashioned perfume still sells well.	perfume	noun
+He wears a perfume his sister gave him.	perfume	noun
+The long-running conflict ended in a truce.	conflict	noun
+Their stories conflict on three key points.	conflict	verb
+The two-year-old child learned to read quickly.	read	present
+She read the whole book in a single night.	read	past
+He has read every letter twice.	read	past
+Please read the notice by the door.	read	present
+They lead a quiet life in the country.	lead	verb
+The lead in the pencil snapped in two.	lead	metal
+We took the lead after the second lap.	lead	verb
+The pipes were made of lead and zinc.	lead	metal
+Their house stands close to the river.	close	adj
+We close the shop at six.	close	verb
+The refuse was piled behind the market.	refuse	noun
+They refuse to sign the paper.	refuse	verb
+The desert stretched out for miles in every direction.	desert	noun
+Soldiers who desert are shot.	desert	verb
+The new law will permit smaller shops to open on Sundays.	permit	verb
+A building permit costs forty pounds.	permit	noun
+Their present address is unknown.	present	adjnoun
+The staff will present the award at noon.	present	verb
+He gave her a present wrapped in blue paper.	present	adjnoun
+The object of the game is to collect all the cards.	object	noun
+I object to being treated like a child.	object	verb
+She is a convert to the faith.	convert	noun
+Many people will convert to solar power this decade.	convert	verb
+The convict escaped through the laundry.	convict	noun
+They convict one in ten of those charged.	convict	verb
+The incline was steeper than it looked.	incline	noun
+The road will incline sharply after the bend.	incline	verb
+The estimate was far too low.	estimate	noun
+We estimate that the work will take a week.	estimate	verb
+The delegate from France spoke first.	delegate	noun
+They will delegate the task to a junior member.	delegate	verb
+The insult stung more than the blow.	insult	noun
+Do not insult the cook.	insult	verb
+The entrance to the cave was hidden by ferns.	entrance	noun
+The singer's voice will entrance the whole audience.	entrance	verb
+A gentle wind blew across the fields.	wind	air
+Wind the film back to the start.	wind	turn
+They wound the bandage tightly around his arm.	wound	turned
+The wound healed slowly over the winter.	wound	injury
+The lives of the villagers changed overnight.	lives	noun
+She lives in a small flat above the shop.	lives	verb
+The live broadcast started at nine.	live	adj
+The family will live in the north for a year.	live	verb
+They sat in the front row and cheered.	row	line
+The neighbours had a loud row over the fence.	row	quarrel
+We watched the two of them row across the bay.	row	line
+He wore a bow tie and a stiff white collar.	bow	knot
+The actors bow when the curtain falls.	bow	bend
+The sow and her piglets slept in the straw.	sow	pig
+They sow the seed in rows by hand.	sow	plant
+The bass drum shook the floor.	bass	music
+He hooked a large bass near the old pier.	bass	fish
+The minute hand had stopped at twelve.	minute	time
+A minute crack ran along the base of the vase.	minute	tiny
+Wait a minute before you answer.	minute	time
+He was a learned man who spoke six languages.	learned	adj
+She learned to swim at the age of four.	learned	past
+The aged oak dominated the garden.	aged	adj
+The cheese is aged for two years in caves.	aged	past
+The blessed event was announced on Sunday.	blessed	adj
+The priest blessed the new boat.	blessed	past
+The dove landed on the windowsill.	dove	bird
+He dove into the pool without a sound.	dove	dived
+Her mobile rang during the lecture.	mobile	adj
+Mobile, Alabama, sits on a wide bay.	mobile	city
+A mobile hung over the baby's cot.	mobile	art
+The moped sped down the hill.	moped	noun
+He moped all week after losing the final.	moped	past
+They polish the floors every Friday.	polish	wax
+The Polish team won the final in three sets.	polish	nationality
+She asked for a glass of sake and a bowl of noodles.	sake	drink
+For the sake of peace, he let it go.	sake	benefit
+He poured a cup of mate and sat by the fire.	mate	drink
+His mate gave him a lift to work.	mate	friend
+The bologna sandwich was left on the desk.	bologna	sausage
+They spent a weekend in Bologna eating pasta.	bologna	city
+Job lost his flocks and his children in a day.	job	bible
+She found a job at the bakery.	job	work
+He read the book of Job in the original Hebrew.	job	bible
+They gave the sheets a quick tear along the fold.	tear	rip
+The Axes of the two charts do not match.	axes	axis
+The woodsman sharpened his axes before dawn.	axes	ax
+They bought a house by the sea.	house	noun
+The shed will house the tools and the old bikes.	house	verb
+The use of force was the last resort.	use	noun
+We use the cellar for storage.	use	verb
+The uses of the plant are many.	uses	noun
+She uses the back door.	uses	verb
+The abuse went unreported for years.	abuse	noun
+They abuse the rule to dodge the fee.	abuse	verb
+The progress of the project was slow.	progress	noun
+We progress by small steps.	progress	verb
+The suspect fled on foot.	suspect	adjnoun
+I suspect the fuse has blown.	suspect	verb
+The upset left the fans in tears.	upset	noun
+Don't upset her before the exam.	upset	verb
+The reading of the will took an hour.	reading	gerund
+Her reading of the poem moved the whole room.	reading	gerund
