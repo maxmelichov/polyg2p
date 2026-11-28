@@ -9,3 +9,5 @@
 2026-11-28	/mnt/data30/g2p_sources_1128/ud_czech-cac_1128/cs_cac-ud-test.conllu	2f4c2c2cf793b2cbe6fb5710ec5072953de0ccb53a4e7fdf599caf4517d479ff	-	-	n174 rule .845 default .925
 2026-11-28	/mnt/data30/g2p_sources_1128/ud_finnish-tdt_1128/fi_tdt-ud-test.conllu	3317528f16ab74333dce44051971e1ed0d115c8ffa1359a20f3bddb8e63498ee	-	-	inf n177 rule .876 default .441; imp n79 .987 vs .797
 2026-11-28	/mnt/data30/g2p_hetero_1128/gold/ro_rrt_test.conllu	32a2f7b9fc82c1e82d9959ce8c5ec7b7840f725177aa06b497b51f6834801989	-	-	22 fired, precision .955
+2026-11-28	/mnt/data30/g2p_plans_1128/ctx_work/h7/en_fresh_locked_1128.tsv	2d897cc3bdbde6b00d81e517167ba1fd5b3872829acd79f3d7453842cd69adcc	-	aef6e122117e8029e04744dae4d9a57d2d7e3dad042a147874522fbe9a936164	round 3 96.3% vs rules 84.0% (n 1091)
+2026-11-28	/mnt/data30/g2p_plans_1128/ctx_work/fi_h8/halfB_words.txt	2806a3103da632db604097318c325c82c9b42e3e3cc3544078d55a9b08279b35	-	-	lists from half A: precision 99.5 recall 68.1; shipped (in-sample) 99.7/98.8
