@@ -44,6 +44,19 @@ Agreement with the teacher pipeline on held-out sentences:
 
 Stressed-ё words on the Tatoeba set: 98.4%.
 
+## Stress exceptions
+
+`data/ru_stress_exceptions.tsv` is compiled into the crate and checked before the lexicon tiers. It lists
+context-free forms that the dictionary tiers or the context student get wrong, for example the past tense of
+*быть* (была́) and the *-ла* past of *понять*, *поднять*, *принять* (поняла́, подняла́, приняла́, принялась́), where the
+lexicon also lists a first-syllable variant and the student picks it. Each row is kept only if OpenRussian and
+the Wiktionary extraction (kaikki.org), both Zaliznyak-based, agree on a single stress. Real homographs are
+not listed. Because the table is built in, it applies with no data folder too.
+
+Without the data folder every polysyllable gets the suffix guess, so stress is wrong on about half of the 3,200
+most frequent forms of a news and fiction corpus; pass `--data` (or the Python wheel's bundled data) for
+real use.
+
 ## Cost and switches
 
 The student runs only on sentences that contain a homograph, at about
