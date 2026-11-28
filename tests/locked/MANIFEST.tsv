@@ -1,0 +1,14 @@
+# sha256	path	role	frozen	note
+# role: test (scored once, see LOOKS.tsv) | dev (may be looked at) | unit (regression pin, not a result). Append-only: a changed file gets a NEW row; the last row of a path wins.
+f9a8236ab503faf0ec7b232f27d558956e135b74263cebb59c9f98296d92a2f2	tests/en_homograph_cases.tsv	dev	2026-11-28	scored in round 1 and round 3: two looks, so dev
+9bc536ee1735bf234dfb7d7610e8d7298e4dcb1974f14a1eeb4213299216eda8	tests/en_homograph_cases2.tsv	dev	2026-11-28	scored in round 1 and round 3: two looks, so dev
+7563501757eb5b392910dce46ce30edae621675bbc42b5210dd0b83ff2db1e36	tests/en_homograph_dev.tsv	dev	2026-11-28	selection set
+00d3410b26218a5afab1684e1cf3b60ee46f794cc8837258975dd3ad56780ae9	tests/en_homograph_dev2.tsv	dev	2026-11-28	selection set (dev_hard2)
+2761b00c43ffb00299fe0594650a08e913054f12da1f975955e1b69b747c88e0	tests/zh_poly_cases.tsv	dev	2026-11-28	test half was seen in round 2, so dev
+cf4d6a7222b6805e6f5968d2dd2701b580b544158d870e17e29b1f647f04a202	tests/yue_poly_cases.tsv	unit	2026-11-28	parity pin against the PyTorch loader
+80e5ea2db8b17f9341618b760d5f6fca94032b52c06ce1c8fe65823880bfa050	tests/hetero_cases.tsv	dev	2026-11-28	per-word choice made on gold including dev/test; scored twice
+76e8fe210d48a1affd53343553abd57d9f0a012c328a15846dafa77640e7f518	tests/hetero_fixture.tsv	unit	2026-11-28	fixture
+0a0f86f30f31eb648bb02bde77a43e20c22082695bcd3e91128fac6954345e92	tests/am_cases.tsv	dev	2026-11-28	rules tuned on this gold (fit)
+32e4679c79b385e37c08fcbc4135f37ebfdfc0b076e02b27f68bcf5fd77ea4a2	tests/am_fidel.tsv	unit	2026-11-28	fidel table pin
+2c7d336b035505580929721e2b39b4d94c383a8c0994983987c27f30f71ea7ba	tests/en_read_cases.tsv	unit	2026-11-23	cases written with the rule
+b79657e65c333fc1200869861af9e99dfc7e24c2976e022d19ba7ad016c3762f	tests/en_accent_cases.tsv	unit	2026-11-27	cases written with the rules
