@@ -10,6 +10,7 @@ pub mod en_accent;
 pub mod es;
 pub mod fold;
 pub mod he;
+pub mod hetero;
 pub mod tagger;
 pub mod it;
 pub mod lexicon;
@@ -529,6 +530,7 @@ impl G2p {
                 Tok::Sep => {}
             }
         }
+        hetero::apply(self, lang, &mut outs);
         match lang {
             Lang::Es | Lang::EsLa => es::join(&mut outs),
             Lang::En | Lang::EnGb | Lang::EnAu | Lang::EnNz | Lang::EnIn | Lang::EnSc | Lang::EnIe | Lang::EnCa => {

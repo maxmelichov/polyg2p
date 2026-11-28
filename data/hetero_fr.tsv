@@ -1,0 +1,58 @@
+# French heteronyms: classes decided by part of speech. Hand-written; readings use the engine's own word function (respell:) or explicit phonemes (ph:).
+# word	k	reading	tag	note	mode
+couvent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+couvent	1	respell:couve	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+président	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+président	1	respell:préside	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+résident	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+résident	1	respell:réside	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+violent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+violent	1	respell:viole	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+parent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+parent	1	respell:pare	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+content	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+content	1	respell:conte	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+somnolent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+somnolent	1	respell:somnole	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+émergent	0	respell:émergeant	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+émergent	1	respell:émerge	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+excellent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+excellent	1	respell:excelle	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+expédient	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+expédient	1	respell:expédie	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+équivalent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+équivalent	1	respell:équivale	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+négligent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+négligent	1	respell:néglige	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+influent	0	respell:influant	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+influent	1	respell:influe	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+affluent	0	respell:affluant	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+affluent	1	respell:afflue	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+convergent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+convergent	1	respell:converge	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+divergent	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+divergent	1	respell:diverge	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+ferment	0	rule	NOUN/ADJ/ADV/PROPN	-ent noun or adjective /ɑ̃/	rule
+ferment	1	respell:ferme	VERB:VerbForm=Fin:Person=3:Number=Plur/AUX:Person=3:Number=Plur	-ent verb 3pl (silent)	rule
+*tions	0	rule	NOUN	plural noun -tions /sjɔ̃/	rule
+*tions	1	sub:sj>tj	VERB:Person=1/AUX:Person=1	1pl imperfect or subjunctive -tions /tjɔ̃/ (kept on the rules: on running text the model turned plural nouns such as supplications and stations into the verb reading)	rule
+sens	0	rule	NOUN	noun sens	
+sens	1	respell:sent	VERB	verb sentir 1sg/2sg	
+fils	0	rule	lemma=fils	son	rule
+fils	1	respell:fil	lemma=fil	threads	rule
+vis	0	rule	NOUN	screw	
+vis	1	respell:vi	VERB	verb voir/vivre 1sg/2sg	
+lis	0	rule	NOUN	lily	
+lis	1	respell:li	VERB/INTJ	verb lire 1sg/2sg/imperative	
+fier	0	rule	ADJ	proud	
+fier	1	respell:fié	VERB	se fier (to trust)	
+os	0	rule	NOUN:Number=Sing	bone, singular /ɔs/	
+os	1	ph:ˈo	NOUN:Number=Plur	bones, plural /o/	
+reporter	0	ph:ʁəpɔʁtˈɛʁ	NOUN	noun (journalist)	rule
+reporter	1	ph:ʁəpɔʁtˈe	VERB	verb (postpone)	rule
+supporter	0	ph:sypɔʁtˈɛʁ	NOUN	noun (fan)	rule
+supporter	1	ph:sypɔʁtˈe	VERB	verb (to bear)	rule
+scanner	0	ph:skanˈɛʁ	NOUN	noun	rule
+scanner	1	ph:skanˈe	VERB	verb	rule
+boxer	0	ph:bɔksˈœʁ	NOUN	noun (boxer)	rule
+boxer	1	ph:bɔksˈe	VERB	verb	rule

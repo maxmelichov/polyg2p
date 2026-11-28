@@ -1,0 +1,70 @@
+# Hand-written cases for the heteronym context models (tests/hetero.rs). Not taken from any dataset.
+# lang <TAB> sentence <TAB> word <TAB> nth <TAB> class (the k column of data/hetero_<lang>.tsv); a leading `!` on the line marks a known miss.
+fr	Je sens une odeur de brûlé.	sens	0	1
+fr	Tu sens la rose.	sens	0	1
+fr	Ce mot a deux sens.	sens	0	0
+fr	Le sens de la phrase est clair.	sens	0	0
+fr	Je vis à Paris depuis dix ans.	vis	0	1
+!fr	Vis ta vie sans regret !	vis	0	1
+!fr	Il faut serrer cette vis.	vis	0	0
+fr	Il manque une vis et un écrou.	vis	0	0
+fr	Je lis un livre chaque soir.	lis	0	1
+fr	Lis cette page à voix haute.	lis	0	1
+fr	Un lis blanc poussait dans le jardin.	lis	0	0
+fr	Le lis est une fleur élégante.	lis	0	0
+fr	Tom est fier de toi.	fier	0	0
+!fr	Elle trouve son frère très fier.	fier	0	0
+fr	Il ne faut pas se fier aux apparences.	fier	0	1
+fr	Tu peux te fier à lui.	fier	0	1
+fr	Ce chien ronge un os.	os	0	0
+fr	Les os de la main sont fins.	os	0	1
+!fr	Nous chantions toute la nuit.	chantions	0	1
+!fr	Quand nous étions jeunes, nous chantions.	chantions	0	1
+!fr	Les questions sont difficiles.	questions	0	0
+fr	Ces solutions sont meilleures.	solutions	0	0
+fr	Le couvent est très ancien.	couvent	0	0
+fr	Elle vit dans un couvent.	couvent	0	0
+!fr	Ils couvent leurs œufs avec soin.	couvent	0	1
+fr	Le président parle ce soir.	président	0	0
+!fr	Ils président la réunion.	président	0	1
+fr	Le reporter a pris des photos.	reporter	0	0
+!fr	Nous allons reporter la réunion.	reporter	0	1
+!fr	Ce supporter encourage son équipe.	supporter	0	0
+fr	Je ne peux plus supporter ce bruit.	supporter	0	1
+pt	O acordo foi assinado ontem.	acordo	0	0
+pt	Eu acordo cedo todos os dias.	acordo	0	1
+pt	O almoço está pronto.	almoço	0	0
+!pt	Eu almoço sempre às doze.	almoço	0	1
+pt	O começo do filme é lento.	começo	0	0
+pt	Eu começo a trabalhar às oito.	começo	0	1
+pt	Eu gosto de café, e o gosto é forte.	gosto	0	1
+pt	Esse prato tem um gosto estranho.	gosto	0	0
+pt	O choro do bebê acordou a casa.	choro	0	0
+!pt	Eu choro quando vejo esse filme.	choro	0	1
+pt	Ela perdeu o emprego no mês passado.	emprego	0	0
+pt	Eu emprego todo o meu tempo nisso.	emprego	0	1
+!pt	Qual é o seu endereço?	endereço	0	0
+pt	Eu endereço a carta ao diretor.	endereço	0	1
+pt	O olho dele está vermelho.	olho	0	0
+pt	Eu olho pela janela toda manhã.	olho	0	1
+pt	O esforço valeu a pena.	esforço	0	0
+!pt	Eu esforço a voz para ser ouvido.	esforço	0	1
+it	In seguito ci siamo rivisti.	seguito	0	0
+it	Ho seguito il tuo consiglio.	seguito	0	1
+it	Ho capito tutto.	capito	0	1
+it	Il compito di matematica era difficile.	compito	0	0
+it	Questo ambito è molto vasto.	ambito	0	0
+!it	Era un premio molto ambito.	ambito	0	1
+!it	Le borse sono molto leggere.	leggere	0	1
+it	Mi piace leggere prima di dormire.	leggere	0	0
+it	Chiedo perdono a tutti.	perdono	0	1
+it	Loro perdono sempre le chiavi.	perdono	0	0
+it	I desideri dei bambini sono semplici.	desideri	0	0
+!it	Tu desideri sempre qualcosa di nuovo.	desideri	0	1
+!it	I benefici della dieta sono evidenti.	benefici	0	1
+it	Il capitano della nave ha parlato.	capitano	0	0
+it	A volte mi capitano cose strane.	capitano	0	1
+!nl	Hij heeft een boek gekocht.	een	0	0
+!nl	Zij woont in een groot huis.	een	0	0
+!nl	Neem een of twee tabletten per dag.	een	0	1
+!nl	Hij wacht al een tot twee uur.	een	0	1

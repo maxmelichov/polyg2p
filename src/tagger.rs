@@ -423,22 +423,29 @@ impl Tagger {
             return Err(bad("not a G2PT file"));
         }
         let hl = u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize;
-        let h: Header = serde_json::from_slice(&bytes[8..8 + hl]).map_err(|e| bad(&e.to_string()))?;
-        let data = &bytes[8 + hl..];
-        let f32s = |off: usize, n: usize| -> Vec<f32> {
-            data[off..off + n * 4].chunks_exact(4).map(|c| f32::from_le_bytes(c.try_into().unwrap())).collect()
+        let hend = 8usize.checked_add(hl).filter(|&e| e <= bytes.len()).ok_or_else(|| bad("truncated header"))?;
+        let h: Header = serde_json::from_slice(&bytes[8..hend]).map_err(|e| bad(&e.to_string()))?;
+        let data = &bytes[hend..];
+        // every read of the weight blob is bounds-checked: a truncated or corrupt file is an error, not a panic
+        let span = |off: usize, len: usize| -> io::Result<&[u8]> {
+            off.checked_add(len).and_then(|e| data.get(off..e)).ok_or_else(|| bad("tensor outside the file (truncated?)"))
+        };
+        let f32s = |off: usize, n: usize| -> io::Result<Vec<f32>> {
+            let len = n.checked_mul(4).ok_or_else(|| bad("tensor too large"))?;
+            Ok(span(off, len)?.chunks_exact(4).map(|c| f32::from_le_bytes(c.try_into().unwrap())).collect())
         };
         let use_q8 = int8_kernel();
         let mut t: Tensors = HashMap::new();
         let mut q8: HashMap<String, Q8> = HashMap::new();
         let metas: HashMap<&str, &TensorMeta> = h.tensors.iter().map(|m| (m.name.as_str(), m)).collect();
         for m in &h.tensors {
-            let n: usize = m.shape.iter().product();
+            let n = m.shape.iter().try_fold(1usize, |a, &d| a.checked_mul(d)).ok_or_else(|| bad("tensor too large"))?;
             if m.dtype.as_deref() == Some("i8") {
+                let rows = *m.shape.first().filter(|&&r| r > 0).ok_or_else(|| bad("empty int8 tensor"))?;
                 let sm = metas.get(format!("{}.scale", m.name).as_str()).ok_or_else(|| bad("missing scale"))?;
-                let scale = f32s(sm.offset, m.shape[0]);
-                let cols = n / m.shape[0];
-                let raw = &data[m.offset..m.offset + n];
+                let scale = f32s(sm.offset, rows)?;
+                let cols = n / rows;
+                let raw = span(m.offset, n)?;
                 if use_q8 && m.shape.len() == 2 && cols % 16 == 0 {
                     q8.insert(m.name.clone(), Q8 { w: raw.iter().map(|&b| b as i8).collect(), scale });
                     t.insert(m.name.clone(), (m.shape.clone(), Vec::new()));
@@ -447,7 +454,7 @@ impl Tagger {
                     t.insert(m.name.clone(), (m.shape.clone(), v));
                 }
             } else if !m.name.ends_with(".scale") {
-                t.insert(m.name.clone(), (m.shape.clone(), f32s(m.offset, n)));
+                t.insert(m.name.clone(), (m.shape.clone(), f32s(m.offset, n)?));
             }
         }
         let mut take = |name: &str| -> io::Result<(Vec<usize>, Vec<f32>, Option<Q8>)> {
@@ -458,12 +465,18 @@ impl Tagger {
         let lin = |take: Take, p: &str| -> io::Result<Lin> {
             let (s, w, q) = take(&format!("{p}.weight"))?;
             let (_, b, _) = take(&format!("{p}.bias"))?;
+            if s.len() != 2 || b.len() != s[0] {
+                return Err(bad(&format!("bad shape for {p}")));
+            }
             Ok(Lin { w, q, b, o: s[0], i: s[1] })
         };
         let ln = |take: Take, p: &str| -> io::Result<Ln> {
             Ok(Ln { g: take(&format!("{p}.weight"))?.1, b: take(&format!("{p}.bias"))?.1 })
         };
         let cfg = h.config.clone();
+        if cfg.d == 0 || cfg.heads == 0 || cfg.d % cfg.heads != 0 || cfg.max_len == 0 || cfg.n_vow == 0 || cfg.n_cons == 0 {
+            return Err(bad("bad config"));
+        }
         let mut blocks = Vec::new();
         for l in 0..cfg.layers {
             let p = format!("enc.{l}");
@@ -478,9 +491,9 @@ impl Tagger {
                 ff2: lin(&mut take, &format!("{p}.ff2"))?,
             });
         }
-        let vocab = h.vocab.into_iter().filter_map(|(k, v)| k.chars().next().map(|c| (c, v))).collect();
+        let vocab: HashMap<char, usize> = h.vocab.into_iter().filter_map(|(k, v)| k.chars().next().map(|c| (c, v))).collect();
         let letter_cons = h.letter_cons.into_iter().filter_map(|(k, v)| k.chars().next().map(|c| (c, v))).collect();
-        Ok(Tagger {
+        let tg = Tagger {
             emb: take("emb.weight")?.1,
             pos: take("pos.weight")?.1,
             norm: ln(&mut take, "norm")?,
@@ -493,7 +506,33 @@ impl Tagger {
             cons_vocab: h.cons_vocab,
             vow_vocab: h.vow_vocab,
             letter_cons,
-        })
+        };
+        // the tensors the forward pass indexes must be as large as the config says
+        let d = tg.cfg.d;
+        let ok = tg.emb.len() % d == 0
+            && tg.vocab.values().all(|&id| (id + 1) * d <= tg.emb.len())
+            && 1 < tg.emb.len() / d
+            && tg.pos.len() >= tg.cfg.max_len * d
+            && tg.norm.g.len() == d
+            && tg.norm.b.len() == d
+            && [&tg.h_cons, &tg.h_vow, &tg.h_stress].iter().all(|l| l.i == d)
+            && tg.h_cons.o >= tg.cfg.n_cons
+            && tg.h_vow.o >= tg.cfg.n_vow
+            && tg.blocks.iter().all(|b| {
+                [&b.q, &b.k, &b.v, &b.o].iter().all(|l| l.i == d && l.o == d)
+                    && b.ff1.i == d
+                    && b.ff1.o == tg.cfg.ff
+                    && b.ff2.i == tg.cfg.ff
+                    && b.ff2.o == d
+                    && b.ln1.g.len() == d
+                    && b.ln1.b.len() == d
+                    && b.ln3.g.len() == d
+                    && b.ln3.b.len() == d
+            });
+        if !ok {
+            return Err(bad("tensor sizes do not match the config"));
+        }
+        Ok(tg)
     }
 
     /// Character ids for `text` (unknown characters -> 1), truncated to the window.
