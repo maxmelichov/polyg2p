@@ -243,6 +243,168 @@ fn bag_features(units: &[Unit], t: usize, mut f: impl FnMut(&str)) {
     }
 }
 
+
+/// Features `v3` (the round-3 "bag3" model): integer hashing, no strings. Mirror of `v3_ids` in tools/train_homograph3.py, which
+/// documents the template list. `h(x)` = FNV-1a 64 of a unit's lower-case UTF-8 text, `mix` folds 64-bit words FNV-style, a feature id
+/// is `mix(..) % n_buckets`; at most `V3_NF` features, in the order of the Python function.
+const V3_NF: usize = 80;
+const CLASS_TSV: &str = include_str!("../data/en_classes.tsv");
+const CLS_BOS: u64 = 24;
+const CLS_EOS: u64 = 25;
+
+fn class_table() -> &'static HashMap<&'static str, u64> {
+    static T: std::sync::OnceLock<HashMap<&'static str, u64>> = std::sync::OnceLock::new();
+    T.get_or_init(|| {
+        const NAMES: [&str; 14] = ["DET", "POSS", "PRON_SUBJ", "PRON_OBJ", "BE", "HAVE", "DO", "MODAL", "TO", "PREP", "CONJ", "NEG", "WH", "DEG"];
+        let mut m = HashMap::new();
+        for l in CLASS_TSV.lines().filter(|l| !l.starts_with('#') && !l.trim().is_empty()) {
+            if let Some((w, c)) = l.split_once('\t') {
+                if let Some(i) = NAMES.iter().position(|n| *n == c.trim()) {
+                    m.entry(w).or_insert(i as u64 + 1);
+                }
+            }
+        }
+        m
+    })
+}
+
+fn unit_class(u: &Unit, j: usize) -> u64 {
+    if let Some(&c) = class_table().get(u.text.as_str()) {
+        return c;
+    }
+    if u.cap && j > 0 {
+        return 15;
+    }
+    let w = u.text.as_str();
+    let n = w.chars().count();
+    match w.chars().next() {
+        Some(c) if c.is_numeric() => return 16,
+        Some(c) if c.is_alphabetic() => {}
+        _ => return 17,
+    }
+    if w.ends_with("ing") && n > 4 {
+        18
+    } else if w.ends_with("ed") && n > 3 {
+        19
+    } else if w.ends_with("ly") && n > 3 {
+        20
+    } else if w.ends_with("tion") || w.ends_with("ment") || w.ends_with("ness") {
+        21
+    } else if w.ends_with('s') && n > 3 {
+        22
+    } else {
+        23
+    }
+}
+
+#[inline]
+fn mix(xs: &[u64]) -> u64 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for &x in xs {
+        h = (h ^ x).wrapping_mul(0x100000001b3);
+    }
+    h ^ (h >> 32)
+}
+
+fn v3_features(units: &[Unit], t: usize, nb: u64, mut f: impl FnMut(usize)) {
+    let n = units.len() as isize;
+    let ti = t as isize;
+    let low = |j: isize| -> &str { if j < 0 { "<s>" } else if j >= n { "</s>" } else { units[j as usize].text.as_str() } };
+    let h = |j: isize| fnv1a(low(j).as_bytes());
+    let isw = |j: isize| j >= 0 && j < n && units[j as usize].text.chars().next().is_some_and(|c| c.is_alphabetic());
+    let cap = |j: isize| j >= 0 && j < n && units[j as usize].cap;
+    let mut count = 0usize;
+    let mut emit = |x: u64| {
+        if count < V3_NF {
+            f((x % nb) as usize);
+            count += 1;
+        }
+    };
+    let ht = h(ti);
+    for o in -4isize..=4 {
+        emit(mix(&[1, (o + 8) as u64, h(ti + o)]));
+    }
+    for o in [-1isize, 1] {
+        let j = ti + o;
+        if j >= 0 && j < n {
+            let x = low(j);
+            let nch = x.chars().count();
+            for k in [2usize, 3] {
+                if nch > k {
+                    let start = x.char_indices().nth(nch - k).map_or(0, |(b, _)| b);
+                    emit(mix(&[2, ((o + 8) as u64) * 4 + k as u64, fnv1a(x[start..].as_bytes())]));
+                }
+            }
+        }
+    }
+    for o in [-1isize, 1] {
+        if cap(ti + o) {
+            emit(mix(&[3, (o + 8) as u64]));
+        }
+    }
+    emit(mix(&[4, h(ti - 2), h(ti - 1)]));
+    emit(mix(&[5, h(ti - 1), h(ti + 1)]));
+    emit(mix(&[6, h(ti + 1), h(ti + 2)]));
+    let first = t == 0;
+    let last = !(ti + 1..n).any(isw);
+    if first {
+        emit(mix(&[7, 0]));
+    }
+    if last {
+        emit(mix(&[7, 1]));
+    }
+    match units.last().map(|u| u.text.as_str()) {
+        Some("?") => emit(mix(&[7, 2])),
+        Some("!") => emit(mix(&[7, 3])),
+        _ => {}
+    }
+    for o in [-2isize, -1, 1, 2] {
+        emit(mix(&[8, (o + 8) as u64, ht, h(ti + o)]));
+    }
+    if first {
+        emit(mix(&[9, 0, ht]));
+    }
+    if last {
+        emit(mix(&[9, 1, ht]));
+    }
+    for j in (ti - 8).max(0)..ti {
+        if isw(j) {
+            emit(mix(&[10, h(j)]));
+            if ti - j <= 5 {
+                emit(mix(&[11, ht, h(j)]));
+            }
+        }
+    }
+    for j in ti + 1..(ti + 9).min(n) {
+        if isw(j) {
+            emit(mix(&[12, h(j)]));
+            if j - ti <= 5 {
+                emit(mix(&[13, ht, h(j)]));
+            }
+        }
+    }
+    let cls = |j: isize| -> u64 { if j < 0 { CLS_BOS } else if j >= n { CLS_EOS } else { unit_class(&units[j as usize], j as usize) } };
+    let c = |o: isize| cls(ti + o);
+    let mut cf: Vec<(u64, [u64; 2], usize)> = Vec::with_capacity(12);
+    for o in [-3isize, -2, -1, 1, 2, 3] {
+        cf.push(((14 + o + 3) as u64, [c(o), 0], 1));
+    }
+    cf.push((21, [c(-2), c(-1)], 2));
+    cf.push((22, [c(1), c(2)], 2));
+    cf.push((23, [c(-1), c(1)], 2));
+    if first {
+        cf.push((24, [c(1), 0], 1));
+        cf.push((25, [c(1), c(2)], 2));
+    }
+    if last {
+        cf.push((26, [c(-1), 0], 1));
+    }
+    for (tid, a, k) in cf {
+        emit(mix(&[100 + tid, a[0], a[1]][..1 + k]));
+        emit(mix(&[200 + tid, ht, a[0], a[1]][..2 + k]));
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct BagCfg {
     d: usize,
@@ -264,6 +426,9 @@ struct BagNet {
     emb: usize,
     scale: usize,
     cfg: BagCfg,
+    v3: bool,
+    /// the learned padding row of the trainer (nn.Embedding padding_idx rows are not zero when the table was normal-initialised): added once per missing feature slot
+    pad: Option<Vec<f32>>,
     l1: Vec<f32>,
     b1: Vec<f32>,
     out: Vec<f32>,
@@ -271,7 +436,7 @@ struct BagNet {
 }
 
 impl BagNet {
-    fn from_map(map: Mmap, hv: &serde_json::Value, data0: usize) -> io::Result<BagNet> {
+    fn from_map(map: Mmap, hv: &serde_json::Value, data0: usize, v3: bool) -> io::Result<BagNet> {
         let bad = |m: &str| io::Error::new(io::ErrorKind::InvalidData, m.to_string());
         let cfg: BagCfg = serde_json::from_value(hv["config"].clone()).map_err(|e| bad(&e.to_string()))?;
         let metas: Vec<Meta> = serde_json::from_value(hv["tensors"].clone()).map_err(|e| bad(&e.to_string()))?;
@@ -290,7 +455,8 @@ impl BagNet {
         let b1 = f32s("l1.bias", cfg.h)?;
         let out = f32s("out.weight", n_out * cfg.h)?;
         let bo = f32s("out.bias", n_out)?;
-        Ok(BagNet { map, data0, emb, scale, cfg, l1, b1, out, bo })
+        let pad = if metas.iter().any(|m| m.name == "emb.pad") { Some(f32s("emb.pad", cfg.d)?) } else { None };
+        Ok(BagNet { map, data0, emb, scale, cfg, v3, pad, l1, b1, out, bo })
     }
 
     /// Logits of the given output rows for the unit at `t`.
@@ -298,14 +464,27 @@ impl BagNet {
         let (d, h, nb) = (self.cfg.d, self.cfg.h, self.cfg.n_buckets as u64);
         let mut x = vec![0f32; d];
         let m = &self.map[..];
-        bag_features(units, t, |s| {
-            let id = (fnv1a(s.as_bytes()) % nb) as usize;
+        let mut cnt = 0usize;
+        let mut add = |id: usize| {
+            cnt += 1;
             let sc = f32::from_le_bytes(m[self.scale + id * 4..self.scale + id * 4 + 4].try_into().unwrap());
             let row = &m[self.emb + id * d..self.emb + (id + 1) * d];
             for j in 0..d {
                 x[j] += (row[j] as i8) as f32 * sc;
             }
-        });
+        };
+        if self.v3 {
+            v3_features(units, t, nb, &mut add);
+        } else {
+            bag_features(units, t, |s| add((fnv1a(s.as_bytes()) % nb) as usize));
+        }
+        if let Some(pad) = &self.pad {
+            let nf = if self.v3 { V3_NF } else { BAG_NF };
+            let miss = nf.saturating_sub(cnt) as f32;
+            for j in 0..d {
+                x[j] += pad[j] * miss;
+            }
+        }
         let _ = self.data0;
         let mut hid = vec![0f32; h];
         for (k, hk) in hid.iter_mut().enumerate() {
@@ -347,10 +526,11 @@ impl Model {
             let hl = u32::from_le_bytes(map[4..8].try_into().unwrap()) as usize;
             if map.len() >= 8 + hl {
                 let hv: serde_json::Value = serde_json::from_slice(&map[8..8 + hl]).map_err(|e| bad(&e.to_string()))?;
-                if hv.get("features").and_then(|k| k.as_str()) == Some("v2") && hv.get("kind").and_then(|k| k.as_str()) == Some("homograph") {
+                let feat = hv.get("features").and_then(|k| k.as_str());
+                if (feat == Some("v2") || feat == Some("v3")) && hv.get("kind").and_then(|k| k.as_str()) == Some("homograph") {
                     let readings: Vec<String> = serde_json::from_value(hv["readings"].clone()).map_err(|e| bad(&e.to_string()))?;
                     let rows = Self::group(&readings, table)?;
-                    let net = BagNet::from_map(map, &hv, 8 + hl)?;
+                    let net = BagNet::from_map(map, &hv, 8 + hl, feat == Some("v3"))?;
                     return Ok(Model { net: Net::Bag(net), rows });
                 }
             }
