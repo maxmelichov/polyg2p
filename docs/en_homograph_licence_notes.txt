@@ -1,0 +1,24 @@
+English heteronym model (en_homograph.g2p, round 3): training sources and licences
+
+Trainer: tools/train_homograph3.py (bag3 student), tools/homograph_pool.py, homograph_pool_merge.py, homograph_label3.py,
+homograph_agree.py, homograph_policy3.py, homograph_bag3_export.py; polyg2p commit recorded in the PR.
+
+Student training text
+- Wikipedia Homograph Data, train split (Gorman, Mazovetskiy & Nikolaev 2018): repository licence Apache-2.0; its sentences are
+  English Wikipedia text, CC BY-SA 3.0. Whether weights trained on them are a share-alike derivative is unsettled, so the weight file
+  is not part of the crate or the wheel.
+- Tatoeba English sentences: CC BY 2.0 FR (terms page, section 6.2). Unlabelled text for the distillation pool.
+- Project Gutenberg English books (PG header and footer removed): public domain in the US per the PG permission page.
+- Europarl v7 English side: statmt.org "not aware of any copyright restrictions"; European Parliament legal notice authorises reuse with
+  acknowledgement of the source.
+- Common Voice English sentence text (sentence-collector and contributor files only, not the Wikipedia-derived files): CC0 1.0.
+- Open American National Corpus 1.0.1: "unrestricted in terms of usage and redistribution".
+- WordNet 3.1 (permissive, attribution): part-of-speech inventory for the silver recipes.
+- Reading table data/en_homograph.tsv, data/en_classes.tsv, silver recipes, seed sentences and the adversarial / selection sentences are author-written.
+
+Labelling models (training time only, never shipped, no output kept except the two soft-label distributions)
+- bert-base-cased (Apache-2.0) and roberta-base (MIT), fine-tuned on the gold fit split, silver and seeds.
+- spaCy en_core_web_sm 3.7.1 (MIT; trained on OntoNotes 5, licensed to Explosion, ClearNLP conversion, WordNet 3.0): a keep / drop flag on
+  part-of-speech pairs only.
+
+Not used: Wikipedia text as a pool, OpenSubtitles, wikiHow, news crawls, UD English-EWT (CC BY-SA; selection only), GUM, Stack Exchange.
