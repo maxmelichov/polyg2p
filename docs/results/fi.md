@@ -38,8 +38,8 @@ triple consonants at compound seams (`lll` -> `lː`). No token contains a
 doubled consonant phone or `ːː` any more. Every other language's output is
 byte-identical on 30,000 Tatoeba sentences each.
 
-**Models trained on the doubled notation need the earlier release for
-Finnish**: a model that learned `ss` will read `sː` as a different symbol.
+**Version 0.2.0 changes the public output for Finnish. Models trained on the
+doubled notation need the earlier release (0.1.x) for Finnish**: a model that learned `ss` will read `sː` as a different symbol.
 Exact-string agreement with espeak drops by design, 96.7% -> 81.3% on the
 14,638 words of the top list below (nearly all of the loss is `ll ss nn mm`).
 
