@@ -121,8 +121,8 @@ colon-kept	ሰላም: ዓለም	səlam: aləm
 combining-mark	ሰ፟ላም	səlam
 combining-mark	ሰ፝ላ፞ም	səlam
 combining-mark	ሰ́ላም	səlam
-number-ordinal	5ኛ	amsɨtəɲa
-number-ordinal	አምስተኛ	amsɨtəɲa
+number-ordinal	5ኛ	amɨstəɲa
+number-ordinal	አምስተኛ	amɨstəɲa
 number-ordinal	1ኛ ክፍል	andəɲa kɨfɨl
 number-ordinal	20ኛው	hajaɲaw
 number-suffix	2ቱ	hulətu
@@ -162,4 +162,49 @@ abbreviation-as-written	ዶ/ር	do r
 letter-not-read	ሰላም ⶀ። ዓለም	səlam. aləm
 letter-not-read	ሰⶀላም	səlam
 ethiopic-numeral-skipped	፲፪ ቀን	kʼən
-sonorant-pair-final	ይስጥልኝ	jɨstʼɨlɲ
+suffix-takes-vowel	ይስጥልኝ	jɨstʼɨlɨɲ
+suffix-takes-vowel	ያለውን	jaləwɨn
+suffix-takes-vowel	እግዚአብሔርን	ɨɡziʔabherɨn
+suffix-takes-vowel	ወይም	wəjɨm
+suffix-takes-vowel	አይችልም	ajʧɨlɨm
+suffix-takes-vowel	ቤትህ	betɨh
+suffix-takes-vowel	ልጅህ	lɨʤɨh
+suffix-takes-vowel	ስምሽ	sɨmɨʃ
+suffix-takes-vowel	ልጅሽ	lɨʤɨʃ
+suffix-takes-vowel	ትንሽ	tɨnɨʃ
+suffix-takes-vowel	ጤና ይስጥልኝ።	tʼena jɨstʼɨlɨɲ.
+suffix-after-vowel	ቤቱን	betun
+lexical-cluster	ዓይን	ajn
+lexical-cluster	የዓይን	jəʔajn
+lexical-cluster	ወይን	wəjn
+lexical-cluster	ሕልም	hɨlm
+lexical-cluster	ፊልም	film
+lexical-cluster	ዲዛይን	dizajn
+lexical-cluster	ታይም	tajm
+lexical-cluster	የሚገርም	jəmiɡərm
+lexical-cluster-only-that-word	ያህልም	jahlɨm
+stem-numeral	6ኛ	sɨdɨstəɲa
+stem-numeral	8ኛው	sɨmɨntəɲaw
+stem-numeral	5ቱ	amɨstu
+stem-numeral	6ቱ	sɨdɨstu
+stem-numeral	8ቱ	sɨmɨntu
+stem-numeral	ስድስተኛ	sɨdɨstəɲa
+stem-numeral	ስምንተኛ	sɨmɨntəɲa
+stem-numeral	ከስድስት	kəsɨdɨst
+stem	ትልቅ	tɨlɨkʼ
+stem	ትልቁ	tɨlɨkʼu
+stem	ክርስቶስ	kɨrɨstos
+stem	ክርስቲያን	kɨrɨstijan
+stem	ቤተክርስቲያን	betəkrɨstijan
+number-suffix	5ቱን	amɨstun
+number-suffix	3ኛውን	sostəɲawɨn
+number-suffix	9ኙ	zətʼəɲu
+number-suffix	1990ዎቹ	and ʃih zətʼəɲ məto zətʼənawoʧu
+number-prefix	እስከ5	ɨskəʔamɨst
+number-prefix	የ5ቱ	jəʔamɨstu
+number-word-not-glued	2015ዓ.ም	hulət ʃih asra amɨst a. m
+number-word-not-glued	10ሺህ ብር	asɨr ʃih bɨr
+number-word-not-glued	3ሚሊዮን	sost milijon
+number-word-not-glued	5ሰዎች	amɨst səwoʧ
+number-word-not-glued	ብር5	bɨr amɨst
+number-word-not-glued	ሰዓት5ኛ	səʔat amɨstəɲa

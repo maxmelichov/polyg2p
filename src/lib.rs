@@ -428,13 +428,14 @@ impl G2p {
                         num::expand(n, lang, &prev, next.unwrap_or(""), &mut words);
                     }
                     if lang == Lang::Am && !words.is_empty() {
-                        // digits written against letters are one word: በ5 → በአምስት, 5ኛ → አምስተኛ
+                        // a prefix or a suffix written against the digits is one word with
+                        // them: በ5 → በአምስት, 5ኛ → አምስተኛ. Any other word stays apart: 5ሰዎች
                         let before = match ti.checked_sub(1).map(|k| &toks[k]) {
-                            Some(Tok::Word(w)) if outs.last().is_some_and(|o| o.src == *w) => outs.pop().map(|o| o.src),
+                            Some(Tok::Word(w)) if am::num_prefix(w) && outs.last().is_some_and(|o| o.src == *w) => outs.pop().map(|o| o.src),
                             _ => None,
                         };
                         let after = match toks.get(ti + 1) {
-                            Some(Tok::Word(w)) => {
+                            Some(Tok::Word(w)) if words.last().is_some_and(|l| am::num_suffix(l, w)) => {
                                 skip = ti + 2;
                                 Some(w.as_str())
                             }

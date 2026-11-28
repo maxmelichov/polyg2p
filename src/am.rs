@@ -16,12 +16,20 @@
 //!   at the start of the word it opens a syllable and takes `ɨ`. The last
 //!   consonant of the word joins the coda when sonority does not rise
 //!   (`ልብስ` → `lɨbs`, `አንድ` → `and`); otherwise `ɨ` goes between the two
-//!   (`ክፍል` → `kɨfɨl`, `እግር` → `ɨɡɨr`). `h` never closes a cluster (`እኅት` →
+//!   (`ክፍል` → `kɨfɨl`, `እግር` → `ɨɡɨr`). `h` never opens a cluster (`እኅት` →
 //!   `ɨhɨt`).
-//! * A bare `t` or `d` never stands directly before `ʃ`, `ʒ` or `z`, nor `t`
-//!   before a word-final `s`: it takes `ɨ` (`ቤትሽ` → `betɨʃ`). Written next to
-//!   each other the two would be folded into the affricate (`fold.rs`), and
-//!   `ቤትሽ` would come out the same as `ቤች`.
+//! * `n m ɲ h ʃ` never close a cluster: at the end of a word they are nearly
+//!   always the suffixes `-ን -ም -ኝ -ህ -ሽ`, which take `ɨ` after a consonant
+//!   (`ያለውን` → `jaləwɨn`, `ወይም` → `wəjɨm`, `ቤትህ` → `betɨh`, `ይስጥልኝ` →
+//!   `jɨstʼɨlɨɲ`). The few words whose stem ends in such a cluster are listed
+//!   in `CLUSTER` (`ዓይን` → `ajn`, `ፊልም` → `film`).
+//! * A bare `t` before `ʃ`, a bare `d` before `ʒ` or `z`, and a bare `t` before
+//!   a word-final `s` takes `ɨ` (`ቤትሽ` → `betɨʃ`). Written next to each other
+//!   the two would be folded into the affricate (`fold.rs`), and `ቤትሽ` would
+//!   come out the same as `ቤች`.
+//! * `STEMS`: a few stems whose `ɨ` stands next to a long consonant, which
+//!   the script does not write, keep their shape before a suffix (`አምስት` →
+//!   `amɨst`, so `አምስተኛ` → `amɨstəɲa`).
 //!
 //! Not predicted: gemination. Fidel does not write it, and it is lexical.
 //! The `ɨ` rule works on the written word, so a one-letter prefix is syllabified
@@ -144,15 +152,103 @@ fn folds(c1: &str, c2: &str) -> bool {
     matches!((c1, c2), ("t", "ʃ") | ("d", "ʒ") | ("d", "z"))
 }
 
+/// The consonants of the suffixes `-ን -ም -ኝ -ህ -ሽ`. They take `ɨ` after a
+/// consonant, so none of them is the second consonant of a word-final cluster.
+fn no_coda(c: &str) -> bool {
+    matches!(c, "n" | "m" | "ɲ" | "h" | "ʃ")
+}
+
 /// May the word end in the cluster `c1 c2` without `ɨ`? Sonority must not rise,
-/// and two sonorants need a fall. `h` does not close a cluster, and neither does
-/// a pair the affricate fold would merge (`ts` is folded at the end of a word).
+/// and two sonorants need a fall. `h` does not open a cluster, `n m ɲ h ʃ` do
+/// not close one ([`CLUSTER`] lists the words that do end in one), and neither
+/// does a pair the affricate fold would merge (`ts` is folded at the end of a
+/// word).
 fn coda_ok(c1: &str, c2: &str) -> bool {
-    if c1 == c2 || c1 == "h" || folds(c1, c2) || (c1, c2) == ("t", "s") {
+    if c1 == c2 || c1 == "h" || no_coda(c2) || folds(c1, c2) || (c1, c2) == ("t", "s") {
         return false;
     }
     let (s1, s2) = (sonority(c1), sonority(c2));
     if s2 > 1 { s1 > s2 } else { s1 >= s2 }
+}
+
+/// One-letter proclitics. A [`CLUSTER`] word or a [`STEMS`] entry may follow one.
+const PROCLITICS: [(char, &str); 4] = [('የ', "jə"), ('በ', "bə"), ('ለ', "lə"), ('ከ', "kə")];
+
+/// Words that end in a lexical cluster with `n` or `m`, where the suffix rule
+/// would write `ɨ`. Sources: `ዓይን` `a j n`, `ሕልም` `h ɨ l m`, `ፊልም` `f i l m` in
+/// Wiktionary's pronunciations (WikiPron `amh_ethi_broad`); `ወይን` `wäyn` in
+/// Wiktionary's entry; `ዲዛይን`, `ኦንላይን`, `ዳውን`, `ታይም`, `ፎርም`, `ሪፎርም`,
+/// `ፕላትፎርም` are the English *design*, *online*, *down*, *time*, *form*,
+/// *reform*, *platform*; `የሚገርም` is the type A imperfect of `ገረመ` (`yɨgərm`).
+const CLUSTER: [&str; 17] = [
+    "ዓይን", "አይን", "ዐይን", "ሕልም", "ህልም", "ፊልም", "ወይን", "ዲዛይን", "ኦንላይን", "ዳውን", "ታይም", "ፎርም", "ሪፎርም", "ፕላትፎርም", "የሚገርም", "በሚገርም", "ሲገርም",
+];
+
+const T_ROW: &str = "ትተቱቲታቴቶቷ";
+
+/// Stems read as listed when one of the letters in `.1` follows: (letters, next
+/// letter, phonemes, also after a proclitic). The `ɨ` of these stands next to a
+/// long consonant, which the script does not write, so the syllabifier cannot
+/// place it once a suffix follows.
+///
+/// * The numerals `አምስት` `ስድስት` `ስምንት` (`a mː ɨ s t`, `s ɨ dː ɨ s t`,
+///   `s ɨ mː ɨ n t` in Wiktionary's pronunciations; `ስድስተኛ` is `səddəstäñña`
+///   in its entry): `አምስተኛ` → `amɨstəɲa`, `ስድስቱ` → `sɨdɨstu`.
+/// * `ትልቅ` (`təlləḳ` in Wiktionary's entry): `tɨlɨkʼ`, `ትልቁ` → `tɨlɨkʼu`.
+/// * `ክርስት-` at the start of a word (`ክርስቲያን` is `krəstiyan` in Wiktionary's
+///   entry, `ክርስትና` `k r ɨ s t ɨ nː a` in its pronunciations): `ክርስቶስ` →
+///   `kɨrɨstos`, like `ቤተክርስቲያን` → `betəkrɨstijan`. After a proclitic the
+///   syllabifier already gives `-krɨs-`.
+const STEMS: [(&str, &str, &[&str], bool); 5] = [
+    ("አምስ", T_ROW, &["a", "m", "ɨ", "s"], true),
+    ("ስድስ", T_ROW, &["s", "ɨ", "d", "ɨ", "s"], true),
+    ("ስምን", T_ROW, &["s", "ɨ", "m", "ɨ", "n"], true),
+    ("ትል", "ቅቁቋ", &["t", "ɨ", "l", "ɨ"], true),
+    ("ክርስ", T_ROW, &["k", "ɨ", "r", "ɨ", "s"], false),
+];
+
+fn is_vowel(p: &str) -> bool {
+    matches!(p, "ə" | "u" | "i" | "a" | "e" | "ɨ" | "o")
+}
+
+/// Does `w` start with `p`, counted in letters?
+fn starts(w: &[char], p: &str) -> bool {
+    let mut n = 0;
+    p.chars().all(|c| {
+        n += 1;
+        w.get(n - 1) == Some(&c)
+    })
+}
+
+/// Is `w` one of the [`CLUSTER`] words, with or without a proclitic?
+fn cluster_word(w: &[char]) -> bool {
+    let listed = |w: &[char]| CLUSTER.iter().any(|x| x.chars().count() == w.len() && starts(w, x));
+    listed(w) || (w.first().is_some_and(|c| PROCLITICS.iter().any(|(p, _)| p == c)) && listed(&w[1..]))
+}
+
+/// The [`STEMS`] entry the word starts with, with or without a proclitic:
+/// (letters consumed, their phonemes). `(0, [])` when there is none.
+fn stem(w: &[char]) -> (usize, Vec<&'static str>) {
+    let pre = PROCLITICS.iter().find(|(c, _)| w.first() == Some(c)).map(|&(_, ph)| ph);
+    // at the start of the word first, then after its proclitic
+    for skip in 0..=usize::from(pre.is_some()) {
+        for (s, next, ph, proclitic) in STEMS {
+            let k = skip + s.chars().count();
+            if (proclitic || skip == 0) && starts(&w[skip..], s) && w.get(k).is_some_and(|c| next.contains(*c)) {
+                let mut out = Vec::with_capacity(ph.len() + 2);
+                if let (1, Some(pre)) = (skip, pre) {
+                    out.push(pre);
+                    // hiatus after the proclitic: በአምስት → bəʔamɨst
+                    if is_vowel(ph[0]) {
+                        out.push("ʔ");
+                    }
+                }
+                out.extend_from_slice(ph);
+                return (k, out);
+            }
+        }
+    }
+    (0, Vec::new())
 }
 
 /// Letters of a written word: Ethiopic, and the Ethiopic Supplement, Extended
@@ -164,13 +260,17 @@ fn in_run(c: char) -> bool {
 
 /// Phonemes of one run of fidel (one written word).
 fn run(w: &str, out: &mut String) {
-    let seg: Vec<(&str, bool, &str)> = w.chars().filter_map(fidel).collect();
+    let letters: Vec<char> = w.chars().filter(|&c| fidel(c).is_some()).collect();
+    let seg: Vec<(&str, bool, &str)> = letters.iter().filter_map(|&c| fidel(c)).collect();
     let n = seg.len();
     let bare = |i: usize| seg[i].0 != "ʔ" && seg[i].2.is_empty();
-    let mut ph: Vec<&str> = Vec::with_capacity(3 * n);
+    let (k0, mut ph) = stem(&letters);
+    ph.reserve(3 * n);
     // consonants since the last vowel
-    let mut coda = 0u8;
-    for i in 0..n {
+    let mut coda = u8::from(ph.last().is_some_and(|p| !is_vowel(p)));
+    // may the last two consonants end the word as a cluster?
+    let fin = n >= 2 && bare(n - 2) && bare(n - 1) && (coda_ok(seg[n - 2].0, seg[n - 1].0) || cluster_word(&letters));
+    for i in k0..n {
         let (c, lab, v) = seg[i];
         let last = i + 1 == n;
         if c == "ʔ" && !lab {
@@ -196,7 +296,7 @@ fn run(w: &str, out: &mut String) {
             ph.push("ɨ");
             coda = 0;
         } else if !last
-            && ((i + 3 == n && bare(n - 2) && bare(n - 1) && coda_ok(seg[n - 2].0, seg[n - 1].0))
+            && ((i + 3 == n && fin)
                 || (seg[i + 1].0 == "ɲ" && !seg[i + 1].1 && !seg[i + 1].2.is_empty())
                 || folds(c, seg[i + 1].0))
         {
@@ -210,7 +310,7 @@ fn run(w: &str, out: &mut String) {
             // coda after a vowel (a word that is one bare consonant stays bare)
             ph.push(c);
             coda = 1;
-        } else if coda == 1 && coda_ok(ph[ph.len() - 1], c) {
+        } else if coda == 1 && fin {
             ph.push(c);
             coda = 2;
         } else {
@@ -330,9 +430,54 @@ pub fn join(outs: &mut Vec<Out>) {
     *outs = kept;
 }
 
-/// Digits written against letters are one word. The letters before go in front
-/// of the first number word (`በ5` → `በአምስት`). The letters after restate the end
-/// of the last one, as in the written language:
+/// Prefixes written against a number that are read as one word with it:
+/// `በ5` → `በአምስት`, `እስከ5` → `እስከአምስት`.
+pub fn num_prefix(w: &str) -> bool {
+    matches!(w, "በ" | "ለ" | "ከ" | "የ" | "እስከ")
+}
+
+/// Is `a`, written right after a number whose last word is `last`, a suffix of
+/// the number? Anything else is a word of its own (`5ሰዎች` is `አምስት ሰዎች`,
+/// `10ሺህ` is `አሥር ሺህ`).
+///
+/// * the ordinal `ኛ` and its definite and case forms: `5ኛ`, `5ኛው`, `5ኛዋ`,
+///   `5ኛውን`;
+/// * the definite form, which restates the last consonant of the number word
+///   in the second or the eighth order (`2ቱ`, `2ቷ`, `9ኙ`, `10ሩ`), or `ው` / `ዋ`
+///   after a vowel (`20ው`);
+/// * the plurals `ዎቹ` / `ዎች` (`1990ዎቹ`);
+/// * the clitics `ን`, `ም`, `ና` alone or after any of the above (`2ም`, `5ቱን`).
+pub fn num_suffix(last: &str, a: &str) -> bool {
+    const TAILS: [&str; 6] = ["", "ን", "ም", "ና", "ንም", "ንና"];
+    let Some(first) = a.chars().next() else { return false };
+    let rest = &a[first.len_utf8()..];
+    if TAILS.contains(&a) {
+        return true;
+    }
+    if first == 'ኛ' {
+        return TAILS.contains(&rest) || ["ው", "ዋ", "ዎቹ", "ዎች"].iter().any(|d| rest.strip_prefix(d).is_some_and(|t| TAILS.contains(&t)));
+    }
+    if let Some(t) = a.strip_prefix("ዎቹ").or_else(|| a.strip_prefix("ዎች")) {
+        return TAILS.contains(&t);
+    }
+    if !TAILS.contains(&rest) {
+        return false;
+    }
+    match last.chars().last().and_then(|e| Some((e, fidel(e)?))) {
+        // a bare consonant: the same row in the second or eighth order
+        Some((e, (c, false, ""))) if c != "ʔ" => {
+            let (o, r) = (first as u32, e as u32 & !7);
+            o == r + 1 || o == r + 7
+        }
+        Some(_) => matches!(first, 'ው' | 'ዋ'),
+        None => false,
+    }
+}
+
+/// A prefix ([`num_prefix`]) or a suffix ([`num_suffix`]) written against
+/// digits is one word with them. The prefix goes in front of the first number
+/// word (`በ5` → `በአምስት`). The suffix restates the end of the last one, as in
+/// the written language:
 ///
 /// * `ኛ` makes the ordinal: a final bare consonant takes its first order
 ///   (`5ኛ` → `አምስተኛ`, `1ኛ` → `አንደኛ`; `9ኛ` → `ዘጠነኛ`);
@@ -486,11 +631,111 @@ mod tests {
 
     #[test]
     fn clusters() {
-        assert!(coda_ok("b", "s") && coda_ok("n", "d") && coda_ok("r", "t") && coda_ok("j", "kʼ") && coda_ok("r", "n"));
+        assert!(coda_ok("b", "s") && coda_ok("n", "d") && coda_ok("r", "t") && coda_ok("j", "kʼ") && coda_ok("j", "l"));
         assert!(!coda_ok("f", "l") && !coda_ok("ɡ", "r") && !coda_ok("kʼ", "m") && !coda_ok("m", "n") && !coda_ok("t", "t"));
-        // h does not close a cluster
-        assert!(!coda_ok("h", "t") && coda_ok("r", "h"));
+        // h does not open a cluster
+        assert!(!coda_ok("h", "t"));
         assert_eq!(word("እኅት"), "ɨhɨt");
+    }
+
+    #[test]
+    fn suffix_consonants() {
+        // n m ɲ h ʃ do not close a cluster, whatever stands before them
+        for c1 in ["l", "r", "j", "w", "t", "b", "m", "dʒ"] {
+            for c2 in ["n", "m", "ɲ", "h", "ʃ"] {
+                assert!(!coda_ok(c1, c2), "{c1} {c2}");
+            }
+        }
+        for (w, p) in [
+            ("ያለውን", "jaləwɨn"),
+            ("እግዚአብሔርን", "ɨɡziʔabherɨn"),
+            ("ወይም", "wəjɨm"),
+            ("አይችልም", "ajtʃɨlɨm"),
+            ("ቤትህ", "betɨh"),
+            ("ልጅህ", "lɨdʒɨh"),
+            ("ፍትሕ", "fɨtɨh"),
+            ("ስምሽ", "sɨmɨʃ"),
+            ("ልጅሽ", "lɨdʒɨʃ"),
+            ("ትንሽ", "tɨnɨʃ"),
+            ("ይስጥልኝ", "jɨstʼɨlɨɲ"),
+            ("ንገርኝ", "nɨɡərɨɲ"),
+            // the consonant before the suffix closes the syllable before it
+            ("ትምህርትን", "tɨmhɨrtɨn"),
+            ("ስነግርሽ", "sɨnəɡrɨʃ"),
+            // a vowel before the suffix: nothing to add
+            ("ቤቱን", "betun"),
+            ("ነህ", "nəh"),
+            // other final clusters are untouched
+            ("ኃይል", "hajl"),
+            ("ሆንክ", "honk"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
+    }
+
+    #[test]
+    fn lexical_clusters() {
+        for (w, p) in [
+            ("ዓይን", "ajn"),
+            ("አይን", "ajn"),
+            ("የዓይን", "jəʔajn"),
+            ("ወይን", "wəjn"),
+            ("ከወይን", "kəwəjn"),
+            ("ሕልም", "hɨlm"),
+            ("ህልም", "hɨlm"),
+            ("ፊልም", "film"),
+            ("የፊልም", "jəfilm"),
+            ("ዲዛይን", "dizajn"),
+            ("ኦንላይን", "onlajn"),
+            ("ታይም", "tajm"),
+            ("ዳውን", "dawn"),
+            ("ፕላትፎርም", "pɨlatform"),
+            ("የሚገርም", "jəmiɡərm"),
+            // only the listed word: a longer word that ends the same way takes the suffix reading
+            ("ያህልም", "jahlɨm"),
+            ("ሀገርም", "haɡərɨm"),
+            ("ወይንም", "wəjnɨm"),
+            // a suffix after the listed word
+            ("ዓይንህ", "ajnɨh"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
+    }
+
+    #[test]
+    fn stems() {
+        for (w, p) in [
+            ("አምስት", "amɨst"),
+            ("አምስተኛ", "amɨstəɲa"),
+            ("አምስቱ", "amɨstu"),
+            ("አምስትም", "amɨstɨm"),
+            ("ስድስት", "sɨdɨst"),
+            ("ስድስተኛው", "sɨdɨstəɲaw"),
+            ("ስድስቱን", "sɨdɨstun"),
+            ("ስምንት", "sɨmɨnt"),
+            ("ስምንተኛ", "sɨmɨntəɲa"),
+            ("ስምንቱ", "sɨmɨntu"),
+            ("በአምስት", "bəʔamɨst"),
+            ("የአምስተኛው", "jəʔamɨstəɲaw"),
+            ("ከስድስት", "kəsɨdɨst"),
+            ("በስምንተኛ", "bəsɨmɨntəɲa"),
+            ("ትልቅ", "tɨlɨkʼ"),
+            ("ትልቁ", "tɨlɨkʼu"),
+            ("በትልቅ", "bətɨlɨkʼ"),
+            ("ትልቅነት", "tɨlɨkʼnət"),
+            ("ክርስቶስ", "kɨrɨstos"),
+            ("ክርስቲያን", "kɨrɨstijan"),
+            ("ክርስትና", "kɨrɨstɨna"),
+            ("ቤተክርስቲያን", "betəkrɨstijan"),
+            ("በክርስቶስ", "bəkrɨstos"),
+            // the stem needs its next letter: these are other words
+            ("አምስ", "ams"),
+            ("ትል", "tɨl"),
+            ("ትልም", "tɨlɨm"),
+            ("ስምን", "sɨmɨn"),
+        ] {
+            assert_eq!(word(w), p, "{w}");
+        }
     }
 
     #[test]
@@ -583,5 +828,40 @@ mod tests {
         assert_eq!(glued(Some("በ"), 5, None), "በአምስት");
         assert_eq!(glued(Some("ከ"), 1000, Some("ኛ")), "ከአንድ ሺህኛ");
         assert_eq!(glued(None, 5, None), "አምስት");
+        // the ordinal and the definite form keep the shape of the cardinal
+        for (w, p) in [("አምስተኛ", "amɨstəɲa"), ("ስድስተኛ", "sɨdɨstəɲa"), ("ስምንተኛ", "sɨmɨntəɲa"), ("አምስቱ", "amɨstu"), ("ስድስቱ", "sɨdɨstu"), ("ስምንቱ", "sɨmɨntu")] {
+            assert_eq!(word(w), p, "{w}");
+        }
+    }
+
+    #[test]
+    fn what_is_glued_to_digits() {
+        for (last, a) in [
+            ("አምስት", "ኛ"),
+            ("አምስት", "ኛው"),
+            ("አምስት", "ኛዋ"),
+            ("ሦስት", "ኛውን"),
+            ("አምስት", "ኛም"),
+            ("ሁለት", "ቱ"),
+            ("ሁለት", "ቷ"),
+            ("አምስት", "ቱን"),
+            ("ዘጠኝ", "ኙ"),
+            ("አሥር", "ሩ"),
+            ("አንድ", "ዱ"),
+            ("ሃያ", "ው"),
+            ("ዘጠና", "ዎቹ"),
+            ("ሃያ", "ዎቹን"),
+            ("ሁለት", "ም"),
+            ("ሁለት", "ን"),
+            ("ሁለት", "ና"),
+        ] {
+            assert!(num_suffix(last, a), "{last} + {a}");
+        }
+        // words of their own
+        for (last, a) in [("አሥር", "ሺህ"), ("ሦስት", "ሚሊዮን"), ("አምስት", "ሰዎች"), ("አምስት", "ዓ"), ("አምስት", "ብር"), ("ሁለት", "ሩ"), ("ሃያ", "ቱ"), ("አምስት", "ኛክፍል"), ("አምስት", "ቱር")] {
+            assert!(!num_suffix(last, a), "{last} + {a}");
+        }
+        assert!(["በ", "ለ", "ከ", "የ", "እስከ"].iter().all(|w| num_prefix(w)));
+        assert!(!num_prefix("ብር") && !num_prefix("ሰዓት") && !num_prefix(""));
     }
 }

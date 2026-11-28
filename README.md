@@ -115,7 +115,7 @@ adds the optional CC BY-SA lexicons described under [Licensing](#licensing).
 | Indonesian | `id` | rules, e/ə stem table | **99.6%** | | 88.4% |
 | Russian | `ru` | dictionaries, context model ([details](docs/russian.md)) | **98.9%** | | 62.4% |
 | Hebrew | `he` | sentence-level tagger ([details](docs/hebrew.md)) | | | |
-| Amharic | `am` | rules: Ge'ez script to IPA ([results](docs/results/am.md)) | not measured on this scale; 6.9% phone error on a 478-word Wiktionary gold, gemination set aside | | |
+| Amharic | `am` | rules: Ge'ez script to IPA ([results](docs/results/am.md)) | not measured on this scale; 6.8% phone error on a 478-word Wiktionary gold, gemination set aside | | |
 | Yiddish | `yi` | routed to [phonikud-yi](https://github.com/maxmelichov/phonikud-yi-blue-tts) | | | |
 
 ¹ Built from Wiktionary, so scoring on Wiktionary is optimistic. On a
